@@ -33,7 +33,7 @@ REQUEST → GRILL → SPEC → DEVELOP ⇄ VALIDATE → DONE
 |-------|--------|
 | User  | Submits a feature or software request. |
 | Elon  | Creates `.app/PROJECT.md` — Project Definition & Status (name, purpose, scope, initial status). |
-| Elon  | Receives the request. Routes it to **ReqGuru** for requirements gathering. |
+| Elon  | Receives the request. Spawns **ReqGuru** for requirements gathering. |
 **Gate:** Elon verifies the request is scoped enough to begin grilling. If not, he asks the user to narrow.
 
 ---
@@ -68,8 +68,7 @@ ELON spawns ReqGuru ──→ ReqGuru analyzes answers,
 | Actor | Action |
 |-------|--------|
 | ReqGuru | Synthesizes the complete Q&A into a **Requirements Document** — a complete, unambiguous description of what must be built. Writes it to `.app/REQ.md`. |
-| Elon | Reviews. If gaps remain, re-enters the grill loop at 2a. Otherwise, routes to **LeadDev** for spec creation. |
-
+| Elon | Reviews. If gaps remain, re-enters the grill loop at 2a. Otherwise, spawns **LeadDev** for spec creation. |
 **Commit rule:** `.app/REQ.md` is committed before entering Phase 3.
 ---
 
@@ -78,12 +77,14 @@ ELON spawns ReqGuru ──→ ReqGuru analyzes answers,
 | Actor | Action |
 |-------|--------|
 | LeadDev | Translates the Requirements Document into a formal **Spec** — technical design, interfaces, data models, behavior contracts, acceptance tests. |
-| Elon | Reviews the Spec. Routes to **DrPe** for research if technical unknowns exist. |
-| Elon | Signs off and routes Spec to **LeadDev** for development. |
+| Elon | Reviews the Spec. Spawns **DrPe** for research if technical unknowns exist. |
+| Elon | Reviews and signs off on the Spec. |
+| Elon | Spawns **LeadDev** with the signed Spec and delegates implementation. |
 
 **Commit rule:** The Spec file is committed to `.app/` before development begins.
 
-**Gate:** Spec is complete enough that an independent agent can validate against it.
+**Gate A:** Spec is complete enough that an independent agent can validate against it.
+**Gate B:** Elon has spawned LeadDev with a complete delegation referencing the Spec. Elon MUST NOT proceed to Phase 4 without spawning LeadDev.
 
 ---
 
@@ -91,20 +92,22 @@ ELON spawns ReqGuru ──→ ReqGuru analyzes answers,
 
 This phase repeats until the Validator is satisfied.
 
+**Elon MUST NOT write implementation code, fix validation failures, or perform any LeadDev or Validator role during this phase. Elon's role in Phase 4 is exclusively spawning agents, gatekeeping, and routing results.**
+
 ### 4a. DEVELOP
 
 | Actor | Action |
 |-------|--------|
-| LeadDev | Implements the software according to the Spec. Hires specialist developers via **HR** if domain expertise is needed. |
+| Elon  | Spawns **LeadDev** with the signed Spec and a complete delegation (per AGENTS.md Delegation Schema). |
+| LeadDev | Implements the software according to the Spec. May request **HR** to hire specialist developers if domain expertise is needed. |
 | LeadDev | Commits every significant change: each logical unit of work, each interface addition, each behavioral change. Commit messages reference the Spec section. |
 
-**Commit rule:** No significant code change goes uncommitted. Trivial formatting-only changes may be batched.
 
 ### 4b. VALIDATE
 
 | Actor | Action |
 |-------|--------|
-| Elon  | Hands the Spec and the implementation to **Validator**. |
+| Elon  | Spawns **Validator** with the Spec and the implementation. |
 | Validator | Audits the implementation against the Spec exhaustively. Produces a **Validation Report**: |
 |          | - **PASS** — every requirement is met. |
 |          | - **FAIL** — lists every deviation, omission, or violation with file:line references. |
@@ -113,9 +116,9 @@ This phase repeats until the Validator is satisfied.
 
 | Actor | Action |
 |-------|--------|
-| Elon    | Routes the Validation Report to **LeadDev**. |
+| Elon    | Spawns **LeadDev** with the Validation Report. Elon MUST NOT resolve validation failures himself — all fixes go through LeadDev. |
 | LeadDev | Resolves every listed issue. Commits each fix. |
-| Elon    | Routes back to **Validator** for re-validation. |
+| Elon    | Spawns **Validator** for re-validation with the updated implementation. |
 
 **Loop:** DEVELOP → VALIDATE → RESOLVE → VALIDATE → … until Validator returns PASS.
 
@@ -134,7 +137,7 @@ This phase repeats until the Validator is satisfied.
 
 | Agent    | Phase(s)               | Artifacts Owned       | Responsibility |
 |----------|------------------------|-----------------------|----------------|
-| Elon     | All                    | `.app/PROJECT.md`     | Orchestration, routing, gates |
+| Elon     | 1, 2, 5 (gates all)    | `.app/PROJECT.md`     | Orchestration, routing, gates. Present in every phase solely for gatekeeping and routing — never for implementation, validation, or artifact authoring. |
 | ReqGuru  | GRILL                  | `.app/REQ.md`         | Requirements gathering |
 | DrPe     | SPEC (on demand)       | —                     | Technical research |
 | LeadDev  | SPEC, DEVELOP, RESOLVE | Spec file (in `.app/`)| Design, implementation, fixes |
