@@ -407,6 +407,33 @@ class TestPreflightErrors:
             os.unlink(inp_path)
             del os.environ["ENTRA_CLIENT_SECRET"]
 
+    def test_no_preflight_with_crossref_errors_exit_1(self) -> None:
+        """--no-preflight with cross-reference errors still exits 1 (Phase 1 always runs)."""
+        # Config only allows add-user-to-group
+        cfg_path = _write_temp_yaml("""
+identity_id: "app-123"
+tenant_id: "tenant-456"
+actions:
+  - add-user-to-group
+""")
+        # Input uses remove-user-from-group (not in config)
+        inp_path = _write_temp_yaml("""
+operations:
+  - action: remove-user-from-group
+    user_id: "user-1"
+    group_id: "group-1"
+""")
+        os.environ["ENTRA_CLIENT_SECRET"] = "test-secret"
+        try:
+            code = main(
+                ["--config", cfg_path, "--input", inp_path, "--no-preflight"]
+            )
+            assert code == ExitCode.PREFLIGHT_FAIL
+        finally:
+            os.unlink(cfg_path)
+            os.unlink(inp_path)
+            del os.environ["ENTRA_CLIENT_SECRET"]
+
 
 # ---------------------------------------------------------------------------
 # CLI — missing ENTRA_CLIENT_SECRET

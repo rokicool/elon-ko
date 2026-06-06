@@ -140,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         no_preflight=args.no_preflight,
         dry_run=args.dry_run,
     )
-    if not preflight_result.passed and not args.no_preflight:
+    if not preflight_result.passed:
         return ExitCode.PREFLIGHT_FAIL
 
     # Dry run (FR4)
