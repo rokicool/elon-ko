@@ -2,7 +2,7 @@
 
 ## Overview
 
-Every feature or software request flows through five gated phases. No phase begins before the previous one is signed off. Every agent operates strictly within its role.
+Every feature or software request flows through eight gated phases. No phase begins before the previous one is signed off. Every agent operates strictly within its role. Each agent is an executable skill at `.agents/skills/<name>/SKILL.md` — when the protocol says "Elon spawns X," it means `task(agent="task", context="skill://<agent-name>", assignment="...")`. The skill's full protocol (tool policy, boundaries, process) is injected into the subagent's context; each agent executes in its own isolated context window.
 
 ---
 
@@ -16,6 +16,7 @@ The `.app/` directory holds the canonical protocol artifacts:
 | `.app/PROJECT.md` | Elon | 1 (REQUEST) | Project Definition & Status. Defines the project name, purpose, scope, and tracks its current phase/status. Created at the start of Phase 1. Updated as the project progresses through phases. |
 | `.app/REQ.md` | ReqGuru | 2b (GRILL) | Requirements Document. Synthesized from the GRILL interview. A complete, unambiguous description of what must be built. Replaces the old `REQUIREMENTS.md`. |
 | `.app/RESEARCH.md` | DrPe | 3 (RESEARCH) | Research Report. Survey of best frameworks, libraries, methods, languages, and notations for the task. Includes recommendations and an impact assessment: does anything found contradict or materially expand the requirements? |
+| `.app/SPEC.md` | LeadDev | 4 (SPEC) | Technical Specification. Architecture overview, module breakdown, interface contracts, data models, acceptance criteria. The canonical definition of what the implementation MUST satisfy — Validator audits against this. |
 
 ## Phases
 
@@ -154,6 +155,7 @@ This phase repeats until the Validator is satisfied.
 | Actor | Action |
 |-------|--------|
 | Validator | Final PASS verdict. |
+| DocWorm | Updates project documentation — README, guides, API references — to reflect the completed implementation. |
 | Elon    | Marks the request complete. Archives `.app/REQ.md`, `.app/RESEARCH.md`, the Spec, and the final Validation Report within `.app/archive/`. Updates `.app/PROJECT.md` to reflect completion. |
 
 ---
@@ -161,13 +163,14 @@ This phase repeats until the Validator is satisfied.
 ## Agent-to-Phase Map
 
 | Agent    | Phase(s)                    | Artifacts Owned       | Responsibility |
-|----------|-----------------------------|-----------------------|----------------|
-| Elon     | 1, 2, 3, 4, 6 (gates all)   | `.app/PROJECT.md`     | Orchestration, routing, gates. Present in every phase solely for gatekeeping and routing — never for implementation, validation, or artifact authoring. |
-| ReqGuru  | GRILL                       | `.app/REQ.md`         | Requirements gathering |
-| DrPe     | RESEARCH                    | `.app/RESEARCH.md`    | Technology landscape survey. Researches best frameworks, libraries, methods, languages, notations. Produces impact assessment — re-grill if requirements affected. |
-| LeadDev  | SPEC, DEVELOP, RESOLVE      | Spec file (in `.app/`)| Design, implementation, fixes |
-| Validator| VALIDATE                    | —                     | Compliance auditing |
-| HR       | DEVELOP (on demand)         | —                     | Hiring specialist developers |
+| Elon     | 1–8 (gates all phases)      | `.app/PROJECT.md`     | Orchestration, routing, gates. Present in every phase solely for gatekeeping and routing — never for implementation, validation, or artifact authoring. |
+| ReqGuru  | GRILL                       | `.app/REQ.md`         | Requirements gathering — grill-me interview, synthesizes complete unambiguous requirements. |
+| DrPe     | RESEARCH                    | `.app/RESEARCH.md`    | Technology landscape survey. Researches best frameworks, libraries, methods. Produces impact assessment — re-grill if requirements affected. |
+| LeadDev  | SPEC, DEVELOP, RESOLVE      | `.app/SPEC.md`        | Architecture, spec creation. Delegates implementation to MidDev. Reviews, integrates, commits. Resolves validation issues. |
+| MidDev   | DEVELOP (via LeadDev)       | —                     | Implementation — writes code to LeadDev's spec. No architecture, no delegation. |
+| Validator| VALIDATE                    | —                     | Compliance auditing — exhaustive spec-vs-implementation verification. |
+| DocWorm  | DONE                        | `README.md`           | Documentation — creates/updates README and guides after every PASS verdict. |
+| HR       | DEVELOP (on demand)         | —                     | Agent definition & hiring — creates new skill files when specialist expertise is needed. |
 
 ---
 
