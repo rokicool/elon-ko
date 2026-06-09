@@ -2,10 +2,11 @@
 
 ## Overview
 
-Every feature or software request flows through eight gated phases. No phase begins before the previous one is signed off. Every agent operates strictly within its role. Each agent is an executable skill at `.agents/skills/<name>/SKILL.md` — when the protocol says "Elon spawns X," it means `task(agent="task", context="skill://<agent-name>", assignment="...")`. The skill's full protocol (tool policy, boundaries, process) is injected into the subagent's context; each agent executes in its own isolated context window.
+Every feature or software request flows through gated phases. Each agent operates strictly within its role. Each agent is an executable skill at `.agents/skills/<name>/SKILL.md` — when the protocol says "Elon spawns X," it means `task(agent="task", context="skill://<agent-name>", assignment="...")`. The skill's full protocol (tool policy, boundaries, process) is injected into the subagent's context; each agent executes in its own isolated context window.
+
+For agent definitions, tool policies, error recovery, and concurrency rules, see [AGENTS.md](AGENTS.md).
 
 ---
-
 
 ## Artifacts
 
@@ -13,40 +14,55 @@ The `.app/` directory holds the canonical protocol artifacts:
 
 | File | Owner | Phase Created | Description |
 |------|-------|---------------|-------------|
-| `.app/PROJECT.md` | Elon | 1 (REQUEST) | Project Definition & Status. Defines the project name, purpose, scope, and tracks its current phase/status. Created at the start of Phase 1. Updated as the project progresses through phases. |
-| `.app/REQ.md` | ReqGuru | 2b (GRILL) | Requirements Document. Synthesized from the GRILL interview. A complete, unambiguous description of what must be built. Replaces the old `REQUIREMENTS.md`. |
-| `.app/RESEARCH.md` | DrPe | 3 (RESEARCH) | Research Report. Survey of best frameworks, libraries, methods, languages, and notations for the task. Includes recommendations and an impact assessment: does anything found contradict or materially expand the requirements? |
-| `.app/SPEC.md` | LeadDev | 4 (SPEC) | Technical Specification. Architecture overview, module breakdown, interface contracts, data models, acceptance criteria. The canonical definition of what the implementation MUST satisfy — Validator audits against this. |
-
-## Phases
-
-```
-REQUEST → GRILL → RESEARCH → SPEC → DEVELOP ⇄ VALIDATE → DONE
-                    ↑   ↓                  ↑___________|
-                    └───┘              (iterate until PASS)
-               (re-grill if
-                research demands it)
-```
-
+| `.app/PROJECT.md` | Elon | REQUEST | Project Definition & Status. Name, purpose, scope, current phase/status. |
+| `.app/REQ.md` | ReqGuru | GRILL | Requirements Document. Complete, unambiguous description of what must be built. |
+| `.app/RESEARCH.md` | DrPe | RESEARCH | Research Report. Technology landscape survey with impact assessment. |
+| `.app/SPEC.md` | LeadDev | SPEC | Technical Specification. Architecture, interfaces, data models, acceptance criteria. |
 
 ---
 
-## Phase 1: REQUEST
+## Path Selection
+
+Every request enters at REQUEST. Elon classifies the request and selects one of two paths:
+
+### Classification Criteria
+
+| Signal | Path |
+|--------|------|
+| Bugfix, typo, config tweak, doc-only change, test addition | **TRIVIAL** |
+| Internal refactor with no behavioral change | **TRIVIAL** |
+| New feature, new module, new API surface | **FULL** |
+| Cross-cutting change affecting multiple modules | **FULL** |
+| Technology choice or architectural decision required | **FULL** |
+| Uncertain → default to FULL | |
+
+```
+REQUEST ─→ classify ─┬─ TRIVIAL ─→ LEADDEV → VALIDATE ─→ DONE
+                      │
+                      └─ FULL ─→ GRILL ─→ [RESEARCH] ─→ SPEC ─→ DEVELOP ⇄ VALIDATE ─→ DONE
+```
+
+---
+
+## Full Path Phases
+
+### Phase 1: REQUEST
 
 | Actor | Action |
 |-------|--------|
-| User  | Submits a feature or software request. |
-| Elon  | Creates `.app/PROJECT.md` — Project Definition & Status (name, purpose, scope, initial status). |
-| Elon  | Receives the request. Spawns **ReqGuru** for requirements gathering. |
-**Gate:** Elon verifies the request is scoped enough to begin grilling. If not, he asks the user to narrow.
+| User | Submits a feature or software request. |
+| Elon | Creates `.app/PROJECT.md` — Project Definition & Status. |
+| Elon | Classifies the request as TRIVIAL or FULL. If FULL, spawns **ReqGuru**. |
+
+**Gate:** Elon verifies the request is scoped enough to begin. If not, asks the user to narrow.
 
 ---
 
-## Phase 2: GRILL (Requirements)
+### Phase 2: GRILL (Requirements)
 
-This is an **adaptive round-based interview** mediated by Elon. ReqGuru cannot talk to the user directly — Elon is the relay.
+Adaptive round-based interview mediated by Elon. ReqGuru cannot talk to the user directly.
 
-### 2a. GRILL LOOP
+#### 2a. GRILL LOOP
 
 ```
 ELON spawns ReqGuru ──→ ReqGuru returns question batch
@@ -60,123 +76,198 @@ ELON spawns ReqGuru ──→ ReqGuru analyzes answers,
 
 | Round | Actor | Action |
 |-------|-------|--------|
-| 1..N | Elon | Spawns ReqGuru with the request and all accumulated Q&A context. |
-| 1..N | ReqGuru | Analyzes prior answers. Identifies gaps, contradictions, unresolved branches. Produces the next question batch with rationale. If every branch is resolved, declares the grill **complete** and proceeds to 2b. |
-| 1..N | Elon | Extracts the question batch. Calls the `ask` tool to present questions to the user. Elon MUST NOT answer, interpret, or filter — he is a pure relay. |
+| 1..N | Elon | Spawns ReqGuru with the request and accumulated context. **Context optimization:** pass only the original brief, the last question batch, the user's answers, and a summary of all previously resolved branches — not the full conversation history. |
+| 1..N | ReqGuru | Analyzes prior answers. Identifies gaps, contradictions, unresolved branches. Produces the next question batch. If every branch is resolved, declares **complete** and proceeds to 2b. |
+| 1..N | Elon | Extracts the question batch. Calls `ask` to present to the user. Elon is a pure relay — no filtering, no interpretation. |
 | 1..N | Elon | Passes the user's answers to ReqGuru in the next spawn. |
 
-**Gate:** ReqGuru declares every decision branch resolved. Elon signs off.
+**Gate:** ReqGuru declares every decision branch resolved.
 
-### 2b. REQUIREMENTS DOCUMENT
+#### 2b. REQUIREMENTS DOCUMENT
 
 | Actor | Action |
 |-------|--------|
-| ReqGuru | Synthesizes the complete Q&A into a **Requirements Document** — a complete, unambiguous description of what must be built. Writes it to `.app/REQ.md`. |
-| Elon | Reviews. If gaps remain, re-enters the grill loop at 2a. Otherwise, spawns **LeadDev** for spec creation. |
-**Commit rule:** `.app/REQ.md` is committed before entering Phase 3 (RESEARCH).
+| ReqGuru | Synthesizes the complete Q&A into `.app/REQ.md`. |
+| Elon | Reviews. If gaps remain, re-enters the grill loop. Otherwise, proceeds. |
+
+**Commit rule:** `.app/REQ.md` is committed before entering Phase 3.
+
 ---
 
-## Phase 3: RESEARCH
+### Phase 3: RESEARCH (Conditional)
 
-Before technical specification begins, Elon MUST commission a technology landscape survey to ensure the project is built with the best available tools and to surface any requirement-level implications of technology choices.
+RESEARCH is **not mandatory**. Elon evaluates whether it is needed:
+
+| Condition | Action |
+|-----------|--------|
+| Technology choices to make (framework, library, language, architecture pattern) | **Spawn DrPe** |
+| Domain unknowns flagged by ReqGuru during GRILL | **Spawn DrPe** |
+| Tech stack already determined by the project; no unknowns | **Skip to SPEC** |
+| Small feature using established project patterns | **Skip to SPEC** |
+
+If spawned:
 
 | Actor | Action |
 |-------|--------|
-| Elon  | Spawns **DrPe** with `.app/REQ.md` and a research brief. |
-| DrPe  | Surveys the ecosystem: best frameworks, libraries, methods, languages, notations, and architectural patterns for the task. Sources MUST include primary references (official docs, published papers, versioned specs). |
-| DrPe  | Produces `.app/RESEARCH.md` — a Research Report containing: (a) findings per dimension surveyed, (b) concrete recommendations with rationale, and (c) an **impact assessment** that answers: "Do any findings contradict, invalidate, or materially expand the requirements in REQ.md?" |
-| Elon  | Reviews the Research Report. |
+| Elon | Spawns **DrPe** with `.app/REQ.md` and a research brief. |
+| DrPe | Surveys the ecosystem. Sources MUST include primary references. |
+| DrPe | Produces `.app/RESEARCH.md` with findings, recommendations, and an **impact assessment**. |
+| Elon | Reviews the Research Report. |
 
-### 3a. GATE — Re-Grill or Proceed
+#### 3a. GATE — Re-Grill or Proceed
 
 | Finding | Elon's Action |
 |---------|---------------|
-| Research surfaces new technology, constraint, or capability that contradicts or materially expands the requirements. | **LOOP BACK** to Phase 2 (GRILL). Elon spawns ReqGuru with the Research Report as additional context. The grill resumes with the new information. |
-| Research confirms existing requirements or surfaces only implementation-level recommendations (library choices, code patterns) that do not change WHAT is built. | **PROCEED** to Phase 4 (SPEC). Elon spawns LeadDev with both `.app/REQ.md` and `.app/RESEARCH.md`. |
-
-**Gate:** Elon determines whether the impact assessment demands re-grilling. Elon MUST NOT proceed to SPEC if any requirement-level ambiguity or contradiction was surfaced by the research.
+| Research surfaces contradictions or material expansions to requirements | **LOOP BACK** to Phase 2. Spawn ReqGuru with the Research Report as context. |
+| Research confirms requirements or surfaces only implementation-level recommendations | **PROCEED** to Phase 4. |
 
 **Commit rule:** `.app/RESEARCH.md` is committed before entering Phase 4.
 
-## Phase 4: SPEC (Specification)
+---
+
+### Phase 4: SPEC (Specification)
 
 | Actor | Action |
 |-------|--------|
-| LeadDev | Translates the Requirements Document (and Research Report if available) into a formal **Spec** — technical design, interfaces, data models, behavior contracts, acceptance tests. |
-| Elon | Reviews the Spec. |
+| LeadDev | Translates REQ.md (and RESEARCH.md if available) into `.app/SPEC.md` — architecture, interfaces, data models, behavior contracts, acceptance criteria. |
 | Elon | Reviews and signs off on the Spec. |
-| Elon | Spawns **LeadDev** with the signed Spec and delegates implementation. |
 
-**Commit rule:** The Spec file is committed to `.app/` before development begins.
+**Optional parallel path:** If RESEARCH was spawned, LeadDev MAY begin preliminary spec design while DrPe researches. LeadDev incorporates research findings into the final spec. This requires Elon to spawn both in parallel and merge the outputs.
 
-**Gate A:** Spec is complete enough that an independent agent can validate against it.
-**Gate B:** Elon has spawned LeadDev with a complete delegation referencing the Spec. Elon MUST NOT proceed to Phase 5 without spawning LeadDev.
+**Commit rule:** `.app/SPEC.md` is committed before development begins.
+
+**Gate:** Spec is complete enough that an independent agent can validate against it.
 
 ---
 
-## Phase 5: DEVELOP & VALIDATE (Loop)
+### Phase 5: DEVELOP & VALIDATE (Loop)
 
-This phase repeats until the Validator is satisfied.
+Elon MUST NOT write implementation code, fix validation failures, or perform any LeadDev or Validator role. Elon's role is exclusively spawning agents, gatekeeping, and routing results.
 
-**Elon MUST NOT write implementation code, fix validation failures, or perform any LeadDev or Validator role during this phase. Elon's role in Phase 5 is exclusively spawning agents, gatekeeping, and routing results.**
-
-### 4a. DEVELOP
+#### 5a. DEVELOP
 
 | Actor | Action |
 |-------|--------|
-| Elon  | Spawns **LeadDev** with the signed Spec and a complete delegation (per AGENTS.md Delegation Schema). |
-| LeadDev | Implements the software according to the Spec. May request **HR** to hire specialist developers if domain expertise is needed. |
-| LeadDev | Commits every significant change: each logical unit of work, each interface addition, each behavioral change. Commit messages reference the Spec section. |
+| Elon | Spawns **LeadDev** with the signed Spec and a complete delegation. |
+| LeadDev | Implements per the Spec. May delegate to MidDev for implementation tasks. May request **HR** for specialist developers. |
+| LeadDev | Commits every significant change. Commit messages reference the Spec section. |
 
-
-### 4b. VALIDATE
-
-| Actor | Action |
-|-------|--------|
-| Elon  | Spawns **Validator** with the Spec and the implementation. |
-| Validator | Audits the implementation against the Spec exhaustively. Produces a **Validation Report**: |
-|          | - **PASS** — every requirement is met. |
-|          | - **FAIL** — lists every deviation, omission, or violation with file:line references. |
-
-### 4c. RESOLVE (if FAIL)
+#### 5b. VALIDATE
 
 | Actor | Action |
 |-------|--------|
-| Elon    | Spawns **LeadDev** with the Validation Report. Elon MUST NOT resolve validation failures himself — all fixes go through LeadDev. |
+| Elon | Spawns **Validator** with the Spec, implementation description, and list of changed files/modules. |
+| Validator | Audits implementation against the Spec. Changed files are prioritized; unchanged modules are spot-checked. Produces a Validation Report: PASS or FAIL. |
+
+#### 5c. RESOLVE (if FAIL)
+
+| Actor | Action |
+|-------|--------|
+| Elon | Spawns **LeadDev** with the Validation Report. |
 | LeadDev | Resolves every listed issue. Commits each fix. |
-| Elon    | Spawns **Validator** for re-validation with the updated implementation. |
+| Elon | Spawns **Validator** for re-validation with the updated implementation. |
 
-**Loop:** DEVELOP → VALIDATE → RESOLVE → VALIDATE → … until Validator returns PASS.
+#### 5d. LOOP ESCAPE HATCH
+
+The DEVELOP ⇄ VALIDATE loop has a **maximum of 3 cycles**. If Validator returns FAIL for the 3rd consecutive time:
+
+| Condition | Elon's Action |
+|-----------|---------------|
+| Remaining failures are spec ambiguities or contradictions | **Re-enter SPEC phase.** The spec is the problem, not the code. |
+| Remaining failures are implementation bugs in well-specified areas | **Escalate to user.** Present the remaining failures with context. Ask whether to continue, simplify requirements, or accept partial completion. |
+| Remaining failures stem from unrealistic or conflicting requirements | **Re-enter GRILL phase.** Spawn ReqGuru with the failure context. |
+
+**Loop:** DEVELOP → VALIDATE → RESOLVE → VALIDATE → … (max 3 cycles before escalation).
 
 ---
 
-## Phase 6: DONE
+### Phase 6: DONE
 
 | Actor | Action |
 |-------|--------|
 | Validator | Final PASS verdict. |
-| DocWorm | Updates project documentation — README, guides, API references — to reflect the completed implementation. |
-| Elon    | Marks the request complete. Archives `.app/REQ.md`, `.app/RESEARCH.md`, the Spec, and the final Validation Report within `.app/archive/`. Updates `.app/PROJECT.md` to reflect completion. |
+| Elon | Evaluates whether DocWorm is needed (see below). |
+| Elon | Marks the request complete. Archives artifacts. Updates `.app/PROJECT.md`. |
+
+#### DocWorm (Conditional)
+
+DocWorm is **not mandatory** for every PASS. Elon evaluates:
+
+| Condition | Action |
+|-----------|--------|
+| Change affects public API, CLI interface, config keys, or user-facing behavior | **DocWorm MUST run.** |
+| Change is internal-only (refactor, bugfix, test addition, performance optimization) | **DocWorm MAY be skipped.** Elon notes the reason in the completion report. |
+| Documentation files were changed as part of the implementation | **DocWorm MUST run** to verify accuracy. |
+
+If spawned:
+
+| Actor | Action |
+|-------|--------|
+| DocWorm | Updates README, guides, API references to reflect the implementation. |
+
+---
+
+## Trivial Path Phases
+
+For bugfixes, typos, config tweaks, doc-only changes, test additions, and internal refactors:
+
+### Phase T1: IMPLEMENT
+
+| Actor | Action |
+|-------|--------|
+| Elon | Spawns **LeadDev** with the request, affected files, and explicit note that this is a TRIVIAL path. |
+| LeadDev | Implements the change directly. For changes under 20 lines, LeadDev MAY write the code directly without delegating to MidDev. For larger changes, delegates to MidDev as usual. |
+| LeadDev | Commits the change. |
+
+### Phase T2: VALIDATE (Scoped)
+
+| Actor | Action |
+|-------|--------|
+| Elon | Spawns **Validator** with the Spec, the changed files only, and the TRIVIAL path flag. |
+| Validator | Validates ONLY the changed files and their direct dependencies. Does not audit the full codebase. Returns PASS or FAIL. |
+
+### Phase T3: DONE
+
+Same as the Full Path Phase 6, with the same conditional DocWorm rules.
 
 ---
 
 ## Agent-to-Phase Map
 
-| Agent    | Phase(s)                    | Artifacts Owned       | Responsibility |
-| Elon     | 1–8 (gates all phases)      | `.app/PROJECT.md`     | Orchestration, routing, gates. Present in every phase solely for gatekeeping and routing — never for implementation, validation, or artifact authoring. |
-| ReqGuru  | GRILL                       | `.app/REQ.md`         | Requirements gathering — grill-me interview, synthesizes complete unambiguous requirements. |
-| DrPe     | RESEARCH                    | `.app/RESEARCH.md`    | Technology landscape survey. Researches best frameworks, libraries, methods. Produces impact assessment — re-grill if requirements affected. |
-| LeadDev  | SPEC, DEVELOP, RESOLVE      | `.app/SPEC.md`        | Architecture, spec creation. Delegates implementation to MidDev. Reviews, integrates, commits. Resolves validation issues. |
-| MidDev   | DEVELOP (via LeadDev)       | —                     | Implementation — writes code to LeadDev's spec. No architecture, no delegation. |
-| Validator| VALIDATE                    | —                     | Compliance auditing — exhaustive spec-vs-implementation verification. |
-| DocWorm  | DONE                        | `README.md`           | Documentation — creates/updates README and guides after every PASS verdict. |
-| HR       | DEVELOP (on demand)         | —                     | Agent definition & hiring — creates new skill files when specialist expertise is needed. |
+| Agent | Phase(s) | Artifacts Owned | Responsibility |
+|-------|----------|-----------------|----------------|
+| Elon | All (gates every phase) | `.app/PROJECT.md` | Orchestration, routing, gates. Never implements, validates, or authors artifacts. |
+| ReqGuru | GRILL | `.app/REQ.md` | Requirements gathering — grill-me interview, synthesizes requirements. |
+| DrPe | RESEARCH (conditional) | `.app/RESEARCH.md` | Technology landscape survey. Impact assessment. |
+| LeadDev | SPEC, DEVELOP, RESOLVE, T1 | `.app/SPEC.md` | Architecture, spec, implementation delegation, review, integration, commits, validation fixes. |
+| MidDev | DEVELOP (via LeadDev) | — | Implementation — writes code to spec. May return CLARIFICATION requests. |
+| Validator | VALIDATE, T2 | — | Compliance auditing — spec-vs-implementation verification. |
+| DocWorm | DONE (conditional) | `README.md` | Documentation — creates/updates docs when needed. |
+| HR | DEVELOP (on demand) | — | Agent definition — creates new skill files for specialist expertise. |
 
 ---
 
 ## Commit Convention
 
-- Format: `[SPEC §section] description`
-- Example: `[SPEC §3.2] Implement user authentication middleware`
-- Every significant change — interface additions, behavioral changes, bug fixes — gets its own commit.
+### Formats
+
+| Context | Format | Example |
+|---------|--------|---------|
+| Feature implementation | `[SPEC §N] description` | `[SPEC §3.2] Implement user authentication middleware` |
+| Validation fix | `[FIX] description` | `[FIX] Handle null user in auth middleware` |
+| Trivial change | `[TRIVIAL] description` | `[TRIVIAL] Fix typo in error message` |
+| Protocol artifacts | `[PROTO] description` | `[PROTO] Update REQ.md with PIM requirements` |
+
+### Rules
+
+- Every significant change gets its own commit. One logical unit per commit.
 - Protocol artifacts (`.app/REQ.md`, `.app/RESEARCH.md`, Spec, `.app/PROJECT.md`) are committed at their respective phase gates.
+- Fixup commits during RESOLVE are NOT squashed unless the user explicitly requests it. Each fix is traceable.
+- Merge strategy: squash-merge feature branches into main. Trivial fixes may be committed directly to main.
+- Conflict resolution: LeadDev's responsibility during integration. If conflicts arise between parallel MidDev tasks, LeadDev resolves before committing.
+
+---
+
+## Harness Precedence
+
+The harness system prompt is the authoritative runtime directive. When PROTO.md rules conflict with the system prompt, the system prompt takes precedence.
