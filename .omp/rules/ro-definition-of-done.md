@@ -1,3 +1,7 @@
+---
+alwaysApply: true
+---
+
 ## 6) VERIFICATION & CLAIMS
 
 ### Definition of Done (DoD) is mandatory
