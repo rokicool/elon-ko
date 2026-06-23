@@ -9,7 +9,9 @@
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | bash
 #
-# Pin Plugin A to a tag/branch (Plugin B marketplace always tracks latest):
+# Pin Plugin A to a tag/branch. Plugin B (the agents) always installs LATEST —
+# the script refreshes the marketplace catalog every run, because omp
+# marketplaces cannot be ref-pinned (they track the repo's default branch).
 #   curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.0.0 bash
 #
 # Re-running is safe — every step is idempotent.
@@ -69,6 +71,16 @@ else
   ok "marketplace registered"
 fi
 
+# omp marketplaces track the repo's default branch and CANNOT be ref-pinned, so
+# refresh the catalog every run to install the LATEST agents — a bare re-install
+# would otherwise reuse a stale snapshot. (OMP_AGENT_REF still pins Plugin A.)
+say "Refreshing marketplace '${MARKETPLACE}' to latest"
+if omp plugin marketplace update "${MARKETPLACE}" >/dev/null 2>&1; then
+  ok "agents catalog at latest"
+else
+  warn "marketplace refresh failed — continuing with the cached catalog"
+fi
+
 # ── Plugin A: omp-agent-gate (extension-package; --force = idempotent) ───────
 say "Installing Plugin A: omp-agent-gate"
 omp plugin install "${GH_A}" --force || die "Plugin A install failed"
@@ -87,7 +99,7 @@ cat <<EOF
 
   Plugins:
     • omp-agent-gate         — gate + Definition-of-Done rule
-    • orchestrator-agents    — 7 agents + 8 skills
+    • orchestrator-agents    — 7 agents + 8 skills (always latest)
 
   The gate is dormant until a project opts in:
     echo '{"enabled": true}' > .omp/orchestrator.json
