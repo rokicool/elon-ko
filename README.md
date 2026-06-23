@@ -14,6 +14,25 @@ only way to ship agent definitions) — this repo publishes **both from one tree
 | **`omp-agent-gate`** (Plugin A) | extension-package (`package.json#omp.extensions`) | the `tool_call` enforcement gate + the Definition-of-Done rule | `omp plugin install github:<owner>/omp-agent-template` |
 | **`orchestrator-agents`** (Plugin B) | marketplace (`.omp-plugin/marketplace.json`) | 7 agent definitions + 8 skills | `omp plugin marketplace add <owner>/omp-agent-template` then `omp plugin install orchestrator-agents@omp-agent-template` |
 
+
+## Quick install (one line)
+
+Installs [oh-my-pi](https://omp.sh) (`omp`) and [bun](https://bun.sh) if missing, then
+**both** plugins (`omp-agent-gate` + `orchestrator-agents`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | bash
+```
+
+Pin Plugin A to a release tag with `OMP_AGENT_REF` (the Plugin B marketplace always tracks
+latest), and re-run safely — every step is idempotent:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.0.0 bash
+```
+
+See [`elon_ko.sh`](./elon_ko.sh) for exactly what it does. For the manual step-by-step, see [Install](#install) below.
+
 ## Install
 
 > **Plugin A requires [bun](https://bun.sh).** It is a TypeScript
@@ -66,6 +85,7 @@ advisory only — the hard enforcement is the gate + agent frontmatter, not the 
 ## Layout
 
 ```
+elon_ko.sh                        # one-line installer (deps + both plugins)
 package.json                      # Plugin A manifest (omp.extensions)
 .omp-plugin/marketplace.json      # Plugin B catalog (pluginRoot=./plugins)
 src/enforce-orchestrator.ts       # gate + opt-in + APPEND_SYSTEM inject
