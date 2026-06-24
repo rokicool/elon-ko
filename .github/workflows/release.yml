@@ -1,7 +1,7 @@
 # Release — build versioned oh-my-pi plugin artifacts and publish a GitHub
 # Release. Triggered by a `v*` tag.
 #
-# omp consumes plugins directly from git: `omp plugin install github:owner/repo@<tag>`.
+# omp consumes plugins directly from git: `omp plugin install github:owner/repo#<tag>`.
 # The tag is therefore the distribution pin. This workflow additionally attaches
 # two consumable archives so each plugin is also installable offline / locally:
 #
