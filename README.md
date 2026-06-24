@@ -154,6 +154,6 @@ omp plugin install github:<owner>/omp-agent-template#v1.2.1
   resolution confirmed by `scripts/validate-plugins.sh`). Live-session resolution still
   depends on the omp skills provider scanning the plugin's `skills/` tree; if a session ever
   fails to resolve it, the bundled APPEND_SYSTEM framing above is sufficient for Elon to route.
-- Targeted at `@oh-my-pi/pi-coding-agent` 16.0.x (checked against 16.0.5; install path re-verified against 16.0.8).
+- Targeted at `@oh-my-pi/pi-coding-agent` 16.x (install path re-verified against 16.1.16 in a clean-container install).
 - Plugin code executes **in-process, unsandboxed** when loaded — install only from sources
   you trust. MIT license.
