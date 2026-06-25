@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project aims to adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.3.1] - 2026-06-25
+
+### Changed
+
+- **Opt-in marker renamed: `.omp/orchestrator.json` → `.omp/elon.json`.** The
+  per-project gate is now enabled with:
+
+  ```bash
+  echo '{"enabled": true}' > .omp/elon.json
+  ```
+
+  This aligns the marker filename with the orchestrator's "Elon" identity. The
+  env opt-in (`OMP_ENABLE_ORCHESTRATOR=1`) and escape hatch
+  (`OMP_BYPASS_ORCHESTRATOR=1`) are unchanged. **Migration:** existing opted-in
+  projects must rename their marker
+  (`mv .omp/orchestrator.json .omp/elon.json`); otherwise the gate reverts to
+  dormant (the safe, unrestricted default).
+
+### Fixed
+
+- **Plugin B marketplace version no longer reports `1.2.1`.** Both
+  `metadata.version` and `plugins[].version` in `.omp-plugin/marketplace.json`
+  are now kept in lockstep with `package.json#version` (now `1.3.1`). The stale
+  `1.2.1` — shown as `Installed orchestrator-agents … (1.2.1)` during install —
+  was drift left over from the `v1.3.0` release.
+
 ## [v1.3.0] - 2026-06-25
 
 ### Added

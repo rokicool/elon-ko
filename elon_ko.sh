@@ -12,7 +12,7 @@
 # Pin Plugin A to a tag/branch. Plugin B (the agents) always installs LATEST —
 # the script refreshes the marketplace catalog every run, because omp
 # marketplaces cannot be ref-pinned (they track the repo's default branch).
-#   curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.3.0 bash
+#   curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.3.1 bash
 #
 # Re-running is safe — every step is idempotent.
 set -euo pipefail
@@ -20,7 +20,7 @@ set -euo pipefail
 REPO="rokicool/omp-agent-template"
 MARKETPLACE="omp-agent-template"        # value of marketplace.json#name
 PLUGIN_B="orchestrator-agents"
-REF="${OMP_AGENT_REF:-v1.3.0}"        # static tag: avoids store ref-drift + network deps; OMP_AGENT_REF overrides for dev
+REF="${OMP_AGENT_REF:-v1.3.1}"        # static tag: avoids store ref-drift + network deps; OMP_AGENT_REF overrides for dev
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
@@ -109,7 +109,7 @@ cat <<EOF
     • orchestrator-agents    — 7 agents + 8 skills (always latest)
 
   The gate is dormant until a project opts in:
-    echo '{"enabled": true}' > .omp/orchestrator.json
+    echo '{"enabled": true}' > .omp/elon.json
 
   If 'omp'/'bun' aren't found in a NEW shell, add to your PATH:
     export PATH="\$HOME/.local/bin:\$HOME/.bun/bin:\$PATH"

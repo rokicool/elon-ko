@@ -28,7 +28,7 @@ Pin Plugin A to a release tag with `OMP_AGENT_REF` (the Plugin B marketplace alw
 latest), and re-run safely — every step is idempotent:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.3.0 bash
+curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.3.1 bash
 ```
 
 See [`elon_ko.sh`](./elon_ko.sh) for exactly what it does. For the manual step-by-step, see [Install](#install) below.
@@ -44,7 +44,7 @@ See [`elon_ko.sh`](./elon_ko.sh) for exactly what it does. For the manual step-b
 ```bash
 # 1. Plugin A — the gate + rule. Installs user-wide. (requires bun — see above)
 #    Pin to a release tag. Switching the ref later needs `omp plugin uninstall omp-agent-gate` first.
-omp plugin install github:<owner>/omp-agent-template#v1.3.0
+omp plugin install github:<owner>/omp-agent-template#v1.3.1
 # local dev:
 omp plugin link ./omp-agent-template
 
@@ -64,11 +64,11 @@ imposes nothing until the project opts in. Precedence (highest wins):
 
 1. `OMP_BYPASS_ORCHESTRATOR=1` — fully OFF (escape hatch; registers nothing).
 2. `OMP_ENABLE_ORCHESTRATOR=1` — ON (env opt-in; no marker needed).
-3. `<cwd>/.omp/orchestrator.json` with `{"enabled": true}` — ON (project marker).
+3. `<cwd>/.omp/elon.json` with `{"enabled": true}` — ON (project marker).
 4. otherwise — dormant.
 
 ```bash
-echo '{"enabled": true}' > .omp/orchestrator.json   # gate active in this project only
+echo '{"enabled": true}' > .omp/elon.json   # gate active in this project only
 ```
 
 The gate enforces (root session, `ctx.hasUI === true`, opted in): `read`/`ask`/`todo` and
@@ -89,7 +89,7 @@ local references/overrides; the one-liner installer needs no extra copy step for
 orchestrator to work. If Elon nonetheless tries to `read ./AGENTS.md` or `./PROTO.md` and
 fails, you are on a stale build of the plugin — reinstall Plugin A **pinned**, uninstalling
 first so the changed ref doesn't trip a `DependencyLoop`:
-`omp plugin uninstall omp-agent-gate && omp plugin install github:<owner>/omp-agent-template#v1.3.0`.
+`omp plugin uninstall omp-agent-gate && omp plugin install github:<owner>/omp-agent-template#v1.3.1`.
 
 ## Subagent live tabs
 
@@ -201,10 +201,10 @@ release notes carry the exact install commands for that version.
 
 ```bash
 # cut a release (version must match package.json#version)
-git tag v1.3.0 && git push origin v1.3.0
+git tag v1.3.1 && git push origin v1.3.1
 
 # install a pinned version straight from the tag
-omp plugin install github:<owner>/omp-agent-template#v1.3.0
+omp plugin install github:<owner>/omp-agent-template#v1.3.1
 ```
 
 ## Caveats (verification)

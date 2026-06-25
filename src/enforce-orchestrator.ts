@@ -30,7 +30,7 @@
  * the project opts in. Precedence (highest wins):
  *   OMP_BYPASS_ORCHESTRATOR=1  -> fully OFF (escape hatch; registers nothing)
  *   OMP_ENABLE_ORCHESTRATOR=1  -> ON (env opt-in, no marker needed)
- *   <cwd>/.omp/orchestrator.json {"enabled":true} -> ON (project marker)
+ *   <cwd>/.omp/elon.json {"enabled":true} -> ON (project marker)
  *   otherwise                  -> DORMANT
  *
  * Advisory framing (BLEND): the bundled APPEND_SYSTEM (Elon role framing) is
@@ -102,10 +102,10 @@ function block(reason: string) {
  * BYPASS (off) ▸ ENABLE (on) ▸ project marker ▸ dormant. A malformed or absent
  * marker is dormant (fail-safe).
  */
-function optedIn(cwd: string): boolean {
+export function optedIn(cwd: string): boolean {
   if (BYPASS) return false;
   if (ENABLE) return true;
-  const markerPath = join(cwd, ".omp", "orchestrator.json");
+  const markerPath = join(cwd, ".omp", "elon.json");
   if (!existsSync(markerPath)) return false;
   try {
     const parsed: unknown = JSON.parse(readFileSync(markerPath, "utf8"));
