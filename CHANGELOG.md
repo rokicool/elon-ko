@@ -5,6 +5,38 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project aims to adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.3.0] - 2026-06-25
+
+### Added
+
+- **New `subagent-tabs` omp extension: per-agent live activity in supaterm.**
+  When a subagent starts, a supaterm tab opens labeled `<agentId> · <role>` and
+  streams live, colored activity — tool calls (✓/✗), notices, and irc messages.
+  Tabs survive the subagent's end for review (they never auto-close); a canceled
+  subagent shows `[ABORTED]`. If the supaterm socket is unreachable, the
+  extension falls back to a tmux bridge automatically.
+
+- **Configurable via environment knobs.** `OMP_SUBAGENT_TABS` toggles the
+  feature (default on); `OMP_SUBAGENT_TABS_RENDER` selects `rich` (default,
+  ANSI-colored) or `plain` rendering; `OMP_SUBAGENT_TABS_QUIET_MS` and
+  `OMP_SUBAGENT_TABS_HOLDER` tune idle/quiet behavior and the holder display.
+
+- **How to use:** restart your omp session (on by default) and spawn subagents
+  with supaterm open.
+
+### Validation
+
+- 8/8 unit tests pass (`npm test`), `tsc --noEmit` is clean; registry
+  invariants and the corrected omp API are verified. The live supaterm socket
+  path and tmux fallback were exercised end-to-end. (AC1/AC2/AC4 require a live
+  omp subagent session.)
+
+### Known non-blocking gaps
+
+- No mid-session socket→tmux failover (fallback is chosen at startup); no
+  `isolated` label (omp API gap); no `job cancel` hint in the tab label;
+  `rewind()` is built and tested but not yet wired into the controller.
+
 ## [v1.2.2] - 2026-06-24
 
 ### Fixed
