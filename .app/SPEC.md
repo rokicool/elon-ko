@@ -90,7 +90,7 @@ resolved below; confidence and the primary source are stated for each.
  │  ┌────────────────────────────────────────────────────────────────────────────────────────┐ │
  │  │  pi-notify-supaterm   (EXTENDED  +  SubagentTabRelay)                                   │ │
  │  │                                                                                         │ │
- │  │   pi.on("task:subagent:*")  ──►  TabController                                          │ │
+ │  │   pi.events.on("task:subagent:*")  ──►  TabController                                    │ │
  │  │       lifecycle  → create tab · rename · mark state · (survive end | close on cleanup)  │ │
  │  │       event      → render rich text (reuse omp renderer) · stream delta                 │ │
  │  │       progress   → status badge / progress line                                         │ │
@@ -159,7 +159,7 @@ REQ [INV-1] enumerates three existing live surfaces and **defers selection to SP
 ### 4.1 Primary content + control source — in-process EventBus (`task:subagent:*`)
 
 The tab's **control plane** (when to create/rename/mark/stream/survive/close) and **content plane**
-(live deltas) both come from the parent `EventBus`, subscribed via the extension's `pi.on(...)`:
+(live deltas) both come from the parent `EventBus`, subscribed via `pi.events.on(...)`:
 
 | EventBus channel | Role in the relay | Source confidence |
 |---|---|---|
@@ -213,14 +213,20 @@ resync/review floor.
 
 ### 4.4 Primary terminal mechanism — `sp` socket (`new_tab` + `rename_tab` + `send_text`)
 
-| Step | supaterm call | Returns / effect |
+| Step | `sp` call (VERIFIED against `sp --help`) | Returns / effect |
 |---|---|---|
-| Create | `sp tab new --in <space> --cwd <artifactDir> -- <holder>` | `tabID` + first `paneID` [SUP how-socket] |
-| Label | `sp tab rename <tabID> "<agentId> · <role>"` (→ `terminal.rename_tab`) | sets tab title (G1) |
-| Stream | `sp pane send --in <paneId> "<richDelta>"` (→ `terminal.send_text`) | appends verbatim; ANSI→color |
+| Create | `sp tab new --json --script '<holder>' [--cwd <dir>] [--in <space>]` | JSON `{ tabID, paneID, spaceID, tabIndex, … }` — capture `tabID` + `paneID` (capital `ID`) |
+| Label | `sp tab rename "<title>" <tabID>` (title is the FIRST positional; `<tab>` optional second) | sets (locks) tab title (G1) |
+| Stream | `sp pane send <paneID> '<chunk>'` (or pipe stdin: `printf '%s' chunk \| sp pane send`; `--newline` optional) | appends verbatim; ANSI→color |
 | Badge | `sp pane send` a status line, or `sp tab rename` with a state suffix | status reflected |
-| Notify | `sp notify "<msg>"` (→ `terminal.notify`) | reuse existing notification path |
-| Close | `sp tab close <tabID>` (→ `terminal.close_tab`) | explicit cleanup only |
+| Notify | `sp pane notify --title "<t>" --body "<msg>" <paneID>` (NOT a top-level `sp notify`) | desktop/notification via the pane |
+| Close | `sp tab close <tabID>` | explicit cleanup only |
+
+> **C2 note.** Every `sp`/`tmux` invocation goes through `pi.exec(command, args[])` as an
+> **argv array** — e.g. `pi.exec("sp", ["tab","new","--json","--script",holder])` — never a
+> shell string. `sp` is resolved from `SUPATERM_CLI_PATH` (or PATH); the socket from
+> `SUPATERM_SOCKET_PATH`. The holder (below) is passed via `--script` so the tab opens a
+> no-echo reader rather than an interactive shell.
 
 **Holder process (mechanism detail, deferred to DEVELOP).** A native tab created with no command
 opens an interactive shell, which would interpret streamed bytes as commands. To make `send_text`
@@ -314,17 +320,24 @@ interface VisibilityConfig {
 
 ---
 
-## 6. Module breakdown (the extended extension)
+## 6. Module breakdown (the extension — LOCKED Path A)
 
-The feature is delivered as additions to the **existing** `pi-notify-supaterm` extension
-(`integrations/supaterm-skills/extensions/pi-notify-supaterm`) [SUP coding-agents]. The extension's
-current behavior (gate on `SUPATERM_CLI_PATH`+`SUPATERM_SURFACE_ID`; synthesize session id from the
-surface id; forward Pi hook events; emit running heartbeats; send completion/attention notifications)
-is **kept and coexisted with** (FR-7 / AC6). New, additive sub-modules:
+> **Decision (LOCKED by operator): Path A.** The feature is a **NEW, self-contained extension** in
+> *this* repo (`omp-agent-gate` → package `omp.extensions`), entry `src/subagent-tabs.ts` registered
+> in `package.json#omp.extensions`. It **coexists** with `pi-notify-supaterm` (which lives in a
+> separate repo) — it does **NOT** extend or import it (FR-7 / AC6 still hold: no omp core file is
+> touched; omp's `task` executor, EventBus, and artifacts are consumed read-only). The earlier
+> "extend pi-notify-supaterm" framing (§0 L3, §1) is superseded by this locked decision.
+
+The extension is a single default-export factory `(pi: ExtensionAPI) => void` (same shape as the
+repo's existing `src/enforce-orchestrator.ts`), internally decomposed into the sub-modules below.
+`pi`-touching units (subscriptions, `pi.exec`) are thin adapters over pure, harness-free logic
+(`TabRegistry`, argv builders, `renderEvent`, jsonl rewind, state derivation) so the logic is unit-
+testable without a live omp / supaterm session:
 
 | Sub-module | Responsibility | Depends on | Rationale |
 |---|---|---|---|
-| **`SubagentTabRelay`** (entry) | Registers `pi.on("task:subagent:lifecycle" \| "progress" \| "event")`; gates the whole feature on the supaterm env + `enabled`; owns the per-session `TabRegistry`; routes events to `TabController`. | `pi.on`/`pi.exec` (hooks), env | One subscription point; mirrors the executor's three emission channels. |
+| **`SubagentTabRelay`** (entry) | Registers `pi.events.on(TASK_SUBAGENT_*_CHANNEL)` for lifecycle/progress/event; gates the feature on the supaterm env + `enabled`; owns the per-session `TabRegistry`; routes events to `TabController`. | `pi.events.on`/`pi.exec` (shared bus + exec), env | One subscription point; mirrors the executor's three emission channels (C1). |
 | **`TabController`** | State machine: maps each lifecycle transition → backend op (create/rename/mark/stream/survive/close); renders `event` deltas via omp's renderer; updates `TabRecord`. | `TabRegistry`, `SurfaceBackend`, omp renderer | Keeps omp's lifecycle as the source of truth; revive-safe by construction. |
 | **`SupatermBackend`** | Implements `SurfaceBackend` over `sp` (`new_tab`/`rename_tab`/`send_text`/`notify`/`close_tab`). | `pi.exec`, `SUPATERM_CLI_PATH` | Primary (INV-4). Non-prompting IPC (G3). |
 | **`TmuxBackend`** | Implements `SurfaceBackend` over `tmux` (`new-session -d -s omp-agents`, `new-window -n <agentId>`, `send-keys -l`, `pipe-pane -I` for jsonl, `kill-window`). | `pi.exec`, tmux binary | Portable fallback (FR-10); no TCC (G3). |
@@ -371,7 +384,7 @@ TTL is the single operator decision relayed in §15.**
 When the supaterm socket is unreachable, `SUPATERM_CLI_PATH`/`SUPATERM_SURFACE_ID` are absent (omp
 not launched from a supaterm pane), or a `sp` call is denied (E1/E6), `TabController` switches the
 active `SurfaceBackend` to `TmuxBackend` (graceful degradation, NFR-3) and surfaces the degraded
-state to the operator (a one-line notice in the parent + `sp notify`/tmux message where possible).
+state to the operator (a one-line notice in the parent + `sp pane notify`/tmux message where possible).
 
 **Tmux wiring** (primitives verified in `tmux(1)` [RESEARCH F2.1]):
 
@@ -440,10 +453,37 @@ relay is strictly side-effect-only relative to omp (NFR-2, NFR-3).
 ### 11.1 EventBus subscriptions (extension → omp)
 
 ```
-pi.on("task:subagent:lifecycle", (e: { agentId; role?; sessionId; phase }) => …)
-pi.on("task:subagent:progress",  (e: { agentId; progress }) => …)
-pi.on("task:subagent:event",     (e: { agentId; sessionEvent /* AgentSessionEvent */ }) => …)
+// C1 (VERIFIED): subagent channels are EventBus channels, NOT ExtensionAPI.on
+//   events. ExtensionAPI.on(...) accepts only the fixed extension-event enum
+//   (session_start, tool_call, ...); arbitrary channel strings must go through
+//   the shared bus: pi.events (EventBus.on -> () => void unsubscribe).
+//   Channels are the consts in task/types.d.ts:13-17 (TASK_SUBAGENT_*_CHANNEL).
+pi.events.on(TASK_SUBAGENT_LIFECYCLE_CHANNEL, (e: SubagentLifecyclePayload) => …)
+pi.events.on(TASK_SUBAGENT_PROGRESS_CHANNEL,  (e: SubagentProgressPayload)  => …)
+pi.events.on(TASK_SUBAGENT_EVENT_CHANNEL,     (e: SubagentEventPayload)     => …)
+
+// C2 (VERIFIED): pi.exec(command: string, args: string[], options?: ExecOptions)
+//   -> Promise<{ stdout; stderr; code; killed }>. It takes an ARGV ARRAY,
+//   never a shell string: pi.exec("sp", ["tab","new","--json","--script",holder]).
 ```
+
+**Verified payload fields (C3 — the prior draft's `{agentId; role?; sessionId; phase}` was WRONG).**
+Sourced from `task/types.d.ts` (Subagent*Lifecycle/Progress/Event*Payload) + `AgentProgress`:
+
+| Channel | Actual payload | agentId | label/role | status |
+|---|---|---|---|---|
+| lifecycle | `{ id, agent, agentSource, description?, status, sessionFile?, parentToolCallId?, index, detached? }` | `id` | `description` | `status: "started"\|"completed"\|"failed"\|"aborted"` |
+| progress | `{ index, agent, agentSource, task, assignment?, progress: AgentProgress, sessionFile?, detached? }` | `progress.id` | `assignment` | `progress.status` ("pending"\|"running"\|"completed"\|"failed"\|"aborted") |
+| event | `{ id, event: AgentSessionEvent }` | `id` | — | — |
+
+**State derivation (C3).** Only four lifecycle `status` values are ever emitted —
+`started | completed | failed | aborted`. The prior draft's `lifecycle(idle|park|revive|
+isolated)` transitions **do not exist**: `idle/parked/revived/isolated` are registry
+concepts, never emitted on these channels. Quiet/review tab states are therefore
+**derived** — from `progress.status`, an activity-timeout heuristic over the event
+stream, and the terminal lifecycle `status`. The persisted transcript is `sessionFile`
+(a `<id>.jsonl` path), not a `sessionId`-derived directory; there is no `sessionId`
+field on these payloads.
 
 - **Pre:** omp emits these from `task` execution in all modes [omp://tools/task.md]. The extension
   is loaded (`pi install …`) and the supaterm env is present (gating) or a tmux fallback is desired.
