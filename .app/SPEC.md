@@ -28,12 +28,12 @@ Two changes ship from this repo. **C1** gives the root orchestrator (Elon) a `.`
                        │     └─ deliver: IrcBus.global().send({from,to,body})  (re-enter in-app)     │
                        │            ├─ subagent recipient → woken/revived (real turn)                │
                        │            └─ Main recipient → sendMessage/nextTurn injection                │
-                       │  receiver completes → mess-done(id) / mess-send(in-reply-to=id) → arc/      │
+                       │  receiver completes → mess-send(in-reply-to=id) → arc/                      │
                        └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Data flow (send):** agent calls `mess-send` → resolve `selfInstance` + `toInstance` (manifest, default co-located) → same instance: `IrcBus.send()`; on `failed` receipt fall back to file (R4.2) → different instance: write file (R4.1) → return `{transport}` (R4.3).
-**Data flow (receive):** turn-scan / idle-poll finds `to:` ∈ hosted agents → mkdir-claim → `IrcBus.send()` re-injects locally → receiver processes → `mess-done`/reply → atomic rename to `arc/` (PROCESSED) or `arc/`+annotation after 3 failures (FAILED).
+**Data flow (receive):** turn-scan / idle-poll finds `to:` ∈ hosted agents → mkdir-claim → `IrcBus.send()` re-injects locally → receiver processes → reply (`mess-send` with `inReplyTo`) → atomic rename to `arc/` (PROCESSED) or `arc/`+annotation after 3 failures (FAILED).
 
 ---
 
@@ -77,7 +77,7 @@ Two changes ship from this repo. **C1** gives the root orchestrator (Elon) a `.`
 ### 3.1 Enforcement layering & the token (R1.1, R1.4, R1.6)
 
 **ADVISORY (drives LLM behavior — not bypass-proof):**
-- `plugins/agents/skills/elon/SKILL.md`: new `<dot_token>` protocol block. Defines: a user reply whose trimmed value is **exactly** `.` agrees with the **most-recent pending ask** (R1.1); triggers **only** on `trim(reply)==="."` — `v1.2`, `ok.`, `3.14`, `..`, `. ` are literal (R1.4); other affirmatives (`yes`,`ok`,`y`,`sure`) are **not** mapped to the token and are ordinary input (R1.6).
+- `plugins/agents/skills/elon/SKILL.md`: new `<dot_token>` protocol block. Defines: a user reply whose trimmed value is **exactly** `.` agrees with the **most-recent pending ask** (R1.1); triggers **only** on `trim(reply)==="."` — so whitespace-padded dots (`. `, ` .`) match, while `v1.2`, `ok.`, `3.14`, `..` (embedded/repeated dots) are literal (R1.4); other affirmatives (`yes`,`ok`,`y`,`sure`) are **not** mapped to the token and are ordinary input (R1.6).
 - `src/append-system.default.md`: append a one-paragraph `.` summary to the Elon framing (re-injected at `session_start` by `enforce-orchestrator.ts:132-150`).
 
 **ENFORCED (hard, via extension — impossible to silently drop):**
@@ -268,7 +268,7 @@ With two receiver instances and one message, exactly one `mkdir` succeeds (R5.4 
 
 **Staleness (time-based only — F3):** `reapIfStale` reads `owner.json#ts`; if `Date.now() - ts > CLAIM_STALE_MS` (default **300000ms** / 5 min, configurable), it reaps the claim (`fs.rm` the `.claim/`) and retries — recovering a crashed/forgotten processor without losing the message. PID-based staleness is deliberately **not** used (unsafe across machines; time-based is correct and general).
 
-**Terminal success (R2.6):** on `mess-done(id)` (or a `mess-send` reply, §4.3 step 6) from the receiver, `fs.rename(file, join(arcDir, basename(file)))` — atomic same-volume move (F3); remove `.claim/`. After completion the file is absent from `.app/mess/` and present only in `arc/` (R2.6 AC).
+**Terminal success (R2.6):** on a `mess-send` reply that references the message id (§4.3 step 6) from the receiver, `fs.rename(file, join(arcDir, basename(file)))` — atomic same-volume move (F3); remove `.claim/`. After completion the file is absent from `.app/mess/` and present only in `arc/` (R2.6 AC).
 
 **Failure handling (R2.7):** `mess-fail({id, reason})` (or a `type:FAILURE` reply) increments `attempts` in the frontmatter (rewrite in place via temp+rename). `attempts < 3` → file stays in `.app/mess/`, claim removed, re-deliverable on the next scan (retry in place). `attempts >= 3` → atomic rename to `arc/` with a `## FAILURE` annotation block appended (attempt count + last reason) (R2.7 AC).
 
@@ -360,7 +360,7 @@ The `mess-send` and `mess-fail` tools are added to the `tools:` whitelist of eve
 
 - **`plugins/agents/skills/elon/SKILL.md`** — add `<dot_token>` block (§3.1: token def, exact-match, no-affirmative-map, pending-ask PROJECT.md convention §3.2, deferred-note §3.3) + a short `<cross_instance>` note that messages addressed to Elon may be surfaced by the extension as next-turn context.
 - **`src/append-system.default.md`** — append the `.` token summary paragraph.
-- **`plugins/agents/skills/{leaddev,middev,drpe,reqguru,validator,docworm,hr}/SKILL.md`** — add a `## Cross-instance messaging` section: when to use `mess-send` (receiver in another instance), the `mess-done`/`mess-fail` lifecycle, filename/frontmatter conventions, and the `in-reply-to` reply/ack pattern.
+- **`plugins/agents/skills/{leaddev,middev,drpe,reqguru,validator,docworm,hr}/SKILL.md`** — add a `## Cross-instance messaging` section: when to use `mess-send` (receiver in another instance), the `mess-send`/`mess-fail` lifecycle, filename/frontmatter conventions, and the `in-reply-to` reply/ack pattern.
 - **`README.md`** (Plugin A) — short section on the two extensions + opt-in (`OMP_ENABLE_ORCHESTRATOR` already gates the companion gate; C1/C2 follow the same opt-in via `optedIn`).
 
 ---
@@ -395,7 +395,7 @@ The `mess-send` and `mess-fail` tools are added to the `tools:` whitelist of eve
 - R1.1: PROJECT.md with one pending; `buildDotInjection(".", pending)` returns a message naming that ask.
 - R1.2: pending with `origin=reqguru` injects identically to `origin=elon`.
 - R1.3: two pending [PA-3, PA-4]; `.` resolves to PA-4 (last in document order).
-- R1.4: `buildDotInjection("v1.2",_)`, `"ok."`, `"3.14"`, `".."`, `". "` all return **null** (pass-through).
+- R1.4: `buildDotInjection("v1.2",_)`, `"ok."`, `"3.14"`, `".."` return **null** (pass-through); whitespace-padded dots (`". "`, `" ."`, `" . "`) return a message (trim-based token — asserted in `dot-agreement.test.ts` R1.4 "trim semantics").
 - R1.5: no pending / missing file → injection text asks the user what they agree to.
 - R1.6: `"yes"`,`"ok"`,`"y"` return **null** (not mapped).
 - Strongest feasible behavioral check: assert the hook, given `prompt="."` and a PROJECT.md fixture, returns a `BeforeAgentStartEventResult.message` whose content contains the pending ask id. (Full LLM-output enforcement is inherently impossible — documented as a limit.)
@@ -424,4 +424,4 @@ The `mess-send` and `mess-fail` tools are added to the `tools:` whitelist of eve
 - **Message ordering across instances:** no global ordering is provided. Same-pair ordering is timestamp-ordered within a second (filename sort); cross-pair ordering is unspecified (acceptable — messages are addressed, not a global stream).
 - **Subpath coupling:** receive-side delivery imports `IrcBus`/`AgentRegistry` from package subpaths. Mitigated by a resolve test (§10) + pinning to exact subpaths. Alternative (main-agent-relay via `sendMessage` only) avoids coupling but weakens subagent-to-subagent delivery — rejected for R2.2 coverage.
 - **Receiver not currently alive:** a message whose `to:` is a hosted agent that has not yet been spawned (absent from the registry) stays PENDING until that agent registers (next scan picks it up). Correct; documented behavior, not a failure.
-- **Stale-claim re-delivery vs double-processing:** a reaped stale claim re-delivers; combined with the receiver's own `mess-done` this can double-inject. Mitigation: re-injection is idempotent at the turn level (the receiver sees the same body twice in the worst case); the file is moved to `arc/` on first `mess-done`, so a second scan finds it gone. `CLAIM_STALE_MS` (5 min) is tuned well beyond normal turn duration to make this rare.
+- **Stale-claim re-delivery vs double-processing:** a reaped stale claim re-delivers; combined with the receiver's own ack (`mess-send` reply) this can double-inject. Mitigation: re-injection is idempotent at the turn level (the receiver sees the same body twice in the worst case); the file is moved to `arc/` on first ack, so a second scan finds it gone. `CLAIM_STALE_MS` (5 min) is tuned well beyond normal turn duration to make this rare.

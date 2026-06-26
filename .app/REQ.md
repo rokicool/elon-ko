@@ -54,7 +54,7 @@
 - AC: with pending asks [A, B] (B most recent) and reply `.`, B is agreed; A remains pending and a note records "A deferred (superseded by agreement to B)".
 
 **R1.4 — Exact-match only.** The token triggers **only** when `trim(reply) == "."`. Replies with embedded or repeated dots are **literal** text, not agreement.
-- AC: replies `v1.2`, `ok.`, `3.14`, `..`, `. ` are NOT agreement tokens (each is treated as ordinary user input); only `.` triggers.
+- AC: replies `v1.2`, `ok.`, `3.14`, `..` are NOT agreement tokens (literal input); a reply whose trimmed value is `.` triggers — including whitespace-padded forms (`. ` , ` .`).
 
 **R1.5 — No-pending guard.** If `.` arrives with **nothing pending**, Elon asks the user what they are agreeing to (does not fabricate a target).
 - AC: with an empty pending set and reply `.`, Elon emits a clarification ask naming no proposal; no ask is marked agreed.
