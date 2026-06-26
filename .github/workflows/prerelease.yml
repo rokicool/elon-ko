@@ -1,0 +1,89 @@
+# Pre-release — give every pushed branch an installable pre-release tag, so
+# unreleased work can be exercised with `elon_ko.sh <tag>` before it ships.
+#
+# Trigger: a push to any branch except `main` (production cuts a real `v*`
+# release via release.yml). On each push it creates/updates a GitHub
+# *pre-release* (prerelease: true) tagged `pr-<branch>-<short-sha>`, pointing at
+# the pushed commit. Re-pushing the same commit updates the same release
+# (idempotent); a new commit gets a new tag.
+#
+# omp consumes plugins straight from a git ref, so the TAG ALONE is enough to
+# install — no artifacts are built here. `elon_ko.sh <tag>` pins BOTH plugins to
+# that tag (Plugin A via github:<repo>#<tag>; Plugin B via the tag's source
+# tarball, because omp marketplaces cannot be ref-pinned).
+#
+# `pr-*` tags deliberately do NOT match release.yml's `v*` trigger, so a
+# pre-release never cuts a production release. This workflow ignores its own tag
+# pushes (tags-ignore: '*') to avoid looping.
+name: Pre-release
+on:
+  push:
+    branches-ignore:
+      - main
+    tags-ignore:
+      - '*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Custom pre-release tag (default: pr-<branch>-<short-sha>)'
+        required: false
+
+permissions:
+  contents: write
+
+# One in-flight pre-release per ref; a newer push cancels a stale run.
+concurrency:
+  group: prerelease-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prerelease:
+    name: Cut pre-release tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute pre-release tag
+        id: tag
+        run: |
+          set -euo pipefail
+          branch="${GITHUB_REF_NAME}"
+          # sanitize the branch into a git-tag-safe slug (feature/x -> feature-x)
+          slug="$(printf '%s' "$branch" | tr -c 'a-zA-Z0-9._-' '-' | sed -E 's/-+/-/g; s/^-//; s/-$//')"
+          sha="$(git rev-parse --short HEAD)"
+          if [ -n "${{ inputs.tag }}" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="pr-${slug}-${sha}"
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Computed pre-release tag: ${tag}"
+
+      - name: Create / update pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "${{ steps.tag.outputs.tag }} (pre-release)"
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          body: |
+            ⚠️ **Pre-release for testing — not production.** Points at commit
+            `${{ github.sha }}` on `${{ github.ref_name }}`.
+
+            Install BOTH plugins pinned to this tag with the one-liner:
+
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ steps.tag.outputs.tag }}/elon_ko.sh | bash -s -- ${{ steps.tag.outputs.tag }}
+            ```
+
+            Or, from a clone at this ref:
+
+            ```bash
+            bash elon_ko.sh ${{ steps.tag.outputs.tag }}
+            ```
+
+            Plugin A is fetched via `github:${{ github.repository }}#${{ steps.tag.outputs.tag }}`;
+            Plugin B is fetched as the tag's source tarball and registered as a local
+            marketplace (omp marketplaces cannot be ref-pinned). To return to the latest
+            stable release, re-run `elon_ko.sh` with no argument.

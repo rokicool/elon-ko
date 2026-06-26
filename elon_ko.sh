@@ -6,21 +6,44 @@
 #   • omp-agent-gate        — Elon orchestrator enforcement gate (needs bun)
 #   • orchestrator-agents   — 7 agents + 8 skills (marketplace)
 #
-# Usage:
+# ── Stable install (no argument) ─────────────────────────────────────────────
+# Plugin A pinned to the release tag below (override with OMP_AGENT_REF);
+# Plugin B installed LATEST from the repo's default branch.
+#
 #   curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.6.0 bash
 #
-# Pin Plugin A to a tag/branch. Plugin B (the agents) always installs LATEST —
-# the script refreshes the marketplace catalog every run, because omp
-# marketplaces cannot be ref-pinned (they track the repo's default branch).
-#   curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.4.0 bash
+# ── Pre-release install (pass a tag) ─────────────────────────────────────────
+# Pass a pre-release tag to pin BOTH plugins to that exact ref — for testing
+# work that is not yet released to production. omp marketplaces CANNOT be
+# ref-pinned (they track the repo's default branch), so Plugin B is fetched as
+# a source tarball of the tag and registered as a LOCAL marketplace. The tarball
+# is extracted under $OMP_PRERELEASE_DIR (default ~/.omp-prerelease) and KEPT —
+# omp references a local marketplace in place, so the directory must persist.
 #
-# Re-running is safe — every step is idempotent.
+#   bash elon_ko.sh pr-dev-abc1234
+#   curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | bash -s -- pr-dev-abc1234
+#
+# Works on a clean machine, in a docker container, and on a machine where an
+# earlier (stable OR pre-release) version is already installed — every step is
+# idempotent, and the marketplace is re-registered each run so it always points
+# at the source selected by the mode.
 set -euo pipefail
 
 REPO="rokicool/omp-agent-template"
 MARKETPLACE="omp-agent-template"        # value of marketplace.json#name
 PLUGIN_B="orchestrator-agents"
-REF="${OMP_AGENT_REF:-v1.4.0}"        # static tag: avoids store ref-drift + network deps; OMP_AGENT_REF overrides for dev
+PRERELEASE_BASE="${OMP_PRERELEASE_DIR:-$HOME/.omp-prerelease}"
+
+# ── mode: a positional tag switches to pre-release (both plugins pinned) ──────
+TAG="${1:-}"
+if [ -n "$TAG" ]; then
+  MODE="pre-release"
+  REF="$TAG"                            # Plugin A pinned to the tag
+else
+  MODE="stable"
+  REF="${OMP_AGENT_REF:-v1.6.0}"        # static tag: avoids store ref-drift + network deps; OMP_AGENT_REF overrides for dev
+fi
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
@@ -62,24 +85,40 @@ fi
 
 GH_A="github:${REPO}${REF:+#$REF}"       # Plugin A source (always pinned to REF)
 
-# ── marketplace registration (idempotent — `marketplace add` errors if dup) ──
-say "Registering marketplace '${MARKETPLACE}'"
-if omp plugin marketplace list 2>/dev/null | grep -q "${MARKETPLACE}"; then
-  ok "marketplace already registered"
+# ── resolve the marketplace source for this mode ─────────────────────────────
+# stable      → the GitHub repo (omp fetches the default-branch catalog fresh on add)
+# pre-release → a LOCAL directory extracted from the tag's source tarball, because
+#               omp marketplaces cannot be ref-pinned. The directory is kept under
+#               $OMP_PRERELEASE_DIR — omp references a local marketplace in place.
+if [ "$MODE" = "pre-release" ]; then
+  say "Fetching pre-release '${TAG}' (pins Plugin A AND Plugin B to this tag)"
+  have tar || die "'tar' is required for a pre-release install"
+  extract_dir="$PRERELEASE_BASE/$TAG"
+  tarball_url="https://github.com/${REPO}/archive/${TAG}.tar.gz"
+  rm -rf "$extract_dir"
+  mkdir -p "$extract_dir"
+  curl -fsSL "$tarball_url" | tar -xz -C "$extract_dir" \
+    || die "failed to fetch pre-release '${TAG}' from ${tarball_url} — does the tag exist?"
+  # GitHub's archive extracts to a single top-level dir; resolve it dynamically
+  # (its name depends on the ref — e.g. v1.6.0 → omp-agent-template-1.6.0).
+  MKT_SOURCE="$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d | head -n1)"
+  [ -n "$MKT_SOURCE" ] && [ -f "$MKT_SOURCE/.omp-plugin/marketplace.json" ] \
+    || die "pre-release '${TAG}' tarball has no marketplace (.omp-plugin/marketplace.json)"
+  ok "pre-release extracted → ${MKT_SOURCE}"
 else
-  omp plugin marketplace add "${REPO}" || die "failed to add marketplace ${REPO}"
-  ok "marketplace registered"
+  MKT_SOURCE="${REPO}"                  # github owner/repo → tracks default branch
 fi
 
-# omp marketplaces track the repo's default branch and CANNOT be ref-pinned, so
-# refresh the catalog every run to install the LATEST agents — a bare re-install
-# would otherwise reuse a stale snapshot. (OMP_AGENT_REF still pins Plugin A.)
-say "Refreshing marketplace '${MARKETPLACE}' to latest"
-if omp plugin marketplace update "${MARKETPLACE}" >/dev/null 2>&1; then
-  ok "agents catalog at latest"
-else
-  warn "marketplace refresh failed — continuing with the cached catalog"
-fi
+# ── marketplace registration ─────────────────────────────────────────────────
+# `marketplace add` errors on a duplicate name, so remove first (a no-op when
+# absent). Re-registering every run also recovers from a prior run's source: a
+# stable run drops a stale pre-release local registration, and vice-versa.
+say "Registering marketplace '${MARKETPLACE}' (${MODE})"
+omp plugin marketplace remove "${MARKETPLACE}" >/dev/null 2>&1 || true
+omp plugin marketplace add "${MKT_SOURCE}" || die "marketplace add failed for '${MKT_SOURCE}'"
+ok "marketplace registered (${MKT_SOURCE})"
+# NOTE: deliberately NO `marketplace update` — in pre-release mode an update
+# would pull the default branch and overwrite the pinned tag with latest.
 
 # ── Plugin A: omp-agent-gate (extension-package) ─────────────────────────────
 # omp resolves Plugin A as a git-sourced dep whose key (`omp-agent-gate`) equals
@@ -99,7 +138,29 @@ omp plugin install "${PLUGIN_B}@${MARKETPLACE}" --force || die "Plugin B install
 ok "${PLUGIN_B} installed"
 
 # ── summary ──────────────────────────────────────────────────────────────────
-cat <<EOF
+if [ "$MODE" = "pre-release" ]; then
+  cat <<EOF
+
+============================================================
+  omp-agent-template installed — PRE-RELEASE '${TAG}'.
+
+  Both plugins are pinned to tag '${TAG}':
+    • omp-agent-gate         — gate + Definition-of-Done rule
+    • orchestrator-agents    — 7 agents + 8 skills (from the tag, not latest)
+
+  Plugin B was registered as a LOCAL marketplace from:
+    ${MKT_SOURCE}
+  (kept under ${PRERELEASE_BASE}; omp references it in place.)
+
+  To return to the latest STABLE release, re-run without a tag:
+    bash elon_ko.sh
+
+  The gate is dormant until a project opts in:
+    echo '{"enabled": true}' > .omp/elon.json
+============================================================
+EOF
+else
+  cat <<EOF
 
 ============================================================
   omp-agent-template installed.
@@ -115,3 +176,4 @@ cat <<EOF
     export PATH="\$HOME/.local/bin:\$HOME/.bun/bin:\$PATH"
 ============================================================
 EOF
+fi

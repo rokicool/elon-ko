@@ -7,6 +7,38 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 ## [Unreleased]
 
+## [v1.7.0] - 2026-06-26
+
+### Added
+
+- **Pre-release test pipeline.** Every push to a non-`main` branch now publishes a
+  GitHub **pre-release** tagged `pr-<branch>-<short-sha>` (new
+  `.github/workflows/prerelease.yml`; idempotent — re-pushing a commit updates the
+  same release; `pr-*` never triggers `release.yml`'s `v*` production release).
+  `elon_ko.sh` gains a positional tag argument that pins **both** plugins to that
+  ref — `bash elon_ko.sh pr-dev-abc1234`, or
+  `curl … | bash -s -- pr-dev-abc1234` for the piped one-liner — so unreleased work
+  can be installed and tested before it ships.
+
+  - **Plugin A** pins via the existing `github:<repo>#<tag>` mechanism.
+  - **Plugin B** is fetched as the tag's source tarball and registered as a **local**
+    marketplace under `$OMP_PRERELEASE_DIR` (default `~/.omp-prerelease`), because omp
+    marketplaces track the default branch and **cannot** be ref-pinned. The directory
+    is kept (omp references a local marketplace in place).
+
+  This differs from `OMP_AGENT_REF=<tag>`, which pins **only** Plugin A while Plugin B
+  still tracks latest. Re-running `elon_ko.sh` with no argument returns to the latest
+  stable release. Both modes work on a clean machine, in a docker container, and over a
+  prior install (stable or pre-release): the marketplace is removed and re-registered
+  each run, and Plugin A is uninstalled before the pinned install to avoid a
+  `DependencyLoop`.
+
+### Changed
+
+- `elon_ko.sh` default Plugin A pin bumped `v1.4.0` → `v1.6.0` (the release-tag default
+  had drifted behind `package.json#version`).
+- README Quick-install and Manual-install examples updated from the stale `v1.4.0` to `v1.6.0`.
+
 ## [v1.6.0] - 2026-06-26
 
 ### Removed
