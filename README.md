@@ -16,7 +16,7 @@ Two plugins, installed together:
 
 | Plugin | What it provides |
 |---|---|
-| **`omp-agent-gate`** | The enforcement **gate** (the root session can only route — direct `edit`/`write`/build are hard-blocked), a Definition-of-Done rule, and **live subagent tabs** (one terminal tab per running agent, streaming colored activity). |
+| **`omp-agent-gate`** | The enforcement **gate** (the root session can only route — direct `edit`/`write`/build are hard-blocked), a Definition-of-Done rule. |
 | **`orchestrator-agents`** | **7 specialist agents** + **8 skills**: `reqguru`, `drpe`, `leaddev`, `middev`, `validator`, `docworm`, `hr` (plus the `elon` orchestrator protocol). |
 
 oh-my-pi has two disjoint plugin mechanisms — TypeScript extensions vs. agent
@@ -30,8 +30,6 @@ that; the installer wires them up.
   blocks, not prose. A blocked tool throws.
 - **A real pipeline.** Requests flow through gated phases (requirements →
   research → spec → develop ⇄ validate), each owned by the right specialist.
-- **Visible parallelism.** When Elon delegates to subagents, a tab opens per
-  agent and streams live, colored activity.
 - **Opt-in per project.** The gate is dormant by default; you switch it on
   project-by-project.
 
@@ -64,7 +62,7 @@ See [`elon_ko.sh`](./elon_ko.sh) for exactly what it runs.
 ## Manual install
 
 ```bash
-# 1. Plugin A — the gate + rule + live tabs (installs user-wide; requires bun).
+# 1. Plugin A — the gate + rule (installs user-wide; requires bun).
 #    Pin to a release tag. Switching the ref later needs `omp plugin uninstall omp-agent-gate` first.
 omp plugin install github:rokicool/omp-agent-template#v1.4.0
 # local dev / linking:
@@ -110,52 +108,6 @@ Once the gate is on for a project, just talk to `omp` normally:
   `PROJECT.md`), committed by Elon at phase gates.
 
 You'll see delegation happen as `task(agent="<name>", …)` calls in the transcript.
-
-## Live subagent tabs
-
-Whenever Elon delegates to a subagent, a tab opens per agent and streams live
-activity — on by default wherever `omp-agent-gate` is installed.
-
-**What you see**
-
-- A tab opens the instant a subagent actually **starts** (not while queued),
-  labeled `<agentId> · <role>`.
-- It streams the agent's transcript in color: tool calls (`▸ …` entering, `◂ ✓` /
-  `✗` on exit — green / red), color-coded notices (`error` / `warning` / `info`),
-  and a `💬 irc` marker on inter-agent messages.
-- Tabs **survive the subagent's end** for review: completed/failed runs show
-  `[ended] …`, a cancelled run `[ABORTED] …`. They close when the parent `omp`
-  session shuts down (or when you close one).
-- Interactive collapsible widgets live only in `omp`'s `history://<agentId>`
-  view; the tab carries their color and status, not the collapsible chrome —
-  open `history://<agentId>` for the full interactive transcript.
-
-**Tune it** — environment variables, read once at session start:
-
-| Variable | Default | Effect |
-|---|---|---|
-| `OMP_SUBAGENT_TABS` | enabled | Master switch. `0` or `false` (case-insensitive) disables it; unset or any other value leaves it on. |
-| `OMP_SUBAGENT_TABS_TMUX_SESSION` | `omp-subagents` | Name of the shared tmux session that holds one window (tab) per subagent. |
-| `OMP_SUBAGENT_TABS_FOCUS` | off | When set to a truthy value (`1`/`true`/anything other than `0`/`false`), each new tab is selected (`tmux select-window`) and the Ghostty viewer is best-effort raised. Unset leaves new tabs in the background. |
-| `OMP_SUBAGENT_TABS_RENDER` | `rich` | `rich` streams ANSI color into the tab; `plain` strips it to plain text. |
-| `OMP_SUBAGENT_TABS_QUIET_MS` | `30000` | Milliseconds with no activity before a running tab is marked `quiet`. Must be `> 0`, else the default applies. |
-
-```bash
-OMP_SUBAGENT_TABS=0 omp                                  # off for this session
-OMP_SUBAGENT_TABS_FOCUS=1 omp                            # focus + raise each new tab
-OMP_SUBAGENT_TABS_RENDER=plain OMP_SUBAGENT_TABS_QUIET_MS=10000 omp   # plain text, 10 s quiet threshold
-```
-
-The backend is **tmux**: one shared session (default `omp-subagents`, set via
-`OMP_SUBAGENT_TABS_TMUX_SESSION`) holds one tmux window per subagent — those
-windows *are* the tabs. On the first subagent to start, **one** Ghostty window is
-opened (once, if Ghostty is installed) attached to that session, so every
-subagent appears as a tab inside the single viewer. If tmux isn't available the
-feature becomes an invisible no-op (the subagent still runs; one log line is
-emitted) — install tmux and restart the session to re-probe. Tabs are read-only
-views; cancel via `omp`'s normal job-cancel. (Backend internals — including why
-there is one viewer window rather than one per subagent — are documented in
-[.DEVREADME.md](./.DEVREADME.md).)
 
 ## Dot-agreement token & cross-instance messaging
 

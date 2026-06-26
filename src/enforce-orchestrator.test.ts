@@ -1,6 +1,6 @@
 // enforce-orchestrator.test.ts — unit tests for the gate's opt-in MARKER logic
 // (optedIn), using Node's BUILT-IN test runner (node:test + node:assert). No
-// new deps. Mirrors the style of subagent-tabs.test.ts.
+// new deps.
 //
 // These tests exercise the per-project marker file only. The env short-circuits
 // (OMP_BYPASS_ORCHESTRATOR / OMP_ENABLE_ORCHESTRATOR) are read once at module
