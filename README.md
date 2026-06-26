@@ -54,17 +54,45 @@ Pin `omp-agent-gate` to a release tag (Plugin B always tracks latest);
 re-running is idempotent — every step is safe to repeat:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.4.0 bash
+curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.6.0 bash
 ```
 
 See [`elon_ko.sh`](./elon_ko.sh) for exactly what it runs.
+
+## Testing a pre-release
+
+Every push to a branch (other than `main`) is automatically published as a
+**pre-release** tagged `pr-<branch>-<short-sha>` (see
+[`.github/workflows/prerelease.yml`](./.github/workflows/prerelease.yml)). Pass
+that tag to `elon_ko.sh` to install **both** plugins pinned to that exact ref —
+for testing work that is not yet released to production:
+
+```bash
+# from the pre-release's GitHub Release page, copy its tag (e.g. pr-dev-abc1234):
+curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/pr-dev-abc1234/elon_ko.sh | bash -s -- pr-dev-abc1234
+```
+
+This differs from `OMP_AGENT_REF` (which pins **only** Plugin A, with Plugin B
+still tracking latest): passing a tag pins **Plugin A and Plugin B** to that
+tag. Because omp marketplaces cannot be ref-pinned, Plugin B is fetched as the
+tag's source tarball and registered as a local marketplace
+(`~/.omp-prerelease/<tag>/`). The same command works on a clean machine, in a
+docker container, and on a machine where a stable or older pre-release version
+is already installed — re-running re-registers the marketplace to the selected
+source every time.
+
+To return to the latest **stable** release, re-run with no argument:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | bash
+```
 
 ## Manual install
 
 ```bash
 # 1. Plugin A — the gate + rule (installs user-wide; requires bun).
 #    Pin to a release tag. Switching the ref later needs `omp plugin uninstall omp-agent-gate` first.
-omp plugin install github:rokicool/omp-agent-template#v1.4.0
+omp plugin install github:rokicool/omp-agent-template#v1.6.0
 # local dev / linking:
 omp plugin link ./omp-agent-template
 
