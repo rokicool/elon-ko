@@ -7,6 +7,10 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 ## [Unreleased]
 
+### Added
+
+- **New `subagent-panel` extension: a live, always-on view of running subagents.** A compact panel above the editor streams per-subagent stats (status, agent, task, tool count, requests, context %, cost, resolved model) plus a work tail and an aggregate header; `Alt+S` opens a full scrollable table of every agent. Driven by the live `task:subagent:*` event bus (a 1 s tick only refreshes durations/sweeps finished rows); purely additive — complements the built-in HUD/status line/Agent Hub. Configurable via the `OMP_SUBAGENT_PANEL_*` env knobs. Unlike the gate, it is **not** gated by the orchestrator opt-in: it loads wherever Plugin A is installed and activates in any interactive TUI session (`ctx.hasUI`); no-op in headless/RPC/subagent/print.
+
 ## [v1.7.0] - 2026-06-26
 
 ### Added
