@@ -10,50 +10,33 @@ allow promotion of an idea into the FULL workflow.
 **FULL** — new orchestrator-protocol extension (Plugin A code + advisory prose).
 
 ## Workflow Path
-FULL: REQUEST → GRILL → RESEARCH → SPEC → DEVELOP ⇄ VALIDATE → DONE
+FULL: REQUEST → GRILL → RESEARCH → SPEC → DEVELOP ⇄ VALIDATE → DONE (+ RELEASE)
 
 ## Current Phase
-**DONE.** Validator PASS (14/14 ACs MET, 0 issues, no regression, all §4 invariants
-hold; 42/42 + 97/97 + strict tsc exit 0). DEVELOP ⇄ VALIDATE closed at cycle 2.
+**DONE + RELEASED.** Extension shipped, Validator PASS (14/14 ACs), and
+**v2.1.0 released — CI green, GitHub Release published.**
 
-## Final deliverable (all committed)
-**Protocol artifacts (Elon `[PROTO]`):** GRILL `dc2fbb5`, RESEARCH `c27854b`,
-PA-1 `39724f9`, SPEC `9e4b0e1`, DEVELOP-status `1cbd127`, VALIDATE-status `fd93e0f`.
-**Implementation (LeadDev/MidDev):** `990794e` (module+tests+pkg), `508b2bd`
-(customType fix + cmd tests), `66fe5c1` (`<idea_storage>` SKILL block),
-`789382e` (append-system companion), `c748b6b` ([FIX] AC13(b) diagnostic).
-
-### Files
-- `src/idea-storage.ts` (NEW) — `before_agent_start` reminder hook; `idea`/`ideas`
-  commands; pure `parseIdeas`/`matchIdeas`/`remindersEnabled`/`buildIdeaInjection`;
-  `import {optedIn}`; `node:fs` read-only; zero deps.
-- `src/idea-storage.test.ts` (NEW) — 42 cases.
-- `package.json` — 5th `omp.extensions` entry; 0 runtime deps.
-- `plugins/agents/skills/elon/SKILL.md` — `<idea_storage>` advisory block.
-- `src/append-system.default.md` — companion paragraph.
-- `.app/IDEAS.md` — runtime-only (DocWorm-created on first capture).
-
-### Behavior
-- **Capture:** `/idea <text>` or NL phrase → Elon acks → DocWorm appends a `parked`
-  block to `.app/IDEAS.md` → confirms `IDEA-NNN`. Agents emit `idea-suggest` blocks;
-  Elon vetoes/accepts.
-- **Remind:** turn-start hook injects ≤2 `parked` ideas sharing ≥1 token with the
-  request (keyword/tag overlap); Elon surfaces a one-line pointer if relevant.
-- **List:** `/ideas` (non-terminal); `/ideas all` (audit incl. terminal).
-- **Promote:** `/idea promote IDEA-NNN` → `status=promoted` (block kept) → seeds a
-  fresh `.app/REQ.md` (Pending-Ask gate if a workflow is active — no clobber).
-- **Opt-out:** `.omp/elon.json` `{"ideas":{"reminders":false}}` or `OMP_IDEA_REMINDERS=0`.
-
-### DocWorm assessment
-SKIPPED — user-facing docs are intrinsic (skill `<idea_storage>` block + append-system
-companion), already landed and Validator-confirmed. No external/README surface missing.
+## Release v2.1.0 (semver minor — new feature)
+- Version bump lockstep `2.0.0 → 2.1.0`: `package.json`, `package-lock.json`,
+  `.omp-plugin/marketplace.json` (catalog + Plugin B), `elon_ko.sh` (installer pin),
+  `README.md`, `.DEVREADME.md`, new `CHANGELOG.md` section. Dep constraints &
+  historical entries left untouched.
+- Commit `8a6b5e4` (`chore(release): v2.1.0`), annotated tag `v2.1.0`, pushed main +
+  tag (RC=0). `.omp/` runtime state correctly excluded.
+- Pre-tag gate: `npm test` 97/97, `tsc --noEmit` exit 0.
+- CI: `ci.yml` GREEN (typecheck + validate-plugins + omp-install smoke;
+  `elon-ko-gate@2.1.0` asserted); `release.yml` GREEN (tag==version assertion,
+  built artifacts, created the Release).
+- GitHub Release (automated by `release.yml` on `v*` tag push):
+  https://github.com/rokicool/elon-ko/releases/tag/v2.1.0 — assets
+  `elon-ko-gate-2.1.0.tgz`, `elon-ko-agents-2.1.0.tar.gz`, `SHA256SUMS`.
+- Only non-fatal Node-20 deprecation warnings on `actions/*@v4` (advisory).
 
 ## Phase Log
 - 2026-06-27 REQUEST → GRILL (dc2fbb5) → RESEARCH (c27854b) → PA-1 (39724f9) → SPEC (9e4b0e1).
-- 2026-06-27 DEVELOP — implemented (990794e, 508b2bd, 66fe5c1, 789382e); status (1cbd127).
-- 2026-06-27 VALIDATE c1 — FAIL (FAIL-1 only); status (fd93e0f).
-- 2026-06-27 RESOLVE c1 — AC13(b) fixed (c748b6b).
-- 2026-06-27 VALIDATE c2 — PASS (14/14 ACs). DONE.
+- 2026-06-27 DEVELOP — implemented (990794e, 508b2bd, 66fe5c1, 789382e).
+- 2026-06-27 VALIDATE c1 FAIL (FAIL-1) → RESOLVE c1 (c748b6b) → VALIDATE c2 PASS (624ac50).
+- 2026-06-27 RELEASE v2.1.0 — bump + commit (8a6b5e4) + tag + push + CI green + GH Release.
 
 ## Pending Asks
 - [PA-1] 2026-06-27 origin=elon status=agreed | "Accept §6 assumptions + proceed to SPEC." (accepted)
