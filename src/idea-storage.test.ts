@@ -505,10 +505,12 @@ function makeStub(): {
 	handler: () => ((event: { prompt: string }, ctx: StubCtx) => unknown) | undefined;
 	sent: Array<{ message: unknown; options: unknown }>;
 	commands: Record<string, (args: string, ctx: StubCtx) => Promise<void>>;
+	warns: string[];
 } {
 	let beforeHandler: ((event: { prompt: string }, ctx: StubCtx) => unknown) | undefined;
 	const sent: Array<{ message: unknown; options: unknown }> = [];
 	const commands: Record<string, (args: string, ctx: StubCtx) => Promise<void>> = {};
+	const warns: string[] = [];
 	const pi = {
 		setLabel() {},
 		on(name: string, h: (event: { prompt: string }, ctx: StubCtx) => unknown) {
@@ -520,8 +522,9 @@ function makeStub(): {
 		sendMessage(message: unknown, options?: unknown) {
 			sent.push({ message, options });
 		},
+		logger: { warn(m: string) { warns.push(m); } },
 	} as unknown as ExtensionAPI;
-	return { pi, handler: () => beforeHandler, sent, commands };
+	return { pi, handler: () => beforeHandler, sent, commands, warns };
 }
 
 /** Narrow a sent message to its customType string without an unchecked cast. */
@@ -620,6 +623,43 @@ test("hook: empty/absent IDEAS.md never throws and injects nothing", () => {
 		optIn(dir);
 		// No .app/IDEAS.md at all.
 		equal(h!({ prompt: "logging" }, { hasUI: true, cwd: dir }), undefined);
+	});
+});
+
+test("hook (AC13b): corrupt-but-non-empty IDEAS.md → located pi.logger.warn + injects nothing", () => {
+	const { pi, handler, warns } = makeStub();
+	ideaStorage(pi);
+	const h = handler();
+	withTmp((dir) => {
+		optIn(dir);
+		// Non-empty file whose single ```idea block is missing every required
+		// field and has an unparseable status → parseIdeaBlock returns null →
+		// parseIdeas yields 0 records. Mirrors the "manual edit broke parsing"
+		// scenario from SPEC §5.4 / AC13(b).
+		writeIdeas(
+			dir,
+			[
+				"# Ideas",
+				"",
+				"```idea",
+				"status: totally-bogus",
+				"no id, no title, no tags — a manual edit mangled this block",
+				"```",
+				"",
+			].join("\n"),
+		);
+
+		const result = h!({ prompt: "logging" }, { hasUI: true, cwd: dir });
+
+		// "no injection" half of AC13 (already correct) — asserted here too.
+		equal(injectedContent(result), undefined);
+
+		// "located error" half of AC13 — exactly ONE warning, naming the file and
+		// the diagnostic text from SPEC §5.4.
+		equal(warns.length, 1);
+		match(warns[0]!, /idea-storage/);
+		match(warns[0]!, /\.app\/IDEAS\.md/);
+		match(warns[0]!, /0 idea blocks parsed/);
 	});
 });
 

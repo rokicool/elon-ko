@@ -466,9 +466,23 @@ export default function ideaStorage(pi: ExtensionAPI): void {
 			if (!ctx.hasUI) return; // user turns only (U5); subagents are headless
 			if (!optedIn(ctx.cwd)) return; // dormancy parity (dot-agreement.ts:141)
 			if (!remindersEnabled(ctx.cwd)) return; // opt-out (§9)
-			const parked = parseIdeas(join(ctx.cwd, ".app", "IDEAS.md")).filter(
-				(i) => i.status === "parked",
-			);
+			const ideasPath = join(ctx.cwd, ".app", "IDEAS.md");
+			const all = parseIdeas(ideasPath); // never throws (SPEC §5.4)
+			// AC13(b): file EXISTS + NON-EMPTY but ZERO records parsed → likely a
+			// corrupting manual edit. Emit ONE located pi.logger warning so the
+			// breakage is diagnosable. Absent/empty files are the normal "no ideas
+			// yet" state and are never warned. The pure parser stays log-free; this
+			// diagnostic lives in the hook where `pi` exists.
+			if (
+				all.length === 0 &&
+				existsSync(ideasPath) &&
+				readFileSync(ideasPath, "utf8").trim().length > 0
+			) {
+				pi.logger.warn(
+					`[idea-storage] ${ideasPath}: file present but 0 idea blocks parsed (may be corrupt)`,
+				);
+			}
+			const parked = all.filter((i) => i.status === "parked");
 			const hits = matchIdeas(event.prompt, parked); // ≤2, overlap≥1
 			if (hits.length === 0) return;
 			return { message: buildIdeaInjection(hits) }; // F2.2 mechanism
