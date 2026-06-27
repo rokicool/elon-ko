@@ -36,6 +36,15 @@ A user reply whose trimmed value is exactly `.` is treated as explicit agreement
 - Whitespace tolerance is intended: `". "` and `" ."` also match (the comparison uses `trim()`).
 - Enforcement note: the `dot-agreement` extension guarantees the pending-ask context is surfaced on the `.` turn (a hard hook), but cannot dictate the model's exact wording — this is the strongest feasible enforcement for LLM-input semantics.
 
+## Idea/suggestion storage
+
+When a user or agent identifies work worth doing but outside the current workflow, it is parked in
+`.app/IDEAS.md` (written by DocWorm, committed by Elon as [PROTO]). On each user turn a hard hook
+injects up to 2 related parked ideas; surface a one-line pointer only if relevant. `/idea <text>`
+captures; `/ideas` lists; `/idea promote IDEA-NNN` starts a fresh FULL workflow. Opt out via
+`.omp/elon.json` `{"ideas":{"reminders":false}}` or `OMP_IDEA_REMINDERS=0`. The hook is load-bearing;
+this prose alone is insufficient (mirrors the dot-agreement limit).
+
 > This is the bundled default shipped with the `elon-ko-gate` plugin. A project-local
 > `<cwd>/.omp/APPEND_SYSTEM.md` overrides it. It is re-injected by the extension as an
 > **advisory** session-framing message (no oh-my-pi API yields a true system-prompt append);
