@@ -9,6 +9,20 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v2.1.0] - 2026-06-27
+
+### Added
+
+- **New `idea-storage` extension: capture, surface, and promote ideas/suggestions across the session.** A Plugin A hook (`src/idea-storage.ts`) plus Plugin B advisory prose (`plugins/agents/skills/elon/SKILL.md`) and a bundled `<idea_storage>` block (`src/append-system.default.md`) ship together and enforce in layers — advisory prose first, the hard hook as backstop.
+  - Capture ideas two ways: the `/idea <text>` slash command, or natural-language triggers ("I have an idea:", "suggestion:") detected inline.
+  - Turn-start reminders surface captured ideas, capped at **2** per turn to avoid noise.
+  - `/ideas` lists all captured ideas; `/idea promote <id>` promotes one into a fresh `REQ.md` (Elon's requirement-intake artifact).
+  - Opt-in by default; silence reminders via `.omp/elon.json` (`{"ideas":{"reminders":false}}`) or `OMP_IDEA_REMINDERS=0`. Capture/listing/promote are unaffected by the reminder opt-out. Wire-protocol customType: `elon-ko-gate:idea-capture`.
+
+### Changed
+
+- Version bumped to **`2.1.0`** (semver MINOR — new backward-compatible feature, no breaking changes). The installer's default tag pin is now `v2.1.0`.
+
 ## [v2.0.0] - 2026-06-27
 
 ### Changed
