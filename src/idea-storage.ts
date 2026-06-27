@@ -41,6 +41,13 @@ import { optedIn } from "./enforce-orchestrator.ts";
 
 /** customType namespace — matches the existing `elon-ko-gate:` convention (U6). */
 const IDEA_REMINDER_CUSTOM_TYPE = "elon-ko-gate:idea-reminder";
+/** `/idea <text>` capture steering — pinned by SPEC §6.1 / U6. */
+const IDEA_CAPTURE_CUSTOM_TYPE = "elon-ko-gate:idea-capture";
+/**
+ * Lifecycle/list steering (promote/reject/note/`/ideas`). SPEC is silent on these
+ * customTypes (it pins only idea-capture for capture and idea-reminder for the
+ * hook); a single generic steering discriminator keeps them grouped for filtering.
+ */
 const IDEA_STEER_CUSTOM_TYPE = "elon-ko-gate:idea-steer";
 
 /** `# Ideas` / `## Ideas` section header in `.app/IDEAS.md`. */
@@ -356,7 +363,7 @@ function buildIdeaCaptureMessage(text: string): InjectedMessage {
 	const t = text.trim();
 	if (!t) {
 		return {
-			customType: IDEA_STEER_CUSTOM_TYPE,
+			customType: IDEA_CAPTURE_CUSTOM_TYPE,
 			display: false,
 			attribution: "user",
 			content:
@@ -366,7 +373,7 @@ function buildIdeaCaptureMessage(text: string): InjectedMessage {
 		};
 	}
 	return {
-		customType: IDEA_STEER_CUSTOM_TYPE,
+		customType: IDEA_CAPTURE_CUSTOM_TYPE,
 		display: false,
 		attribution: "user",
 		content:

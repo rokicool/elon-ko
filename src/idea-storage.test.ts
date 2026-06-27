@@ -109,6 +109,19 @@ function withRemindersEnv(value: string | undefined, fn: () => void): void {
 	}
 }
 
+/** Save/restore OMP_IDEA_REMINDERS around an async callback. */
+async function withRemindersEnvAsync(value: string | undefined, fn: () => Promise<void>): Promise<void> {
+	const prev = process.env.OMP_IDEA_REMINDERS;
+	if (value === undefined) delete process.env.OMP_IDEA_REMINDERS;
+	else process.env.OMP_IDEA_REMINDERS = value;
+	try {
+		await fn();
+	} finally {
+		if (prev === undefined) delete process.env.OMP_IDEA_REMINDERS;
+		else process.env.OMP_IDEA_REMINDERS = prev;
+	}
+}
+
 const R = (over: Partial<IdeaRecord> = {}): IdeaRecord => ({
 	id: "IDEA-001",
 	created: "2026-01-01T00:00:00Z",
@@ -490,16 +503,33 @@ interface StubCtx {
 function makeStub(): {
 	pi: ExtensionAPI;
 	handler: () => ((event: { prompt: string }, ctx: StubCtx) => unknown) | undefined;
+	sent: Array<{ message: unknown; options: unknown }>;
+	commands: Record<string, (args: string, ctx: StubCtx) => Promise<void>>;
 } {
 	let beforeHandler: ((event: { prompt: string }, ctx: StubCtx) => unknown) | undefined;
+	const sent: Array<{ message: unknown; options: unknown }> = [];
+	const commands: Record<string, (args: string, ctx: StubCtx) => Promise<void>> = {};
 	const pi = {
 		setLabel() {},
 		on(name: string, h: (event: { prompt: string }, ctx: StubCtx) => unknown) {
 			if (name === "before_agent_start") beforeHandler = h;
 		},
-		registerCommand() {},
+		registerCommand(name: string, opts: { handler: (args: string, ctx: StubCtx) => Promise<void> }) {
+			commands[name] = opts.handler;
+		},
+		sendMessage(message: unknown, options?: unknown) {
+			sent.push({ message, options });
+		},
 	} as unknown as ExtensionAPI;
-	return { pi, handler: () => beforeHandler };
+	return { pi, handler: () => beforeHandler, sent, commands };
+}
+
+/** Narrow a sent message to its customType string without an unchecked cast. */
+function sentCustomType(m: unknown): string | undefined {
+	if (typeof m !== "object" || m === null) return undefined;
+	if (!("customType" in m)) return undefined;
+	const ct = m.customType;
+	return typeof ct === "string" ? ct : undefined;
 }
 
 test("hook: matching parked idea is injected; non-matching passes through", () => {
@@ -591,4 +621,71 @@ test("hook: empty/absent IDEAS.md never throws and injects nothing", () => {
 		// No .app/IDEAS.md at all.
 		equal(h!({ prompt: "logging" }, { hasUI: true, cwd: dir }), undefined);
 	});
+});
+
+// ===========================================================================
+// Command wiring — /idea and /ideas handlers steer via pi.sendMessage (U8: no
+// fs write from the handler). Exercises the real registered handlers.
+// ===========================================================================
+
+test("command /idea: opted-in capture steers with elon-ko-gate:idea-capture (SPEC §6.1/U6)", async () => {
+	const { pi, sent, commands } = makeStub();
+	ideaStorage(pi);
+	ok(commands["idea"], "/idea command registered");
+	const dir = mkdtempSync(join(tmpdir(), "idea-storage-cmd-"));
+	try {
+		optIn(dir);
+		await commands["idea"]!("add a logging dashboard", { hasUI: true, cwd: dir });
+		equal(sent.length, 1);
+		equal(sentCustomType(sent[0]!.message), "elon-ko-gate:idea-capture");
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("command /idea: dormant when not opted in (no sendMessage)", async () => {
+	const { pi, sent, commands } = makeStub();
+	ideaStorage(pi);
+	const dir = mkdtempSync(join(tmpdir(), "idea-storage-cmd-"));
+	try {
+		// No .omp/elon.json → optedIn false → handler early-returns, sends nothing.
+		await commands["idea"]!("something", { hasUI: true, cwd: dir });
+		equal(sent.length, 0);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("command /idea promote: routes to a promote steering message (not capture)", async () => {
+	const { pi, sent, commands } = makeStub();
+	ideaStorage(pi);
+	const dir = mkdtempSync(join(tmpdir(), "idea-storage-cmd-"));
+	try {
+		optIn(dir);
+		await commands["idea"]!("promote IDEA-007", { hasUI: true, cwd: dir });
+		equal(sent.length, 1);
+		// Lifecycle steering uses the generic idea-steer discriminator (SPEC silent);
+		// it must NOT be the capture type, and content must name the promote op.
+		notEqual(sentCustomType(sent[0]!.message), "elon-ko-gate:idea-capture");
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("command /ideas: opted-in lists via sendMessage (independent of reminder opt-out)", async () => {
+	const { pi, sent, commands } = makeStub();
+	ideaStorage(pi);
+	ok(commands["ideas"], "/ideas command registered");
+	const dir = mkdtempSync(join(tmpdir(), "idea-storage-cmd-"));
+	try {
+		optIn(dir);
+		writeIdeas(dir, ideasMd(ideaBlock({ id: "IDEA-001", created: "2026-01-01T00:00:00Z", title: "logging", tags: ["logging"] })));
+		// Listing works even when reminders are opted out (SPEC §6.3).
+		await withRemindersEnvAsync("0", async () => {
+			await commands["ideas"]!("", { hasUI: true, cwd: dir });
+		});
+		equal(sent.length, 1);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
