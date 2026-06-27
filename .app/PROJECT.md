@@ -34,7 +34,7 @@ so model-name + context-% show for free, no core PR.
 - `package.json` — appended as 4th entry in `omp.extensions`.
 
 ## How to use (user-facing)
-- Auto-loads with the `omp-agent-gate` plugin (same opt-in as the other extensions).
+- Loads wherever Plugin A (`omp-agent-gate`) is installed; NOT gated by the orchestrator opt-in.
 - **Persistent panel:** always-on above the editor — per-agent stats + live tail.
 - **Full table:** press `Alt+S` (scroll ↑↓, Esc/q to close).
 - Env tunables: `OMP_SUBAGENT_PANEL_KEY`, `_PLACEMENT` (aboveEditor|belowEditor),

@@ -54,7 +54,7 @@ Pin `omp-agent-gate` to a release tag (Plugin B always tracks latest);
 re-running is idempotent — every step is safe to repeat:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.6.0 bash
+curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/elon_ko.sh | OMP_AGENT_REF=v1.8.0 bash
 ```
 
 See [`elon_ko.sh`](./elon_ko.sh) for exactly what it runs.
@@ -92,7 +92,7 @@ curl -fsSL https://raw.githubusercontent.com/rokicool/omp-agent-template/main/el
 ```bash
 # 1. Plugin A — the gate + rule (installs user-wide; requires bun).
 #    Pin to a release tag. Switching the ref later needs `omp plugin uninstall omp-agent-gate` first.
-omp plugin install github:rokicool/omp-agent-template#v1.6.0
+omp plugin install github:rokicool/omp-agent-template#v1.8.0
 # local dev / linking:
 omp plugin link ./omp-agent-template
 
@@ -177,6 +177,8 @@ When a team agent sends to a remote receiver, `mess-send` writes a file to `.app
 - `.app/mess/arc/<file>.md` — **PROCESSED** (the receiver replied) or **FAILED** (after 3 attempts, with a `## FAILURE` annotation). `arc/` is kept indefinitely — nothing is auto-deleted.
 
 ## Subagent observability panel
+
+> **Available since v1.8.0.** The `subagent-panel` extension ships with the v1.8.0 release — install it via the one-line installer (`elon_ko.sh`), or pin Plugin A to `github:rokicool/omp-agent-template#v1.8.0`.
 
 A live, always-on view of the subagents your orchestrator spawns. The `subagent-panel` extension renders a compact panel above the editor that streams per-subagent stats — status, agent, task, tool count, requests, context %, cost, and resolved model — plus a one-line tail of the most-active agent's current work and an aggregate header. Press **`Alt+S`** for a full floating table of every agent. It is driven by the live `task:subagent:*` event bus (a 1 s tick only refreshes elapsed durations and sweeps finished rows), redraws only its own widget, and is purely additive — it complements (does not replace) the built-in subagent HUD, status line, and Agent Hub.
 
