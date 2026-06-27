@@ -1,48 +1,49 @@
-# PROJECT — Inline Subagent Observability Panel — COMPLETE
+# PROJECT.md — Idea/Suggestion Storage Extension
 
-## Objective (delivered)
-A live, always-on inline "small window" replacing the static one-line subagent
-status, showing per-subagent statistics while they work: status, role/task,
-elapsed time, native tool-call count, tokens, context %, cost, resolved model,
-rate-limit state, and an in-flight work tail — plus an Alt+S floating full table.
+## Brief
+Analyze the agent-communication protocol (`skill://elon`) and design an extension
+for **ideas/suggestions storage** under `.app/`: capture worthwhile-but-out-of-
+scope work, persist it, let Elon remind the user about relevant stored ideas, and
+allow promotion of an idea into the FULL workflow.
 
-## Workflow Path: FULL — ALL PHASES ✅
-| Phase | Status | Artifact / Agent |
-|---|---|---|
-| REQUEST | ✅ | `.app/PROJECT.md` |
-| RESEARCH | ✅ | drpe `ObserveResearch` (report: agent://ObserveResearch) |
-| SPEC | ✅ approved | `.app/SPEC.md` (leaddev) |
-| DEVELOP | ✅ c1 + c2 (tsc clean) | leaddev→middev `DevSubagentPanel` / `DevCycle2Hardening` |
-| VALIDATE | ✅ **PASS** (c1 PASS-WITH-MINOR → c2 PASS) | validator `ValidateSubagentPanel` / `ValidateCycle2` |
-| DONE | ✅ this record | Elon |
+## Classification
+**FULL** — new orchestrator-protocol extension.
 
-## Final verification (independent, validator)
-- `npx tsc --noEmit` → EXIT 0 (run twice by validator, clean).
-- 13/13 ACs satisfied (12 PASS + AC-1 PARTIAL = static-only spawn latency, accepted).
-- Additive-only confirmed: only `setWidget`/`custom({overlay})`/`requestComponentRender`/`pi.events.on`/`pi.on`/`pi.registerShortcut`; never `requestRender(true)`/`getBranch`/`history://`/`artifact://`; does NOT touch built-in HUD/statusLine/Hub.
-- 3 minor hardening fixes folded in c2 (teardown dispose, overlayScroll clamp, payload guards); fix4 skipped (verified non-defect).
+## Workflow Path
+FULL: REQUEST → GRILL → RESEARCH → SPEC → DEVELOP ⇄ VALIDATE → DONE
 
-## Key research finding (flipped the problem)
-The harness already ships an Agent Hub + event bus + collab-web. The real ask was
-enriching the persistent INLINE view. Bonus: `AgentProgress` carries
-`resolvedModel` + `contextTokens/contextWindow` LIVE (verified at
-node_modules/@oh-my-pi/pi-coding-agent/src/task/{types.ts:258-327, executor.ts}) —
-so model-name + context-% show for free, no core PR.
+## Current Phase
+**GRILL gate reached** — `.app/REQ.md` produced (R1–R5 locked, §6 assumptions
+pending user accept). RESEARCH (DrPe → `.app/RESEARCH.md`) running in parallel.
+Next: SPEC (LeadDev) once assumptions accepted + research in.
 
-## Delivered (new code)
-- `src/subagent-panel.ts` (758 lines) — `(pi: ExtensionAPI) => void` extension: SubagentStore aggregation fed by `task:subagent:{lifecycle,progress,event}`; persistent `setWidget` panel (≤10 lines, stat rows + work tail); `Alt+S` `custom({overlay})` full table; 1s component-scoped tick; full lifecycle/cleanup.
-- `package.json` — appended as 4th entry in `omp.extensions`.
+## Resolved Requirements (GRILL round 1 — user-confirmed)
+- **A. Capture:** BOTH — user (NL phrase or `/idea`) + agents (guarded proactive parking). Immediate ack.
+- **B. Storage:** single `.app/IDEAS.md`, append-style; **writes owned by DocWorm** (Elon's `write` stays `PROJECT.md`-only).
+- **C. Reminder:** proactive one-line pointer on relatedness (keyword/tag overlap, capped 1–2) + on-demand `/ideas`; opt-out flag.
+- **D. Enforcement:** advisory prose in `skill://elon` **+** turn-start hard hook (mirrors `dot-agreement`).
+- **E. Lifecycle:** Ideas **distinct** from Pending Asks; **promotable** into a fresh `REQ.md` (`status=promoted`, kept for audit).
 
-## How to use (user-facing)
-- Loads wherever Plugin A (`omp-agent-gate`) is installed; NOT gated by the orchestrator opt-in.
-- **Persistent panel:** always-on above the editor — per-agent stats + live tail.
-- **Full table:** press `Alt+S` (scroll ↑↓, Esc/q to close).
-- Env tunables: `OMP_SUBAGENT_PANEL_KEY`, `_PLACEMENT` (aboveEditor|belowEditor),
-  `_HIDE_EMPTY`, `_SHOW_SYNC`, `_DONE_TTL_MS` (30000), `_MIN_RENDER_MS` (200).
+## REQ.md §6 — Assumptions pending user accept (override surface before SPEC)
+- §6.1 NL trigger phrases (`idea:`, `park this idea:`, `we should … later`, …); `/idea` is unambiguous fallback.
+- §6.2 Agent rubric: out-of-scope AND plausibly valuable AND specific (all 3) + Elon veto.
+- §6.3 Agent-initiated captures surfaced only when promoted to parked.
+- §6.4 Promotion conflict with active REQ.md → Pending Ask, no clobber.
+- §6.5 Status machine: `parked → {promoted | rejected(re-openable) | superseded}`.
+- §6.6 Per-idea schema: id, created, source, title, body, tags, status + optional promoted_to/at, superseded_by, notes.
+- §6.7 Notes append-only.
+- §6.8 Reminder config: token-set intersection, min-overlap 1, older-first, cap 2/turn, opt-out via `idea_reminders=off` line in PROJECT.md.
+- §6.9 Hook: read parked IDEAS.md entries, tokenize request, match, inject ≤2 as advisory (user turns only).
+- §6.10 `/ideas` lists non-terminal; `/ideas all` includes terminal (audit).
 
-## Non-blocking follow-ups (optional)
-- AC-1 spawn→row latency: static-only; a runtime latency test would move it PASS.
-- displayName/parent/unread (irc-registry fields): API exposes no accessor (Q6);
-  identity is derived from payloads. Add if a registry accessor is ever exposed.
-- registerShortcut has no keybindings.yml action-id (Q7); env var is the override.
-- Usage doc: not written (offer pending); this repo maintains docs per convention.
+## Known Extension Surface
+`enforce-orchestrator` (tool gate), `dot-agreement` (hard `before_agent_start` hook + advisory text), `mess-transport`, `orchestrator-agents` (frontmatter). Elon owns `.app/` `[PROTO]` commits.
+
+## Phase Log
+- 2026-06-27 REQUEST — classified FULL, created PROJECT.md, routed to ReqGuru.
+- 2026-06-27 GRILL r1 — ReqGuru returned 5-fork batch; relayed via `ask`; user resolved all five.
+- 2026-06-27 GRILL gate — ReqGuru-2 wrote `.app/REQ.md` (R1–R5, AC1–AC14, §6 assumptions). Committed `[PROTO]`.
+- 2026-06-27 RESEARCH — DrPe mapping extension substrate → `.app/RESEARCH.md` (running).
+
+## Pending Asks
+- [PA-1] 2026-06-27 origin=elon status=pending | "Accept REQ.md §6 assumptions (10 defaults) and proceed to SPEC? Reply `.` to accept all; or name any assumptions to override."
