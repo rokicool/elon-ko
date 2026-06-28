@@ -95,6 +95,86 @@ export function macosOptionComposedFor(keyId: string): string | undefined {
   return m ? MACOS_OPTION_COMPOSE[m[1]] : undefined;
 }
 
+/** Bare lowercase letter extracted from TOGGLE_KEY when it is a plain "alt+<letter>" ("alt+s" -> "s"), else "". */
+const TOGGLE_LETTER = /^alt\+([a-z])$/.exec(TOGGLE_KEY)?.[1] ?? "";
+/** macOS composed glyph for the toggle letter (e.g. "ß"), or undefined for non-composed combos. Shared by the fallback (SPEC §5.3). */
+const TOGGLE_COMPOSED = macosOptionComposedFor(TOGGLE_KEY);
+
+// ---------------------------------------------------------------------------
+// Option-toggle matcher — SPEC §5.1
+// Recognizes every byte encoding of the configured Option+<letter> panel
+// toggle so the binding survives terminal key-encoder drift (ghostty 1.3.0
+// #9406 et al.). The two regexes are inlined byte-for-byte from omp's own
+// parser constants (pi-tui/src/keys.ts:300 KITTY_CSI_U_PATTERN, :307
+// MODIFY_OTHER_KEYS_PATTERN) because those are module-private in pi-tui and
+// cannot be imported.
+// ---------------------------------------------------------------------------
+const KITTY_CSI_U_RE  = /^\x1b\[(\d+)(?::(\d*))?(?::(\d+))?(?:;(\d+))?(?::(\d+))?(?:;[\d:]*)?u$/;
+const MODIFY_OTHER_RE = /^\x1b\[27;(\d+);(\d+)~$/;
+const KITTY_LOCK_MASK = 64 + 128; // pi-tui keys.ts:306 (Caps Lock + Num Lock)
+const MOD_ALT         = 2;        // pi-tui keys.ts:302
+const MOD_SHIFT       = 1;        // pi-tui keys.ts:301
+
+/** True if `modValue` (1-indexed Kitty/modifyOtherKeys wire value) carries Alt. */
+function wireModHasAlt(modValue: number | undefined): boolean {
+  if (modValue === undefined) return false;
+  return ((((modValue - 1) || 0) & ~KITTY_LOCK_MASK) & MOD_ALT) !== 0;
+}
+
+/**
+ * Recognize EVERY byte encoding of the configured Option+<letter> toggle:
+ *   F1  raw composed glyph, e.g. "ß"
+ *   F2  structured encoding of that glyph's codepoint (modifyOtherKeys /
+ *       Kitty CSI-u), any modifier — the ghostty 1.3.x #9406 case (Alt bit
+ *       dropped, glyph codepoint carried structurally). Collision-free: the
+ *       glyph codepoint (223 for ß) never equals a plain letter keystroke.
+ *   F3  alt-prefix "ESC <letter>", e.g. "\x1bs" (macos-option-as-alt=true)
+ *   F4  structured encoding of the plain letter codepoint WITH Alt —
+ *       redundant with registerShortcut for parsers that honor Alt, included
+ *       so the fallback is authoritative regardless of dispatch order.
+ *
+ * `composed` is the precomposed glyph for the letter (from MACOS_OPTION_COMPOSE);
+ * `letter` is the bare lowercase letter (e.g. "s"), or "" for non alt+letter
+ * toggles (only F3/F4 with the empty-letter case then apply, which is inert).
+ */
+export function matchesOptionToggle(
+  data: string,
+  letter: string,
+  composed: string | undefined,
+): boolean {
+  // F1 — raw composed glyph (existing v2.1.2 path, preserved exactly).
+  if (composed !== undefined && data === composed) return true;
+
+  // F3 — alt-prefix ESC + letter  (e.g. "\x1bs").
+  if (letter !== "" && data === `\x1b${letter}`) return true;
+
+  // Derive codepoints once.
+  const letterCP = letter !== "" ? letter.charCodeAt(0) : -1;                       // 's' -> 115
+  const composedCP = composed !== undefined ? composed.codePointAt(0) : undefined;   // 'ß' -> 223
+
+  // F2 — Kitty CSI-u for the COMPOSED glyph codepoint, any modifier.
+  let m = data.match(KITTY_CSI_U_RE);
+  if (m) {
+    const cp = Number.parseInt(m[1] ?? "", 10);
+    if (composedCP !== undefined && cp === composedCP) return true;          // e.g. ESC[223;<mod>u
+    // F4 — Kitty CSI-u for the plain letter codepoint WITH Alt.
+    if (cp === letterCP && wireModHasAlt(m[4] !== undefined ? Number.parseInt(m[4], 10) : undefined)) return true;
+    return false;
+  }
+
+  // F2/F4 — xterm modifyOtherKeys:  ESC[27;<mod>;<codepoint>~
+  m = data.match(MODIFY_OTHER_RE);
+  if (m) {
+    const modValue = Number.parseInt(m[1] ?? "", 10);
+    const cp = Number.parseInt(m[2] ?? "", 10);
+    if (composedCP !== undefined && cp === composedCP) return true;          // F2: e.g. ESC[27;<mod>;223~
+    if (cp === letterCP && wireModHasAlt(modValue)) return true;             // F4: ESC[27;<mod>;115~ with Alt
+    return false;
+  }
+
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Data model — SPEC §5.1
 // ---------------------------------------------------------------------------
@@ -749,19 +829,23 @@ export default function subagentPanel(pi: ExtensionAPI): void {
     }
 
     // macOS fallback: on default macOS terminals (Ghostty / Terminal.app, where
-    // Option is NOT treated as Alt), Option+S emits a *composed* char ("ß"
-    // U+00DF) instead of an alt key sequence. parseKey() returns null for that
-    // byte, so registerShortcut above never fires and the panel stays
-    // unreachable — the recurring "still not available" bug. Catch the composed
-    // byte on the raw terminal-input path (the same surface omp uses for
-    // enhanced-paste / focused-agent gestures) and toggle directly. Inert on
-    // every other input; alt-aware terminals are already handled above.
-    const composedToggle = macosOptionComposedFor(TOGGLE_KEY);
-    if (composedToggle !== undefined) {
+    // Option is NOT treated as Alt), Option+S is NOT delivered as an "alt+s"
+    // event that registerShortcut above can match. The byte form varies by
+    // terminal/protocol: the composed glyph "ß" (U+00DF), its structured
+    // codepoint-223 encodings (xterm modifyOtherKeys / Kitty CSI-u — the
+    // ghostty 1.3.0 #9406 case where the Alt bit is dropped), the ESC+s
+    // alt-prefix, or codepoint-115+Alt. parseKey() returns null for these, so
+    // the shortcut never fires. Catch every recognized form on the raw
+    // terminal-input path and toggle directly. toggleOverlay is direction-
+    // agnostic (opens when closed, closes when open), and because global
+    // input listeners run before focus dispatch and {consume:true} pre-empts
+    // the focused overlay (pi-tui tui.ts #handleInput), this single listener
+    // handles BOTH open and close. Inert on every other input.
+    if (TOGGLE_COMPOSED !== undefined || TOGGLE_LETTER !== "") {
       unsubFns.push(
         ctx.ui.onTerminalInput(data => {
           if (!active) return undefined;
-          if (data === composedToggle) {
+          if (matchesOptionToggle(data, TOGGLE_LETTER, TOGGLE_COMPOSED)) {
             toggleOverlay(ctx);
             return { consume: true };
           }
