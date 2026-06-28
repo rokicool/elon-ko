@@ -115,10 +115,12 @@ nothing until a project opts in. Precedence (highest wins):
 echo '{"enabled": true}' > .omp/elon.json   # gate active in this project only
 ```
 
-When active, your root session is Elon: it may `read`/`ask`/manage todos, spawn
-**team agents** (`reqguru`, `drpe`, `leaddev`, `validator`, `docworm`, `hr`),
-write only `.app/PROJECT.md`, and run only `git …`. Everything else (direct
-`edit`, `write`, builds, search, browse, …) is blocked — it must delegate.
+When active, your root session is Elon: it may `read`/`ask`/manage todos,
+`job` (inspect/wait on async agent jobs), `irc` (live coordination with parallel
+sibling agents — not a substitute for spawning), spawn **team agents**
+(`reqguru`, `drpe`, `leaddev`, `validator`, `docworm`, `hr`), write only
+`.app/PROJECT.md`, and run only `git …`. Everything else (direct `edit`,
+`write`, builds, search, browse, …) is blocked — it must delegate.
 Subagents are never gated by this; they're restricted by their own agent
 frontmatter.
 

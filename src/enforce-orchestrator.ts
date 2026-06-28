@@ -11,7 +11,7 @@
  *
  * Enforcement surface (interactive root only — `ctx.hasUI === true`, AND the
  * project has opted in — see "Opt-in" below):
- *   - read, ask, todo, job                              -> allowed
+ *   - read, ask, todo, job, irc                         -> allowed
  *   - task                                              -> allowed only when
  *                                                          agent ∈ TEAM
  *   - write                                             -> allowed only for
