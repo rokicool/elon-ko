@@ -1,41 +1,41 @@
 # PROJECT — elon-ko `opt-s` binding fix
 
 ## Summary
-`opt-s` (Option+S / Alt+S — toggles the subagent-panel overlay) fails on ghostty 1.3.1.
-Install is correct: `elon-ko-gate@2.1.2` is installed and its `ß`-fix is present. Root cause
-(High): ghostty 1.3.0 #9406 ("modifyOtherKeys state 2 no longer encodes option as alt",
-unreverted in 1.3.1) — Option+S no longer arrives as the literal `ß` the v2.1.2 fix matches, nor
-as `Alt+S` omp's `registerShortcut` recognizes. Diagnosis: `.app/RESEARCH.md`. Design: `.app/SPEC.md`.
+`opt-s` (Option+S / Alt+S — toggles the subagent-panel overlay) fails on ghostty 1.3.1. Root cause
+(High): ghostty 1.3.0 #9406 (modifyOtherKeys no longer encodes option as alt, unreverted in 1.3.1)
+defeats the v2.1.2 `data==='ß'` fallback. Fix: encoding-agnostic `matchesOptionToggle` matcher.
+Diagnosis: `.app/RESEARCH.md`. Design: `.app/SPEC.md`. Impl: commit `74abbba`.
 
 ## Workflow
 - REQUEST: done
-- RESEARCH: done (`.app/RESEARCH.md`) — verdict EXPAND; no GRILL
-- SPEC: done (approved 2026-06-28) — `.app/SPEC.md`
-- DEVELOP ⇄ VALIDATE: **cycle 1 in progress**
-  - DEVELOP c1: **done** — commit `74abbba` (pushed origin/main). Matcher `matchesOptionToggle`
-    (F1 ß / F2 codepoint-223 structured / F3 ESC+s / F4 codepoint-115+alt); fallback swapped;
-    §5.4 OMITTED (TC-6 proved global listener fires first via `pi-tui/src/tui.ts #handleInput`).
-    Gate: `tsc --noEmit` clean; `bun test` 8/0. OQ-1 ✓ (TC-2e); OQ-2 ✓ (TC-6).
-  - VALIDATE c1: **in progress** (validator)
-  - 3-cycle limit enforced (1/3)
-- DONE: pending
+- RESEARCH: done (`.app/RESEARCH.md`)
+- SPEC: done (approved) — `.app/SPEC.md`
+- DEVELOP ⇄ VALIDATE: **cycle 1 PASSED** ✅ (1/3 used)
+  - DEVELOP c1: `74abbba` — matcher + fallback swap; §5.4 omitted (TC-6, omp-source-verified).
+  - VALIDATE c1: PASS — all §5 sections conformant (file:line); gate re-run clean (tsc 0, bun 8/0).
+  - Non-blocking nit: vacuous TC-6 dispatch assertion (soundness proven independently; definitive
+    proof = real-key probe in DONE).
+- **DONE: in progress** (leaddev — deploy + cleanup; user — restart + confirm)
 
 ## Scope (user-selected)
-1. **Permanent plugin fix** — in VALIDATE.
-2. **Clean up stale legacy plugins** (`omp-agent-gate@1.6.0`, `orchestrator-agents@1.7.0`) —
-   sequenced into DONE/integration (SPEC §9.3): remove ONLY after confirming the live session is
-   gated by `elon-ko-gate`, then restart omp. SPEC §2.3: stale gate registers NO Alt+S (hygiene only).
+1. **Permanent plugin fix** — validated; deploying in DONE.
+2. **Clean up stale legacy plugins** — DONE step (guarded).
 
-## Verified facts (SPEC §2)
+## DONE checklist
+- [x] validator PASS
+- [ ] determine build/install mechanism for omp plugins (verify, don't guess)
+- [ ] confirm which plugin gates the LIVE session (elon-ko-gate vs stale omp-agent-gate)
+- [ ] install fixed build (74abbba) into `~/.omp/plugins/` replacing elon-ko-gate@2.1.2
+- [ ] remove stale `omp-agent-gate@1.6.0` + `orchestrator-agents@1.7.0`
+- [ ] restart omp (user action)
+- [ ] real-key confirm: user presses Option+S on ghostty 1.3.1 → overlay toggles (definitive)
+- [ ] optional: tighten TC-6 assertion (validator nit)
+Safety rule: if installing/removing plugins risks the live session gate, defer to a user runbook.
+
+## Verified facts
 - omp runtime 16.2.2; `ctx.ui.onTerminalInput` EXISTS → refutes DrPe #2.
-- Dual install confirmed in `omp-plugins.lock.json`.
-- `subagent-panel.test.ts:44-50` pins `parseKey("ß")===null` (root cause).
+- Dual install confirmed (`omp-plugins.lock.json`): elon-ko-gate/agents@2.1.2 + stale gate/agents.
+- Stale `omp-agent-gate@1.6.0` registers NO Alt+S (hygiene/load-risk, not the functional cause).
 
-## DONE checklist (pending)
-- [ ] validator PASS
-- [ ] confirm live session gated by `elon-ko-gate` (not stale gate)
-- [ ] remove stale `omp-agent-gate@1.6.0` + `orchestrator-agents@1.7.0`; restart omp
-- [ ] real-key confirm: user presses Option+S on ghostty 1.3.1 → overlay toggles
-
-## Workaround (relayed to user)
+## Workaround (relayed)
 `macos-option-as-alt = true` in `~/.config/ghostty/config` → reload.
