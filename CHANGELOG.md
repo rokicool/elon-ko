@@ -9,6 +9,16 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v2.1.1] - 2026-06-27
+
+### Fixed
+
+- **`subagent-panel` persistent widget is now OFF by default — it no longer races omp's native Agent Hub.** The always-on `setWidget` stacked on the same surface as omp's built-in Agent Hub/HUD, and both re-rendered on every `task:subagent:*` event + a 1 s tick, producing a flickering/duplicated region when the orchestrator delegated. The panel now COMPLEMENTS the native hub instead of competing: the live event store and the `Alt+S` full-table overlay remain always active (the overlay is on-demand/modal and does not race), so elon-ko's per-agent status is still one keystroke away. Restore the previous always-on compact panel with `OMP_SUBAGENT_PANEL_PERSIST=1`.
+
+### Changed
+
+- Version bumped to **`2.1.1`** (semver PATCH — the default-off persistent widget stops the render race with omp's native Agent Hub; no breaking changes). `package.json#version`, both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`), the installer default tag pin (`elon_ko.sh` `OMP_AGENT_REF`, now `v2.1.1`), the `README.md`/`.DEVREADME.md` install examples, and the `package-lock.json` root version were all bumped in lockstep to `2.1.1`.
+
 ## [v2.1.0] - 2026-06-27
 
 ### Added

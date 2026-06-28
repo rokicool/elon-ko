@@ -58,6 +58,15 @@ const HIDE_EMPTY = process.env.OMP_SUBAGENT_PANEL_HIDE_EMPTY === "1";
 const SHOW_SYNC = process.env.OMP_SUBAGENT_PANEL_SHOW_SYNC === "1";
 const DONE_TTL_MS = parseIntSafe(process.env.OMP_SUBAGENT_PANEL_DONE_TTL_MS, 30000);
 const MIN_RENDER_MS = parseIntSafe(process.env.OMP_SUBAGENT_PANEL_MIN_RENDER_MS, 200);
+/**
+ * Always-on persistent widget master switch. Defaults OFF so elon-ko's panel
+ * COMPLEMENTS omp's native Agent Hub instead of stacking a second live widget
+ * on the same surface — which raced both renders on every task:subagent:*
+ * event and a 1 s tick, flickering the region. The event store + Alt+S overlay
+ * stay active regardless; set OMP_SUBAGENT_PANEL_PERSIST=1 to restore the
+ * always-on compact panel above/below the editor.
+ */
+const PERSISTENT_PANEL = process.env.OMP_SUBAGENT_PANEL_PERSIST === "1";
 
 /** Stable widget key used with ctx.ui.setWidget. */
 const PANEL_KEY = "omp-subagent-panel";
@@ -687,18 +696,20 @@ export default function subagentPanel(pi: ExtensionAPI): void {
       }),
     );
 
-    ctx.ui.setWidget(
-      PANEL_KEY,
-      (tui, _theme) => {
-        panelTui = tui;
-        const comp: Component = {
-          render: (width: number): string[] => renderPanel(width),
-        };
-        panelComponent = comp;
-        return comp;
-      },
-      { placement: PLACEMENT },
-    );
+    if (PERSISTENT_PANEL) {
+      ctx.ui.setWidget(
+        PANEL_KEY,
+        (tui, _theme) => {
+          panelTui = tui;
+          const comp: Component = {
+            render: (width: number): string[] => renderPanel(width),
+          };
+          panelComponent = comp;
+          return comp;
+        },
+        { placement: PLACEMENT },
+      );
+    }
 
     tickHandle = setInterval(() => {
       if (store) store.sweep(Date.now());

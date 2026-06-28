@@ -54,7 +54,7 @@ Pin `elon-ko-gate` to a release tag (Plugin B always tracks latest);
 re-running is idempotent — every step is safe to repeat:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/elon_ko.sh | OMP_AGENT_REF=v2.1.0 bash
+curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/elon_ko.sh | OMP_AGENT_REF=v2.1.1 bash
 ```
 
 See [`elon_ko.sh`](./elon_ko.sh) for exactly what it runs.
@@ -92,7 +92,7 @@ curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/elon_ko.sh | 
 ```bash
 # 1. Plugin A — the gate + rule (installs user-wide; requires bun).
 #    Pin to a release tag. Switching the ref later needs `omp plugin uninstall elon-ko-gate` first.
-omp plugin install github:rokicool/elon-ko#v2.1.0
+omp plugin install github:rokicool/elon-ko#v2.1.1
 # local dev / linking:
 omp plugin link ./elon-ko
 
@@ -180,13 +180,13 @@ When a team agent sends to a remote receiver, `mess-send` writes a file to `.app
 
 > **Available since v1.8.0.** The `subagent-panel` extension ships with the v1.8.0 release — install it via the one-line installer (`elon_ko.sh`), or pin Plugin A to `github:rokicool/elon-ko#v1.8.0`.
 
-A live, always-on view of the subagents your orchestrator spawns. The `subagent-panel` extension renders a compact panel above the editor that streams per-subagent stats — status, agent, task, tool count, requests, context %, cost, and resolved model — plus a one-line tail of the most-active agent's current work and an aggregate header. Press **`Alt+S`** for a full floating table of every agent. It is driven by the live `task:subagent:*` event bus (a 1 s tick only refreshes elapsed durations and sweeps finished rows), redraws only its own widget, and is purely additive — it complements (does not replace) the built-in subagent HUD, status line, and Agent Hub.
+A live view of the subagents your orchestrator spawns. The `subagent-panel` extension keeps a live event store fed by the `task:subagent:*` bus and surfaces it two ways: an on-demand **`Alt+S`** full-table overlay, and an optional compact panel above (or below) the editor that streams per-subagent stats — status, agent, task, tool count, requests, context %, cost, and resolved model — plus a one-line tail of the most-active agent's current work and an aggregate header. **The persistent panel is OFF by default** so elon-ko COMPLEMENTS omp's native Agent Hub instead of stacking a second live widget on the same surface — which raced both renders on every `task:subagent:*` event and a 1 s tick, flickering the region. The live event store and the `Alt+S` overlay stay active regardless; set `OMP_SUBAGENT_PANEL_PERSIST=1` to restore the always-on compact panel. A 1 s tick only refreshes elapsed durations and sweeps finished rows, and the extension redraws only its own widget — purely additive, it complements (does not replace) the built-in subagent HUD, status line, and Agent Hub.
 
-**Not gated by the orchestrator opt-in.** Unlike `dot-agreement` and `mess-transport`, this extension does not require `OMP_ENABLE_ORCHESTRATOR=1` or `.omp/elon.json`. It is registered in `package.json#omp.extensions`, so it loads wherever Plugin A (`elon-ko-gate`) is installed, and activates in any **interactive TUI session** — it no-ops when `ctx.hasUI` is false (headless, RPC, subagent, and print paths). Install Plugin A and run `omp` interactively; the panel is live, nothing to opt in.
+**Not gated by the orchestrator opt-in.** Unlike `dot-agreement` and `mess-transport`, this extension does not require `OMP_ENABLE_ORCHESTRATOR=1` or `.omp/elon.json`. It is registered in `package.json#omp.extensions`, so it loads wherever Plugin A (`elon-ko-gate`) is installed, and activates in any **interactive TUI session** — it no-ops when `ctx.hasUI` is false (headless, RPC, subagent, and print paths). Install Plugin A and run `omp` interactively; the live event store and the `Alt+S` overlay are active by default — the always-on compact panel needs `OMP_SUBAGENT_PANEL_PERSIST=1` (it's off by default so it complements omp's native Agent Hub instead of racing it).
 
 **What you see.**
 
-- *Persistent panel (≤ 10 lines, above the editor by default).* An aggregate header — `Subagents: N active · M done │ Σ <tokens> tok · $<cost>` — followed by one compact row per running subagent, e.g.:
+- *Persistent panel (≤ 10 lines, above the editor; **off by default**).* Enable it with `OMP_SUBAGENT_PANEL_PERSIST=1` — otherwise only the `Alt+S` overlay is shown. An aggregate header — `Subagents: N active · M done │ Σ <tokens> tok · $<cost>` — followed by one compact row per running subagent, e.g.:
 
   ```
   ▸ AuthLoader · wire JWT flow into session middleware   42🔧 18 req 61.3%/200K $1.04 zai/glm-5.2
@@ -201,6 +201,7 @@ A live, always-on view of the subagents your orchestrator spawns. The `subagent-
 
 | Variable | Default | Effect |
 |---|---|---|
+| `OMP_SUBAGENT_PANEL_PERSIST` | unset | `1` enables the always-on compact panel above/below the editor. **Off by default** — the panel complements omp's native Agent Hub instead of racing it; the live event store and `Alt+S` overlay stay active either way. |
 | `OMP_SUBAGENT_PANEL_KEY` | `Alt+S` | Overlay toggle chord. |
 | `OMP_SUBAGENT_PANEL_PLACEMENT` | `aboveEditor` | `aboveEditor` \| `belowEditor`. |
 | `OMP_SUBAGENT_PANEL_HIDE_EMPTY` | unset | `1` hides the panel when zero agents run. |
