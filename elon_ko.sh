@@ -117,8 +117,17 @@ say "Registering marketplace '${MARKETPLACE}' (${MODE})"
 omp plugin marketplace remove "${MARKETPLACE}" >/dev/null 2>&1 || true
 omp plugin marketplace add "${MKT_SOURCE}" || die "marketplace add failed for '${MKT_SOURCE}'"
 ok "marketplace registered (${MKT_SOURCE})"
-# NOTE: deliberately NO `marketplace update` — in pre-release mode an update
-# would pull the default branch and overwrite the pinned tag with latest.
+# Stable mode tracks the repo's default branch, so force-refresh the catalog
+# after add: `omp plugin marketplace add` reuses a previously-cached clone
+# instead of re-fetching, which silently serves a STALE marketplace (e.g. an
+# older agents roster missing a newly-published agent like `wrapper`). `update`
+# re-pulls HEAD so the install reflects the current source tree.
+# Pre-release mode deliberately skips this — `update` would pull the default
+# branch and overwrite the pinned tag with latest.
+if [ "$MODE" = "stable" ]; then
+  omp plugin marketplace update "${MARKETPLACE}" >/dev/null 2>&1 \
+    || warn "marketplace update failed — catalog may be stale; re-run elon_ko.sh"
+fi
 
 # ── Plugin A: elon-ko-gate (extension-package) ─────────────────────────────
 # omp resolves Plugin A as a git-sourced dep whose key (`elon-ko-gate`) equals
