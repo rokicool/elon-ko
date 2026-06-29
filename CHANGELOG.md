@@ -117,7 +117,9 @@ The one-line installer (`elon_ko.sh`) now uninstalls `elon-ko-gate` (the new key
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- **`elon_ko.sh` stable install force-refreshes the omp marketplace catalog after `marketplace add`.** `omp plugin marketplace add` reuses a previously-cached clone instead of re-fetching, so a fresh install on a machine holding a stale cached clone silently served an older `elon-ko-agents` roster (e.g. v2.1.2, 7 agents, no `wrapper`) while the git-pinned gate admitted `wrapper` — leaving `wrapper` allowed-but-undefined. Stable mode now runs `omp plugin marketplace update` after `add` so the catalog reflects current `main` HEAD; pre-release mode is unchanged (an update there would clobber the pinned tag). Installer-only; the installer is fetched from `main` HEAD, so no version bump or release is required — the v2.2.1 artifacts already contain `wrapper`.
 
 ## [v1.7.0] - 2026-06-26
 
