@@ -65,6 +65,7 @@ const TEAM = [
   "validator",
   "docworm",
   "hr",
+  "wrapper",
 ] as const;
 
 /** Tools the root orchestrator may call unconditionally (static lookup). */
