@@ -1,54 +1,46 @@
 # PROJECT — Release the `wrapper` agent hire
 
-## Status: DONE ✅ — All phases complete. v2.2.0 + v2.2.1 shipped & verified; F1 (installed-gate permanence) + F2 (publish wrapper) both done. One optional follow-up noted (stale elon-ko-agents install — does not affect wrapper).
+## Status: DONE ✅ (incl. PA-6 installer bug). All releases shipped; F1 durable; installer fix merged to `main`. User's broken machine fixable via 2-command workaround. No outstanding work.
 
-## Request
-Dogfood the newly-hired `wrapper` release-engineering agent to commit, push, and
-cut a release of the current changes (the `wrapper` agent hire + its registration fix).
-
-## Classification
-FULL (release-engineering close-out) → terminal agent: `wrapper`.
+## Request (original — DONE)
+Dogfood `wrapper` to release the wrapper hire + registration fix.
 
 ## Outcome — COMPLETE
-### v2.2.0 (`wrapper-release`) — the core release
-`[FEAT]` wrapper def+skill `2d88e59` + `[FIX]` allowlist registration `28b009e`; pushed
-`74abbba..28b009e`; 2.1.2→2.2.0 (MINOR); PR #18 squash-merged → `740f645`; tag v2.2.0; release
-published. The orchestrator allowlist fix is canonical on GitHub.
-### v2.2.1 (`wrapper-promote-release`) — F2: publish wrapper in elon-ko-agents
-Added `plugins/agents/agents/wrapper.md` + `plugins/agents/skills/wrapper/SKILL.md`; registered
-in marketplace.json (8 agents / 9 skills); **validate-plugins.sh GREEN, exit 0** (8 declared
-agents); 2.2.0→2.2.1 (PATCH); PR #19 squash-merged → `db656f5`; tag v2.2.1; release
-https://github.com/rokicool/elon-ko/releases/tag/v2.2.1 (assets incl. elon-ko-agents-2.2.1.tar.gz
-with wrapper). Local main synced (db656f5).
-### F1 (`WorkingRoadrunner`/leaddev) — installed-gate permanence
-`~/.omp/plugins/package.json` pin bumped `#74abbba` → **`#v2.2.1`** (line 5; re-read confirmed).
-Live reinstall deferred by design (zero durability upside; partial-replace risk). Current session
-needs NO reload (hand-patch still in memory); a future reinstall fetches v2.2.1 → source has the
-fix → no silent re-break. **Durable.**
+- **v2.2.0** (`wrapper-release`): wrapper hire + gate allowlist fix. PR #18→`740f645`; tag v2.2.0.
+- **v2.2.1** (`wrapper-promote-release`/F2): wrapper published in elon-ko-agents; validate-plugins.sh
+  GREEN (8 agents). PR #19→`db656f5`; tag v2.2.1.
+- **F1** (`WorkingRoadrunner`/leaddev): installed-gate pin `#74abbba`→`#v2.2.1` (durable).
+- **PA-6 installer fix** (`AboveRoadrunner`/wrapper): PR #20 MERGED→`11f09fc` on `origin/main`;
+  CI green (validate-plugins + installer smoke). No release (main-HEAD-fetched; v2.2.1 artifacts
+  already correct). [PROTO] `0111dc3` confirmed local-only.
 
-## Verification basis
-Elon did NOT take sparse/summary yields at face value. Every release step was confirmed from the
-agents' full transcripts / JSON reports: commit SHAs, push ranges, CI check statuses,
-validate-plugins.sh output (quoted), merge commits, tag→commit identity, release.yml run success,
-asset lists, local-main sync. F1 pin before→after quoted from re-read evidence.
+## PA-6 — installer bug (DIAGNOSED + FIXED)
+- **Root cause** (`elon_ko.sh:117-118`): stable-mode `marketplace remove`+`add` reuses omp's stale
+  cached GitHub clone → catalog frozen at first-added version (v2.1.2, no wrapper). Gate (Plugin A)
+  git-pinned `#v2.2.1` admits wrapper → wrapper allowed-but-undefined → "not available."
+  (Prime suspect — build excludes wrapper — RULED OUT: v2.2.1 artifacts verifiably contain wrapper;
+  `release.yml:67-70` is a directory tar.)
+- **Fix**: force `omp plugin marketplace update` in stable mode after `marketplace add` (pre-release
+  path unchanged). leaddev `4948c9e` (local) → wrapper cherry-picked to clean branch from
+  `origin/main`, PR #20, CI green, squash-merged as `11f09fc`.
+- **User workaround (broken machine, NOW):** `omp plugin marketplace update elon-ko && omp plugin
+  install elon-ko-agents@elon-ko --force`
 
-## Optional follow-up (NOT actioned — outside scope; surface only)
-The installed `elon-ko-agents` plugin is stale (v2.1.2 vs released v2.2.1 with published wrapper).
-It does NOT affect `wrapper` spawnability (that depends on the gate's `TEAM`, which is fixed and
-durable). It would only matter if the user wants their *installed* agents plugin (used by other
-projects) to carry `wrapper`. Fixing it is a marketplace-style reinstall / coordinated manifest
-edit (not a one-line pin) — flagged by leaddev, deferred.
+## Decision Log (condensed)
+- 2026-06-28 — wrapper hired; BLOCKER #1/#2/#3 (gate rejected wrapper; root cause = stale installed
+  plugin copy pinned `#74abbba`; leaddev hand-patched installed copy).
+- 2026-06-29 — PA-4 activate via restart → 5th spawn admitted. BLOCKER #3 RESOLVED.
+- 2026-06-29 — `wrapper-release` v2.2.0 shipped & verified.
+- 2026-06-29 — PA-5 (F1 fix-install + F2 promote). `wrapper-promote-release` v2.2.1 shipped & verified.
+- 2026-06-29 — F1 (`WorkingRoadrunner`): gate pin `#74abbba`→`#v2.2.1` (durable).
+- 2026-06-29 — PA-6: wrapper missing on fresh install. leaddev (`OrthodoxTakin`) diagnosed installer
+  bug (stale marketplace cache); fix `4948c9e`. wrapper (`AboveRoadrunner`) shipped via PR #20→`11f09fc`.
+- 2026-06-29 — ALL WORK COMPLETE. DONE.
 
-## Decision Log (condensed; full history in prior revisions)
-- 2026-06-28 — wrapper hired by HR; BLOCKER #1/#2 (gate rejected wrapper; HR edited source TEAM).
-- 2026-06-29 — BLOCKER #3 (rejected post-restart). leaddev root cause: runtime loads INSTALLED
-  plugin pinned to `#74abbba`; HR's edit was local+uncommitted. leaddev hand-patched installed copy.
-- 2026-06-29 — PA-4 activate via reload/restart → 5th spawn ADMITTED (TEAM=7). BLOCKER #3 RESOLVED.
-- 2026-06-29 — `wrapper-release`: v2.2.0 shipped & verified.
-- 2026-06-29 — PA-5 RESOLVED: user chose F1 (fix install) + F2 (promote to published).
-- 2026-06-29 — `wrapper-promote-release`: v2.2.1 shipped & verified (wrapper now published).
-- 2026-06-29 — F1 (`WorkingRoadrunner`/leaddev): installed-gate pin `#74abbba`→`#v2.2.1`; durable.
-- 2026-06-29 — RELEASE WORKFLOW COMPLETE. DONE.
+## Optional housekeeping (NOT done — local-only, benign)
+Local `main` has diverged from `origin/main` (carries local-only [PROTO] `0111dc3` + pre-squash
+`4948c9e`, vs origin's squash `11f09fc`). Benign — not pushed. A `git reset`/sync to origin/main
+would tidy it but risks the [PROTO] commit; left as-is per wrapper's correct out-of-scope call.
 
 ## Pending Asks
-- [PA-1..PA-5] all resolved/agreed. No pending asks. Workflow DONE.
+- [PA-1..PA-6] all resolved. No pending asks. DONE.
