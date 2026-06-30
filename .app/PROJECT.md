@@ -1,45 +1,41 @@
 # PROJECT — elon-ko.sh local/global install modes
 
 ## Request (verbatim)
-I like your team to work on the installation script elon-ko.sh and support two types of installation:
-- local
-- global
+local = local to current project/folder, nothing global. global = opposite. default = global; switch to local via -local.
 
-local installation is supposed to be local to the current project/folder and nothing is installed globally.
-
-global installation is the opposite of local. everything is installed into the global folder and available across all the projects on the same maching.
-
-by default it should be global installation. to switch to 'local' one should provide '-local' as a parameter.
-
-NOTE: actual repo file is elon_ko.sh (underscore). Spec + impl target the real file.
+NOTE: actual repo file is elon_ko.sh (underscore).
 
 ## Classification
-FULL — new feature: two distinct install modes (local/global) selected by a CLI flag, affecting user-facing install behavior and target directories.
+FULL — two distinct install modes via CLI flag.
 
 ## Workflow Path
-FULL -> REQUEST(done) -> GRILL(done) -> RESEARCH(done) -> SPEC(done) -> DEVELOP(in_progress) -> VALIDATE(pending) -> DONE(pending)
+FULL -> REQUEST -> GRILL -> RESEARCH -> SPEC -> DEVELOP -> VALIDATE(FAIL D1) -> RESOLVE c1 (user=d) -> SPEC-rev+FIX -> re-VALIDATE (PASS) -> DocWorm (in_progress) -> DONE
 
 ## Phase Status
-- REQUEST: done
-- GRILL: done -> .app/REQ.md (12 ACs)
-- RESEARCH: done -> .app/RESEARCH.md (GO verdict). PI_CONFIG_DIR relocates whole omp home.
-- SPEC: done -> .app/SPEC.md (~800 lines, 17 sections; R1-R6 addressed; 12 ACs mapped; AC-2 narrowed per R4; AC-12 GO)
-- DEVELOP: in_progress (LeadDev implements elon_ko.sh per SPEC)
-- VALIDATE: pending
-- DONE: pending
+- REQUEST..DEVELOP: done.
+- VALIDATE-1: FAIL (D1). RESOLVE c1: user=(d); LeadDev fixed (d7eb160 SPEC, d3ca4dc impl).
+- re-VALIDATE: **PASS — 12/12 ACs, 0 deviations, 0 new issues.** HEAD=d3ca4dc.
+- DocWorm: in_progress (conditional — new user-facing CLI mode + activation + caveats).
+- DONE: pending.
 
-## Resolved decisions (GRILL, user-accepted)
-- Q1 LOCAL layout: ./.elon-ko/{bin,plugins,prerelease}/; PI_CONFIG_DIR relocation.
-- Q2 LOCAL PATH: print export PATH + emit sourced ./.elon-ko/env.sh (exports PI_CONFIG_DIR + PATH). No shell-rc edits.
-- Q3 CLI: -local position-agnostic mode flag; --local alias; no -global (default=global). Distinct from local marketplace.
-- Q4: mode-scoped uninstall + mode/ref marker files.
-- Q5: LOCAL+GLOBAL coexist (disjoint dirs); cross-mode install = one-line notice.
+## Final feature (validated)
+- Two modes: GLOBAL (default, current behavior preserved) + LOCAL (`-local`/`--local`).
+- LOCAL: everything under ./.elon-ko/{bin, omp/natives/<ver>/, omp/plugins/, marketplaces.json, env.sh, .install.json}. Nothing under $HOME.
+- Dual-knob: LOCAL exports PI_CONFIG_DIR (configRoot) + XDG_DATA_HOME=$OMP_LOCAL_HOME (omp data), pre-mkdir ./.elon-ko/omp (XDG gate).
+- Activation: `source ./.elon-ko/env.sh` (exports PI_CONFIG_DIR + XDG_DATA_HOME + PATH + BUN_INSTALL + PI_INSTALL_DIR).
+- Mode-scoped uninstall: `-local uninstall` (only ./.elon-ko/) / `uninstall` (global).
+- Coexistence: LOCAL+GLOBAL allowed; cross-mode one-line notice.
+- Latent global pre-release bug fixed (TAG unbound under set -u) — behavior-neutral for stable.
 
-## RESEARCH findings (R1-R6, in SPEC)
-- R1 PI_CONFIG_DIR whole-home relocation. R2 vendor bins, bun-before-omp ordering. R3 env.sh exports PI_CONFIG_DIR. R4 narrow AC-2 to enumerated global paths. R5 whole-home contents + auth isolation + ./.omp coexistence. R6 no --scope project / no omp plugin link.
+## Residual risks (documented, accepted)
+- R-C: LOCAL omp has separate agent.db -> separate AUTH/sessions; re-auth or copy credentials.
+- R-F (LOCAL-only): env.sh exports XDG_DATA_HOME -> redirects data category of XDG-aware tools in that shell. GLOBAL unaffected.
+- R-E: env.sh bakes install-time paths; moving project dir needs re-run.
+- O1 (LOW): macOS symlinked $PWD/$HOME spurious R-B warning (conformant to SPEC §5.2, cosmetic).
 
-## Residual risks
-- R-A (HIGHEST): bun.sh/install appends BUN_INSTALL/PATH to ~/.zshrc/~/.bashrc by default -> violates LOCAL nothing-global. SPEC §6.3 MANDATES mitigation (trapped-HOME preferred, else rc snapshot+restore); AC-4 (rc byte-identical) + AC-2 (~/.bun untouched) are hard Validator gates. DEVELOP must empirically confirm on macOS+Linux.
+## Commits
+- Protocol: [PROTO] GRILL(d8c180a), RESEARCH(909c0c3), SPEC(f0d4bf9).
+- Impl: 8ca3d44, 3d0643f (initial), d7eb160 (SPEC-rev), d3ca4dc (D1 fix). HEAD=d3ca4dc.
 
 ## Pending Asks
-(none)
+- [PA-1] status=agreed | D1 -> (d) dual-knob (user-selected).
