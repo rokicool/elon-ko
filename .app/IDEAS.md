@@ -31,3 +31,18 @@ status: parked
 
 hire debug agent
 ```
+
+```idea
+id: IDEA-003
+created: 2026-06-30T00:00:00Z
+source: wrap-up
+title: Is marketplace.json agents[] load-bearing? (+ missing count field)
+tags: agents, marketplace.json, registration, omp-internals
+status: parked
+
+`.omp-plugin/marketplace.json` L17 `agents[]` already lists all 8 agents (hr, docworm, drpe, leaddev, middev, reqguru, validator, wrapper); L13 description "8-agent orchestrator roster + 9 skills." matches — NOT empty. However `hr SKILL.md` L79 mandates an `agents[] + count` registration and no `count` field exists anywhere in marketplace.json.
+
+Open questions: (1) is `agents[]` actually read by omp at runtime (load-bearing) or vestigial? (2) should the missing `count` be added, and does anything consume it?
+
+Resolve before the first real hire under the new HR DEV-BASE procedure (`scaffold/PROTO.md` Agent-to-Phase Map; `hr SKILL.md` §DEV-BASE) — that hire would otherwise be the first test case.
+```
