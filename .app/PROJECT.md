@@ -4,34 +4,33 @@
 AGENTS.md, APPEND_SYSTEM.md, PROTO.md, RULES.md only land in .omp/plugins/cache/marketplace/elon-ko/scaffold (download staging), never load-bearing. Research + redesign to place them load-bearing.
 
 ## Classification
-FULL — omp-internals research (done) + redesign of elon_ko.sh + Plugin A packaging.
+FULL — research (done) + redesign elon_ko.sh + Plugin A packaging.
 
 ## Workflow Path
-REQUEST -> RESEARCH(done) -> SPEC(done) -> DEVELOP(done) -> VALIDATE(in_progress) -> DONE
+REQUEST -> RESEARCH(done) -> SPEC(done) -> DEVELOP(done) -> VALIDATE(PASS) -> DocWorm(in_progress) -> DONE
 
 ## Phase Status
-- RESEARCH: done -> .app/RESEARCH-SCAFFOLD.md
-- SPEC: done -> .app/SCAFFOLD-SPEC.md (AC-S1..S10)
-- DEVELOP: done. Commits e1d9c2a (RULES->Plugin A rules/ + AGENTS coherence), ba92344 (elon_ko.sh deploy step +60). All 10 AC-S self-check PASS with real evidence.
-- VALIDATE: in_progress (Validator — independent, LIVE agent-discovery for AC-S3)
-- DONE: pending
+- RESEARCH: done. SPEC: done (SCAFFOLD-SPEC, AC-S1..S10).
+- DEVELOP: done (e1d9c2a RULES move + AGENTS coherence; ba92344 elon_ko.sh deploy step).
+- VALIDATE: **PASS 10/10 ACs, 0 failed checks.** AC-S3 LIVE-proven (omp loaded <cwd>/AGENTS.md sentinel token).
+- DocWorm: in_progress (user-facing deploy behavior + APPEND_SYSTEM override -> README).
+- DONE: pending.
 
-## Implemented design
-- elon_ko.sh: deploy_scaffold (L214-243) fetches AGENTS.md+PROTO.md from raw GitHub keyed to $REF -> <cwd>/, overwrite-always; AGENTS fatal / PROTO non-fatal on fetch fail; called in both LOCAL (L504) + GLOBAL (L666); summary notices; uninstall left-in-place notices (L287/L334).
-- Plugin A: rules/ro-orchestrator-invariant.md NEW (alwaysApply:true; git-rename from scaffold/RULES.md); scaffold/RULES.md DELETED; scaffold/AGENTS.md coherence (+5/-2).
-- package.json UNCHANGED (files includes 'rules').
+## Validated result
+- AGENTS.md: installer deploys -> <cwd>/AGENTS.md (overwrite-always, both modes); omp LOADS it (live proof). THE core defect fixed.
+- PROTO.md: -> <cwd>/PROTO.md (doc-only).
+- APPEND_SYSTEM.md: already load-bearing via Plugin A; override at <cwd>/.omp/APPEND_SYSTEM.md (documented, not copied).
+- RULES.md: moved into Plugin A rules/ro-orchestrator-invariant.md (alwaysApply:true); scaffold/RULES.md deleted; AGENTS.md coherence edits.
+- Uninstall leaves <cwd>/AGENTS.md + PROTO.md in place.
+- No regression to prior 12 install-mode ACs (AC-S6).
 
-## Key evidence (LeadDev, to re-verify independently)
-- AGENTS/PROTO fetch 200, deployed byte-identical (sha 36f153d8...) both modes.
-- AC-S8 failure semantics correct.
-- AC-S5: rule ships (npm pack) + loads from local-path install at node_modules/elon-ko-gate/rules/.
+## Release-timing gap (OBS-2 — surface to user, offer release)
+- New rule + AGENTS coherence exist ONLY in working tree. Published v2.3.1 tag lacks them; HEAD not pushed; elon_ko.sh $REF default still v2.3.1.
+- Stable consumers (github#v2.3.1) get OLD Plugin A (no new rule) + OLD AGENTS.md (still refs RULES.md). Pre-release/tag installs DO get the fix.
+- Release actions (wrapper): bump package.json version, cut+push new tag, bump elon_ko.sh:104 $REF default.
 
-## Residual / release caveat (surface to user)
-- AC-S5: published tag v2.3.1 PREDATES the RULES move -> a real github:...#v2.3.1 stable install won't have the rule until a new Plugin A tag is cut AND elon_ko.sh default $REF bumped. Code correct; release-timing gap. Pre-release/tag installs DO get it.
-- R-S1..R-S5 (LOW/MEDIUM, documented).
-
-## Build-on (prior task FINAL)
-LOCAL/GLOBAL install modes (12/12 ACs). Do NOT regress (AC-S6).
+## Minor (OBS-1, informational)
+SCAFFOLD-SPEC §3.1 rejected-source justification slightly inaccurate (omp github-install clones whole repo, so scaffold/ IS in node_modules). Decision (raw-github) still correct. No code impact.
 
 ## Pending Asks
-(none)
+(none yet — may offer release cut to user)
