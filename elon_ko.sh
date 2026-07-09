@@ -240,6 +240,24 @@ project. Check the ref/tag and your network, then re-run."
     rm -f "$tmp" 2>/dev/null || true
     warn "PROTO.md could not be fetched from ${REPO}@${ref} — 'see PROTO.md' cross-refs will not resolve. Non-fatal (PROTO.md is doc-only)."
   fi
+  # models.example.yml - per-agent model config TEMPLATE (doc-only; omp never
+  # auto-loads an .example.yml). NON-clobbering: deployed only if absent so a
+  # user who edited it keeps their copy across reinstalls. Non-fatal on fetch
+  # failure (older tags predate this file). Agents resolve models OOTB without
+  # it - the frontmatter aliases use the built-in model-role priority chains.
+  if [ -e "$PWD/.omp/config.example.yml" ]; then
+    ok ".omp/config.example.yml already present (kept)"
+  else
+    tmp="$PWD/.config.example.yml.tmp.$$"
+    if curl -fsSL "https://raw.githubusercontent.com/${REPO}/${ref}/scaffold/models.example.yml" -o "$tmp"; then
+      mkdir -p "$PWD/.omp"
+      mv -f "$tmp" "$PWD/.omp/config.example.yml"
+      ok ".omp/config.example.yml deployed -> $PWD/.omp/config.example.yml (per-agent model template; copy relevant lines into .omp/config.yml to pin explicit models)"
+    else
+      rm -f "$tmp" 2>/dev/null || true
+      warn "models.example.yml could not be fetched from ${REPO}@${ref} - per-agent model template not deployed. Non-fatal (agents resolve models via role priority chains without it)."
+    fi
+  fi
 }
 
 # ── uninstall mode (mode-scoped, §9) ──────────────────────────────────────────

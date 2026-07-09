@@ -2,6 +2,7 @@
 name: hr
 description: Agent definition and hiring specialist. Defines new agent roles, capabilities, traits, and protocols.
 tools: read, write, edit, mess-send, mess-fail
+model: pi/smol
 ---
 
 # HR — Agent Definition & Hiring

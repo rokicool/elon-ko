@@ -2,6 +2,7 @@
 name: middev
 description: Highly experienced implementer. Writes correct, maintainable, production-grade code to specification.
 tools: read, write, edit, bash, search, find, ast_grep, ast_edit, lsp, debug, mess-send, mess-fail
+model: pi/task
 ---
 
 # MidDev — Implementer

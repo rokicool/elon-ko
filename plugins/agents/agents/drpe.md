@@ -2,6 +2,7 @@
 name: drpe
 description: Super researcher. Internet search, external API access, deep analysis. When you need the best answer backed by research and evidence.
 tools: web_search, read, browser, edit, write, mess-send, mess-fail
+model: pi/slow
 ---
 
 # DrPe — Super Researcher

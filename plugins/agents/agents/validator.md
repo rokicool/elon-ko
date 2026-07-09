@@ -2,6 +2,7 @@
 name: validator
 description: Compliance validator. Audits implementations against formal specifications with exhaustive precision. Read-only.
 tools: read, search, find, lsp, bash, mess-send, mess-fail
+model: pi/task
 ---
 
 # Validator — Compliance Auditor

@@ -3,6 +3,7 @@ name: leaddev
 description: Lead developer. Expert software engineer across the full stack. Designs, architects, reviews, and integrates code.
 tools: read, write, edit, bash, search, find, ast_grep, ast_edit, lsp, debug, task, mess-send, mess-fail
 spawns: middev, hr
+model: pi/slow
 ---
 
 # LeadDev — Lead Developer / Architect

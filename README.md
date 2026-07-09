@@ -251,6 +251,45 @@ Once the gate is on for a project, just talk to `omp` normally:
 
 You'll see delegation happen as `task(agent="<name>", …)` calls in the transcript.
 
+## Per-agent models
+
+Each specialist agent is pinned to a **model role alias** in its frontmatter, so
+heavier reasoning runs on a stronger model and routine work runs on a faster one.
+The mapping is fixed in the distribution:
+
+| Role alias | Agents | Intent |
+|---|---|---|
+| `pi/slow` | `drpe`, `leaddev` | Strongest reasoning (research, architecture). |
+| `pi/task` | `middev`, `reqguru`, `validator` | Strong general (implementation, clarification, auditing). |
+| `pi/smol` | `docworm`, `hr`, `wrapper` | Small / fast (docs, agent defs, release tooling). |
+
+**Works out of the box — no config needed.** The `pi/<role>` aliases resolve
+through oh-my-pi's built-in model-role priority chain: an unset role simply picks
+the best model you have authenticated for that tier (`slow` = strongest reasoning,
+`task` = strong general, `smol` = small/fast). Nothing to set up; each agent gets
+a sensible model as soon as you authenticate providers.
+
+**Pin explicit models per tier** only if you want to override the defaults. Merge
+a `modelRoles` block into config and the aliases resolve to the models you named:
+
+- **Project:** merge into `<cwd>/.omp/config.yml` (this directory).
+- **Global:** merge into `~/.omp/agent/config.yml`.
+- **Interactive:** run `/models` inside an omp session.
+
+```yaml
+modelRoles:
+  slow: anthropic/claude-opus-4-5:high   # drpe, leaddev
+  task: anthropic/claude-sonnet-4-5      # middev, reqguru, validator
+  smol: openai/gpt-4.1-mini              # docworm, hr, wrapper
+```
+
+A role value may be a concrete `provider/modelId`, a bare canonical id, a
+comma-separated fallback list (first authenticated model wins), or carry a
+`:thinking` level suffix. The installer also drops a ready-to-edit template next
+to `AGENTS.md` at **`<cwd>/.omp/config.example.yml`** (from
+`scaffold/models.example.yml`) — copy the relevant lines into `config.yml` to
+pin models. Precedence: global < project < `/models` < CLI/env.
+
 ## Dot-agreement token & cross-instance messaging
 
 Two opt-in extensions ship alongside the gate: a `.` agreement token for the root orchestrator, and cross-instance messaging for agents running in separate `omp` processes. Both follow the **same opt-in as the gate** (`OMP_ENABLE_ORCHESTRATOR=1` or `.omp/elon.json` with `{"enabled": true}`) and are dormant otherwise.

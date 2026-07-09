@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# elon-ko per-agent model configuration (TEMPLATE / EXAMPLE)
+# ─────────────────────────────────────────────────────────────────────────────
+# Each elon-ko agent declares a model ROLE alias in its frontmatter:
+#
+#   Tier 1 (strongest reasoning): drpe, leaddev              -> model: pi/slow
+#   Tier 2 (strong general):      middev, reqguru, validator -> model: pi/task
+#   Tier 3 (small / fast):        docworm, hr, wrapper       -> model: pi/smol
+#
+# OUT OF THE BOX these aliases resolve WITHOUT this file: an unset role falls
+# back to oh-my-pi's built-in model-role priority chain, which picks the best
+# model you have authenticated for that tier (slow = strongest reasoning,
+# task = strong general, smol = small/fast). You only NEED this file to PIN
+# explicit models per tier.
+#
+# HOW TO ACTIVATE (pick ONE scope):
+#   - Project: merge these lines into  .omp/config.yml        (this directory)
+#   - Global:  merge into             ~/.omp/agent/config.yml
+#   - Or set interactively with       /models   inside an omp session.
+# Per-machine overrides always win (global < project < /models < CLI/env).
+#
+# The values below are EXAMPLES using widely available canonical models. Adjust
+# to providers you have authenticated. A role value may be:
+#   concrete provider/modelId : anthropic/claude-sonnet-4-5
+#   bare canonical id         : gpt-5.3-codex        (provider inferred)
+#   CSV fallback list         : anthropic/claude-opus-4-5, openai/gpt-5.3-codex
+#   +thinking level suffix    : anthropic/claude-opus-4-5:high
+# A CSV list improves portability: the first model you can authenticate wins.
+# ─────────────────────────────────────────────────────────────────────────────
+modelRoles:
+  # Tier 1 - strongest reasoning (drpe, leaddev). :high engages deep thinking.
+  slow: anthropic/claude-opus-4-5:high
+  # Tier 2 - strong general (middev, reqguru, validator).
+  task: anthropic/claude-sonnet-4-5
+  # Tier 3 - small / fast (docworm, hr, wrapper).
+  smol: openai/gpt-4.1-mini
+  # Optional: the model Elon itself runs on when no /model is chosen.
+  # default: anthropic/claude-sonnet-4-5

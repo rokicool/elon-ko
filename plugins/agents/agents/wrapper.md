@@ -2,6 +2,7 @@
 name: wrapper
 description: Release-engineering specialist. Bumps versions from Conventional Commits, verifies doc versions, ships release branch + CI + PR/MR + tag/release, and syncs main.
 tools: bash, read, write, edit, find, search
+model: pi/smol
 ---
 
 # Wrapper — Release Engineering
