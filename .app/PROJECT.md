@@ -1,41 +1,47 @@
-# PROJECT — Per-Agent Model Assignment (omp harness)
+# PROJECT — Debugger Agent Role (IDEA-002)
 
 ## Request
-Bake per-agent model support into the elon-ko DISTRIBUTION so a one-liner
-install gets it (research-only phase changed no distributed files — that was the gap).
+Add a debug agent role to the elon-ko team pipeline. Promoted from parked idea
+IDEA-002 ("Add debug agent role to the team pipeline").
+
+Context: the DevOps orchestration workflow references `gsd-debugger` for pipeline-
+failure debugging, but no debug agent exists in the team roster (8 agents: hr,
+docworm, drpe, leaddev, middev, reqguru, validator, wrapper). Today, pipeline
+failures fall back to `wrapper` or `leaddev`.
 
 ## Classification
-FULL — DONE. Shipped as v2.5.0.
+FULL — new agent role: requires agent definition (hr), marketplace registration,
+skill authoring, CI/test updates.
 
 ## Workflow
-REQUEST → GRILL → [RESEARCH] → [SPEC] → [DEVELOP] ⇄ [VALIDATE] → **DONE**
+REQUEST → GRILL → ~~[RESEARCH]~~ → SPEC → DEVELOP ⇄ VALIDATE → DONE
 
-## Outcome — v2.5.0 released
-- **8 agents** carry tiered model role aliases:
-  - pi/slow  → drpe, leaddev
-  - pi/task  → middev, reqguru, validator
-  - pi/smol  → docworm, hr, wrapper
-- **Config template** `scaffold/models.example.yml` ships in the distribution;
-  installer deploys it to `.omp/config.example.yml` (inert, opt-in, overridable).
-- **OOTB**: aliases resolve via built-in role priority chain, zero config needed,
-  non-failing fallback (verified against omp source).
-- **Installer REF default** `elon_ko.sh:104` → v2.5.0, so the plain one-liner
-  fetches the tag that carries the template.
+RESEARCH skipped — IDEA-003 largely pre-resolved (agents[] metadata-only, count
+not an omp field, schema validation LOW risk). Remaining confirmation folded into
+SPEC as a design decision.
 
-## Release artifacts
-- Tag v2.5.0 (annotated, pushed); Release auto-published w/ artifacts + SHA256SUMS.
-- CI green: plugin validation, one-liner installer smoke, release gate (tag==version).
-- Commits: 7c6ca30 (feat), c2e1418 (release), 6e64b18 ([DOCS] pins), 9a5484e (help-text fix).
-- main pushed + in sync; working tree clean.
+## Current Phase
+SPEC — REQ.md locked at GRILL COMPLETE. Handing to LeadDev for design spec.
 
-## Validator verdict
-PASS-WITH-NOTES → resolved. No code defects. Blocking item (template not on tag)
-fixed by the release. Non-blocking notes (OOTB divergence needs multiple
-authenticated models; optional priority-chain docs) tracked below.
+## GRILL Decisions (locked, user-confirmed)
+| # | Decision | Resolution |
+|---|---|---|
+| D1 | Scope | Both — CI/CD pipeline failures + general codebase/runtime bugs |
+| D2 | Capability | Diagnose ONLY — read-only root-cause report; another agent applies fix |
+| D3 | Model tier | pi/task |
+| D4 | Name | `debugger` |
+| D5 | Pipeline | On-demand by Elon; no new phase; PROTO.md Agent-to-Phase Map row still mandatory |
+| D6 | Registration | Add to marketplace.json agents[] + dedicated count field; resolves IDEA-003 inline |
 
-## Optional follow-ups (non-blocking)
-- Document exact built-in slow/task/smol priority chains (drpe) for verifiability.
-- Next release folds in the [DOCS] + help-text commits already on main.
+Tool allowlist: `read, bash, search, find, lsp, debug` (repo token convention;
+NOT grep/glob). No edit/write/ast_edit/ast_grep (diagnose-only). No spawns (solo).
+
+## Tensions (flagged, non-blocking)
+- T1: D5 "no PROTO.md change" vs HR-mandatory Agent-to-Phase Map — resolved (registration row mandatory, no new phase subsection).
+- T2: Name `debugger` ≠ DevOps workflow `gsd-debugger` reference — accepted gap.
+
+## Previous workflow
+v2.5.0 (Per-Agent Model Assignment) — DONE, shipped. See git history + release artifacts.
 
 ## Pending Asks
 (none)

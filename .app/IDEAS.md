@@ -27,7 +27,9 @@ created: 2026-06-28T00:00:00Z
 source: /idea
 title: Add debug agent role to the team pipeline
 tags: agents, debugging, tooling, team-expansion
-status: parked
+status: promoted
+promoted_to: .app/REQ.md
+promoted_at: 2026-07-09T18:10:00Z
 
 hire debug agent
 ```
