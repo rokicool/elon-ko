@@ -101,7 +101,7 @@ usage_die() { printf '  ✗ %s\n' "$*" >&2; print_usage; exit 1; }
 # REF, TAG. `-global`/`--global`/`-l` are NOT valid (unknown flag → die, NFR-5).
 INSTALL_MODE=global
 SUB_MODE=stable
-REF="${OMP_AGENT_REF:-v2.4.0}"
+REF="${OMP_AGENT_REF:-v2.5.0}"
 TAG=""
 POSITIONAL=""
 for arg in "$@"; do

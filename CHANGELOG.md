@@ -13,6 +13,18 @@ At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **
 
 _Nothing yet._
 
+## [v2.5.0] - 2026-07-09
+
+### Added
+
+- **Per-agent model role aliases.** Each specialist agent now declares a `model: pi/<role>` alias in its frontmatter, so heavier reasoning runs on a stronger model and routine work on a faster one: `pi/slow` (drpe, leaddev — strongest reasoning), `pi/task` (middev, reqguru, validator — strong general), `pi/smol` (docworm, hr, wrapper — small/fast). The aliases resolve out of the box through oh-my-pi's built-in model-role priority chain (no config needed); pin explicit models per tier only to override the defaults.
+
+- **`elon_ko.sh` deploys a per-agent model config template.** Every install (GLOBAL and LOCAL) drops a ready-to-edit **`<cwd>/.omp/config.example.yml`** (from `scaffold/models.example.yml`) next to `AGENTS.md`. It is doc-only (omp never auto-loads an `.example.yml`), non-clobbering (kept across reinstalls once present), and non-fatal on fetch failure (older tags predate it). Copy its `modelRoles` lines into `config.yml` to pin explicit models.
+
+### Changed
+
+- Version bumped to **`2.5.0`** (semver MINOR — new backward-compatible feature; no breaking changes). `package.json#version`, both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`), the `package-lock.json` root version, and the installer default tag pin (`elon_ko.sh` `OMP_AGENT_REF`, now `v2.5.0`) were all bumped in lockstep to `2.5.0`.
+
 ## [v2.4.0] - 2026-07-01
 
 ### Added
