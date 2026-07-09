@@ -86,7 +86,7 @@ print_usage() { cat >&2 <<'USAGE'
   Flags are position-agnostic and may appear before or after the positional.
 
   Env:
-    OMP_AGENT_REF=<git-ref>     pin Plugin A (elon-ko-gate) to a ref (default v2.4.0)
+    OMP_AGENT_REF=<git-ref>     pin Plugin A (elon-ko-gate) to a ref (default v2.5.0)
     OMP_PRERELEASE_DIR=<dir>    override the pre-release source cache dir
 
   Unknown flags and more than one positional are rejected.
