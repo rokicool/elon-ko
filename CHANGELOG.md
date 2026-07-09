@@ -11,7 +11,9 @@ At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **`debugger` agent — read-only root-cause analyst.** A new distributed team agent (`pi/task`) that diagnoses CI/CD pipeline failures **and** general codebase/runtime bugs (test/build/lint/deploy failures, crashes, logic errors, flaky tests) and returns a Root-Cause Report with `file:line` evidence and a recommended fix. It is **diagnose-only**: it never writes code — a fixing agent (`leaddev`/`middev`) applies the fix. Tools enforced: `read, bash, search, find, lsp, debug`. Spawned **on demand by Elon** (no new pipeline phase); runs solo (no `spawns`). Registered in `marketplace.json` `agents[]` + a per-plugin `count` field (value 9); roster is now **9 agents / 10 skills**. `debugger` added to the root spawn allowlist (`src/enforce-orchestrator.ts` `TEAM`) and `scaffold/AGENTS.md` enforced-spawns.
 
 ## [v2.5.0] - 2026-07-09
 

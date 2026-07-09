@@ -10,11 +10,12 @@
   "plugins": [
     {
       "name": "elon-ko-agents",
-      "description": "8-agent orchestrator roster + 9 skills.",
+      "description": "9-agent orchestrator roster + 10 skills.",
       "source": "./agents",
       "category": "development",
       "version": "2.5.0",
-      "agents": ["hr", "docworm", "drpe", "leaddev", "middev", "reqguru", "validator", "wrapper"],
+      "agents": ["hr", "docworm", "drpe", "leaddev", "middev", "reqguru", "validator", "wrapper", "debugger"],
+      "count": 9,
       "homepage": "https://github.com/rokicool/elon-ko"
     }
   ]

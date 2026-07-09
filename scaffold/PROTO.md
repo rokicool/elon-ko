@@ -262,6 +262,7 @@ Same as the Full Path Phase 6, with the same conditional DocWorm rules.
 | DocWorm | DONE (conditional) | `README.md` | Documentation — creates/updates docs when needed. |
 | HR | DEVELOP (on demand) | — | Agent definition — creates new skill files for specialist expertise. |
 | Wrapper | DONE (on demand) | — | Release engineering — ships the release (version bump, branch/push, CI gate, PR/MR, tag/release, main sync) after Validator PASS. Escalates merge-approval / ambiguous-version / CI-failure back to Elon. |
+| Debugger | on-demand (cross-phase) | — | Root-cause analyst — diagnoses CI/CD pipeline failures and codebase/runtime bugs; returns a read-only report with `file:line` evidence and a recommended fix. Spawned by Elon on demand (not a phase owner); never writes code — a fixing agent applies the fix. |
 
 ---
 
