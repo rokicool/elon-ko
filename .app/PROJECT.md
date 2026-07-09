@@ -1,40 +1,35 @@
 # PROJECT — Per-Agent Model Assignment (omp harness)
 
 ## Request
-Research how the oh-my-pi (omp) harness assigns models to agents/subagents.
-Goal: find the syntax to assign each team member a omp-defined model, with
-fallback to the default when a model is not specified.
+Bake per-agent model support into the elon-ko DISTRIBUTION so a one-liner
+install gets it (research-only phase changed no distributed files — that was the gap).
 
 ## Classification
-FULL — research phase.
+FULL — now in DEVELOP (research done; SPEC decisions resolved).
 
 ## Workflow
-REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → **DONE**
+REQUEST → GRILL → [RESEARCH] → [SPEC] → **DEVELOP** ⇄ VALIDATE → DONE
 
-## Current Phase
-DONE — research deliverable complete; committed as [PROTO].
+## Decisions (from user)
+- **Strategy:** Role aliases + default config.
+  - Agent frontmatter uses `pi/<role>` aliases (no hardcoded provider/modelId).
+  - Plugin ships a default `modelRoles` config mapping aliases to concrete models.
+  - Portable: each machine's own config overrides; fallback chain covers gaps.
+- **Tiering:** Reasoning-heavy split.
+  - Tier 1 (strongest reasoning): drpe, leaddev
+  - Tier 2 (strong general): middev, reqguru, validator
+  - Tier 3 (small/fast): docworm, hr, wrapper
 
-## Outcome
-The mechanism exists and the required fallback ("not defined → default") is
-already built into the omp harness — verified against source
-(model-resolver.ts resolveAgentModelPatterns, task/index.ts #runSpawn).
+## Proposed alias mapping (leaddev to verify role support + refine)
+- drpe, leaddev        → `pi/slow`  (most capable)
+- middev, reqguru, validator → `pi/task` (strong general)
+- docworm, hr, wrapper → `pi/smol`  (small/fast)
 
-Three assignment levers (precedence high→low):
-1. task.agentModelOverrides (config.yml, keyed by agent name) — no code change
-2. model: frontmatter on agent .md files (prefer pi/task alias)
-3. inherit parent session active model (current behavior for all 8 agents)
-
-Fallback chain (never hard-fails):
-  agentModelOverrides[name] → frontmatter model: → parent active model
-  → modelRoles.default → findInitialModel  (+ auth-fallback to parent model)
-
-No implementation required to satisfy the stated requirement. Assigning
-specific models per role is a config decision available on request.
+## Deliverables (leaddev → middev)
+1. Add `model:` frontmatter to all 8 `plugins/agents/agents/*.md` per the tier map.
+2. Ship a default `modelRoles` config (slow/task/smol) so aliases resolve OOTB.
+3. Verify the one-liner install actually deploys BOTH the agent files and the config.
+4. Confirm the fallback path: unconfigured/unavailable role → parent default, no hard-fail.
 
 ## Pending Asks
-(none)
-
-## Notes
-- Resolves IDEA-003 (marketplace.json agents[] is metadata-only; not
-  load-bearing for model selection; no model/count field in schema).
-- Report: .app/RESEARCH.md (14 primary sources, 0 unverified items).
+(none — decisions resolved)
