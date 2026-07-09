@@ -9,11 +9,15 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
-## [Unreleased]
+## [v2.6.0] - 2026-07-09
 
 ### Added
 
 - **`debugger` agent — read-only root-cause analyst.** A new distributed team agent (`pi/task`) that diagnoses CI/CD pipeline failures **and** general codebase/runtime bugs (test/build/lint/deploy failures, crashes, logic errors, flaky tests) and returns a Root-Cause Report with `file:line` evidence and a recommended fix. It is **diagnose-only**: it never writes code — a fixing agent (`leaddev`/`middev`) applies the fix. Tools enforced: `read, bash, search, find, lsp, debug`. Spawned **on demand by Elon** (no new pipeline phase); runs solo (no `spawns`). Registered in `marketplace.json` `agents[]` + a per-plugin `count` field (value 9); roster is now **9 agents / 10 skills**. `debugger` added to the root spawn allowlist (`src/enforce-orchestrator.ts` `TEAM`) and `scaffold/AGENTS.md` enforced-spawns.
+
+### Changed
+
+- Version bumped to **`2.6.0`** (semver MINOR — new backward-compatible feature: the `debugger` agent; no breaking changes). `package.json#version`, both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`), the `package-lock.json` root version, the installer default tag pin (`elon_ko.sh` `OMP_AGENT_REF`, now `v2.6.0`), and the `README.md`/`.DEVREADME.md` install-example pins were all bumped in lockstep to `2.6.0`.
 
 ## [v2.5.0] - 2026-07-09
 
