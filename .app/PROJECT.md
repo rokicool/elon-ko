@@ -5,31 +5,29 @@ Bake per-agent model support into the elon-ko DISTRIBUTION so a one-liner
 install gets it (research-only phase changed no distributed files — that was the gap).
 
 ## Classification
-FULL — now in DEVELOP (research done; SPEC decisions resolved).
+FULL — VALIDATE passed (PASS-WITH-NOTES); now RELEASING.
 
 ## Workflow
-REQUEST → GRILL → [RESEARCH] → [SPEC] → **DEVELOP** ⇄ VALIDATE → DONE
+REQUEST → GRILL → [RESEARCH] → [SPEC] → [DEVELOP] ⇄ [VALIDATE] → DONE
 
-## Decisions (from user)
-- **Strategy:** Role aliases + default config.
-  - Agent frontmatter uses `pi/<role>` aliases (no hardcoded provider/modelId).
-  - Plugin ships a default `modelRoles` config mapping aliases to concrete models.
-  - Portable: each machine's own config overrides; fallback chain covers gaps.
-- **Tiering:** Reasoning-heavy split.
-  - Tier 1 (strongest reasoning): drpe, leaddev
-  - Tier 2 (strong general): middev, reqguru, validator
-  - Tier 3 (small/fast): docworm, hr, wrapper
+## Status
+- DEVELOP done (leaddev): 8 agents gained `model: pi/<role>`; config template +
+  install wiring shipped; fallback non-failing (source-verified).
+- VALIDATE (validator): PASS-WITH-NOTES. No code defects. Blocking item = release
+  step itself (commit untracked template + cut tag + bump installer REF).
+- RELEASING (wrapper): commit changes, bump version v2.4.0→v2.5.0, update
+  elon_ko.sh:104 REF default, cut + push tag.
 
-## Proposed alias mapping (leaddev to verify role support + refine)
-- drpe, leaddev        → `pi/slow`  (most capable)
-- middev, reqguru, validator → `pi/task` (strong general)
-- docworm, hr, wrapper → `pi/smol`  (small/fast)
+## Alias map (shipped)
+- drpe, leaddev        → pi/slow
+- middev, reqguru, validator → pi/task
+- docworm, hr, wrapper → pi/smol
 
-## Deliverables (leaddev → middev)
-1. Add `model:` frontmatter to all 8 `plugins/agents/agents/*.md` per the tier map.
-2. Ship a default `modelRoles` config (slow/task/smol) so aliases resolve OOTB.
-3. Verify the one-liner install actually deploys BOTH the agent files and the config.
-4. Confirm the fallback path: unconfigured/unavailable role → parent default, no hard-fail.
+## Validator notes (non-blocking)
+- README +39 lines (Per-agent models section) — additive docs, accurate.
+- OOTB per-tier divergence requires authenticating multiple distinct models;
+  single-model auth collapses all tiers (inherent, not a defect).
+- Optional: document exact built-in slow/task/smol priority chains (drpe, later).
 
 ## Pending Asks
-(none — decisions resolved)
+(none)
