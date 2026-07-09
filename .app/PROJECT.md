@@ -16,32 +16,30 @@ skill authoring, CI/test updates.
 ## Workflow
 REQUEST → GRILL → ~~[RESEARCH]~~ → SPEC → DEVELOP ⇄ VALIDATE → DONE
 
-RESEARCH skipped — IDEA-003 largely pre-resolved (agents[] metadata-only, count
-not an omp field, schema validation LOW risk). Remaining confirmation folded into
-SPEC as a design decision.
-
 ## Current Phase
-SPEC — REQ.md locked at GRILL COMPLETE. Handing to LeadDev for design spec.
+DEVELOP — SPEC complete (.app/SPEC.md, 39KB). LeadDev implementing per spec.
 
-## GRILL Decisions (locked, user-confirmed)
+## GRILL Decisions (locked)
 | # | Decision | Resolution |
 |---|---|---|
 | D1 | Scope | Both — CI/CD pipeline failures + general codebase/runtime bugs |
 | D2 | Capability | Diagnose ONLY — read-only root-cause report; another agent applies fix |
 | D3 | Model tier | pi/task |
 | D4 | Name | `debugger` |
-| D5 | Pipeline | On-demand by Elon; no new phase; PROTO.md Agent-to-Phase Map row still mandatory |
-| D6 | Registration | Add to marketplace.json agents[] + dedicated count field; resolves IDEA-003 inline |
+| D5 | Pipeline | On-demand by Elon; no new phase; PROTO.md Agent-to-Phase Map row mandatory |
+| D6 | Registration | marketplace.json agents[] + plugins[0].count=9; resolves IDEA-003 inline |
 
-Tool allowlist: `read, bash, search, find, lsp, debug` (repo token convention;
-NOT grep/glob). No edit/write/ast_edit/ast_grep (diagnose-only). No spawns (solo).
+Tool allowlist: `read, bash, search, find, lsp, debug`. No edit/write/ast_edit/ast_grep.
+Solo agent: no spawns field.
 
-## Tensions (flagged, non-blocking)
-- T1: D5 "no PROTO.md change" vs HR-mandatory Agent-to-Phase Map — resolved (registration row mandatory, no new phase subsection).
-- T2: Name `debugger` ≠ DevOps workflow `gsd-debugger` reference — accepted gap.
+## SPEC Summary
+- **Create**: debugger.md (agent def), debugger/SKILL.md (skill), local mirrors
+- **Modify**: marketplace.json, enforce-orchestrator.ts, PROTO.md, AGENTS.md,
+  README.md, DEVREADME.md, elon_ko.sh (5 occurrences), release.yml, CHANGELOG.md
+- **Don't touch**: mess-transport.ts, validate-plugins.sh, REQ.md
 
 ## Previous workflow
-v2.5.0 (Per-Agent Model Assignment) — DONE, shipped. See git history + release artifacts.
+v2.5.0 (Per-Agent Model Assignment) — DONE, shipped.
 
 ## Pending Asks
 (none)
