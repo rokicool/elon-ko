@@ -130,6 +130,151 @@ while IFS=$'\t' read -r pname psource; do
 done < <(jq -r '.plugins[] | "\(.name)\t\(.source)"' "$MP" 2>/dev/null)
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Plugin B — roster & tool-agreement (source-of-truth, SPEC §3.2 Steps A–I)
+# Parses scaffold/PROTO.md's ```elon-ko-roster block and asserts every consumer
+# (gate TEAM, mess-transport TEAM, skill://elon registry, marketplace, each
+# agent's frontmatter tools/spawns, each skill <allowed>/<forbidden>, and the
+# .omp/ + .agents/ dev-session mirrors) agrees with it. Drift ⇒ err.
+# ──────────────────────────────────────────────────────────────────────────────
+echo
+echo "== Plugin B: roster & tool-agreement (source-of-truth) =="
+
+# Canonical sort+dedup of a comma-csv into a sorted-unique comma-joined string.
+norm_csv() { printf '%s\n' "$1" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | sort -u | paste -sd',' -; }
+# Collect quoted lowercase names from a `const TEAM = [ … ] as const;` array
+# (handles single- and multi-line forms).
+team_names() { awk '/const TEAM = \[/{p=1} p{print} p&&/\] as const;/{p=0}' "$1" | grep -oE '"[a-z]+"' | tr -d '"' | sort -u | paste -sd',' -; }
+
+ROSTER_FILE="scaffold/PROTO.md"
+ROSTER_TMP="$(mktemp)"
+trap 'rm -f "$ERRS" "$ROSTER_TMP"' EXIT
+
+# ── Step A: parse the canonical roster from PROTO.md's ```elon-ko-roster block ──
+if [ ! -f "$ROSTER_FILE" ]; then
+  err "missing $ROSTER_FILE — the canonical roster source of truth"
+else
+  awk '/^```elon-ko-roster$/{f=1;next} f&&/^```$/{f=0;next} f' "$ROSTER_FILE" | grep -v '^#' > "$ROSTER_TMP"
+  rcount="$(grep -c . "$ROSTER_TMP")"
+  if [ "${rcount:-0}" -lt 1 ]; then
+    err "$ROSTER_FILE: no \`\`\`elon-ko-roster block found (or it is empty)"
+  else
+    ok "PROTO.md roster parsed: $rcount entity/entities declared"
+    while IFS= read -r line; do
+      [ -z "$line" ] && continue
+      fc="$(printf '%s' "$line" | awk -F'|' '{print NF}')"
+      [ "$fc" -eq 7 ] || err "PROTO.md roster: malformed line (expected 7 |-fields, got $fc): $line"
+    done < "$ROSTER_TMP"
+  fi
+fi
+
+# Steps B–I only run when a roster was parsed (else Step A already errored).
+if [ -s "$ROSTER_TMP" ]; then
+
+# ── Step B: gate TEAM (who Elon may spawn) == roster { spawner ∋ elon } ──
+gate_team="$(team_names src/enforce-orchestrator.ts)"
+exp=""
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  name="$(printf '%s' "$line" | cut -d'|' -f1)"; sp="$(printf '%s' "$line" | cut -d'|' -f3)"
+  case ",$sp," in *",elon,"*) exp="${exp:+$exp,}$name";; esac
+done < "$ROSTER_TMP"
+exp="$(norm_csv "$exp")"
+[ "$gate_team" = "$exp" ] && ok "gate TEAM == roster Elon-spawnable set: $exp" || err "gate TEAM ($gate_team) != roster Elon-spawnable set ($exp)"
+
+# ── Step C: mess-transport TEAM == roster { mess==yes, name!=elon }; main addressable ──
+mess_team="$(team_names src/mess-transport.ts)"
+exp=""
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  name="$(printf '%s' "$line" | cut -d'|' -f1)"; mess="$(printf '%s' "$line" | cut -d'|' -f7)"
+  [ "$name" = "elon" ] && continue
+  [ "$mess" = "yes" ] && exp="${exp:+$exp,}$name"
+done < "$ROSTER_TMP"
+exp="$(norm_csv "$exp")"
+[ "$mess_team" = "$exp" ] && ok "mess-transport TEAM == roster mess-capable (non-elon): $exp" || err "mess-transport TEAM ($mess_team) != roster mess-capable set ($exp)"
+if grep -qE 'ADDRESSABLE.*"main"' src/mess-transport.ts; then ok "mess-transport ADDRESSABLE includes 'main' (Elon)"
+else err "mess-transport ADDRESSABLE does not include 'main'"; fi
+
+# ── Step D: skill://elon <agent_registry> == 9 non-elon roster agents ──
+registry="$(awk '/<agent_registry>/{f=1;next} f&&/<\/agent_registry>/{f=0;next} f' plugins/agents/skills/elon/SKILL.md | grep -oE '<agent name="[A-Za-z]+"' | sed -E 's/.*name="([A-Za-z]+)".*/\1/' | tr 'A-Z' 'a-z' | sort -u | paste -sd',' -)"
+exp=""
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  name="$(printf '%s' "$line" | cut -d'|' -f1)"; [ "$name" = "elon" ] && continue
+  exp="${exp:+$exp,}$name"
+done < "$ROSTER_TMP"
+exp="$(norm_csv "$exp")"
+[ "$registry" = "$exp" ] && ok "skill://elon <agent_registry> lists all 9 roster agents: $exp" || err "skill://elon <agent_registry> ($registry) != 9 roster agents ($exp)"
+
+# ── Step E: marketplace roster == 9 non-elon agents; count=9; description tags ──
+mp_agents="$(jq -r '.plugins[0].agents | sort | join(",")' "$MP" 2>/dev/null)"
+mp_count="$(jq -r '.plugins[0].count' "$MP" 2>/dev/null)"
+mp_desc="$(jq -r '.plugins[0].description' "$MP" 2>/dev/null)"
+[ "$mp_agents" = "$exp" ] && ok "marketplace agents == roster: $exp" || err "marketplace agents ($mp_agents) != 9 roster agents ($exp)"
+[ "$mp_count" = "9" ] && ok "marketplace count = 9" || err "marketplace count ($mp_count) != 9"
+case "$mp_desc" in *"9-agent"*"10 skills"*) ok "marketplace description embeds '9-agent' + '10 skills'";; *) err "marketplace description missing '9-agent'/'10 skills': $mp_desc";; esac
+
+# ── Step F: each distributed agent's frontmatter tools: == roster tools ──
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  name="$(printf '%s' "$line" | cut -d'|' -f1)"; [ "$name" = "elon" ] && continue
+  rt="$(norm_csv "$(printf '%s' "$line" | cut -d'|' -f5)")"
+  af="plugins/agents/agents/$name.md"
+  if [ ! -f "$af" ]; then err "missing agent definition $af"; continue; fi
+  ft="$(norm_csv "$(awk 'NR==1&&/^---/{f=1;next} /^---/{exit} f' "$af" | sed -n 's/^tools:[[:space:]]*//p' | head -1)")"
+  [ "$ft" = "$rt" ] && ok "frontmatter tools agree: $name" || err "$name: frontmatter tools ($ft) != roster ($rt)"
+done < "$ROSTER_TMP"
+
+# ── Step G: each skill <allowed> == roster tools; <forbidden> ∩ tools == ∅ ──
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  name="$(printf '%s' "$line" | cut -d'|' -f1)"
+  rt="$(norm_csv "$(printf '%s' "$line" | cut -d'|' -f5)")"
+  sf="plugins/agents/skills/$name/SKILL.md"
+  if [ ! -f "$sf" ]; then err "missing skill $sf"; continue; fi
+  al="$(awk '/<allowed>/{f=1;next} f&&/<\/allowed>/{f=0;next} f' "$sf" | grep -oE '<tool name="[A-Za-z0-9_-]+"' | sed -E 's/.*name="([A-Za-z0-9_-]+)".*/\1/' | sort -u | paste -sd',' -)"
+  al="$(norm_csv "$al")"
+  [ "$al" = "$rt" ] && ok "<allowed> agrees with tools: $name" || err "$name: skill <allowed> ($al) != roster tools ($rt)"
+  forb="$(awk '/<forbidden>/{f=1;next} f&&/<\/forbidden>/{f=0;next} f' "$sf" | grep -oE '<tool name="[A-Za-z0-9_-]+"' | sed -E 's/.*name="([A-Za-z0-9_-]+)".*/\1/' | sort -u | paste -sd',' -)"
+  if [ -n "$forb" ]; then
+    inter="$(printf '%s\n%s\n' "$forb" "$rt" | tr ',' '\n' | grep -v '^$' | sort | uniq -d | paste -sd',' -)"
+    [ -z "$inter" ] || err "$name: a granted tool appears in <forbidden> ($inter) — tools and forbidden must be disjoint"
+  fi
+done < "$ROSTER_TMP"
+
+# ── Step H: frontmatter spawns: == roster spawns (where roster spawns != -) ──
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  name="$(printf '%s' "$line" | cut -d'|' -f1)"; rsp="$(printf '%s' "$line" | cut -d'|' -f4)"
+  [ "$rsp" = "-" ] && continue
+  af="plugins/agents/agents/$name.md"
+  if [ ! -f "$af" ]; then err "missing $af for spawns check"; continue; fi
+  fm_sp="$(awk 'NR==1&&/^---/{f=1;next} /^---/{exit} f' "$af" | sed -n 's/^spawns:[[:space:]]*//p' | head -1)"
+  rs="$(norm_csv "$rsp")"; fs="$(norm_csv "$fm_sp")"
+  [ "$fs" = "$rs" ] && ok "spawns agree: $name ($fs)" || err "$name: frontmatter spawns ($fs) != roster ($rs)"
+done < "$ROSTER_TMP"
+
+# ── Step I: dev-session mirrors byte-identical to plugins/ (SPEC §4.4) ──
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  name="$(printf '%s' "$line" | cut -d'|' -f1)"; [ "$name" = "elon" ] && continue
+  src="plugins/agents/agents/$name.md"; dst=".omp/agents/$name.md"
+  if [ ! -f "$dst" ]; then err "agent mirror missing: $dst"
+  elif cmp -s "$src" "$dst"; then ok "agent mirror byte-identical: $dst"
+  else err "agent mirror drift: $dst != $src"; fi
+done < "$ROSTER_TMP"
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  name="$(printf '%s' "$line" | cut -d'|' -f1)"
+  src="plugins/agents/skills/$name/SKILL.md"; dst=".agents/skills/$name/SKILL.md"
+  if [ ! -f "$dst" ]; then err "skill mirror missing: $dst"
+  elif cmp -s "$src" "$dst"; then ok "skill mirror byte-identical: $dst"
+  else err "skill mirror drift: $dst != $src"; fi
+done < "$ROSTER_TMP"
+
+fi   # end `[ -s "$ROSTER_TMP" ]` (Steps B–I guard)
+
+# ──────────────────────────────────────────────────────────────────────────────
 echo
 nerr=0
 [ -s "$ERRS" ] && nerr="$(grep -c . "$ERRS")"
