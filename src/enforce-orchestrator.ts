@@ -100,6 +100,57 @@ function block(reason: string) {
 }
 
 /**
+ * Tokenize a command into argv with minimal shell-style quote handling:
+ * single/double quotes group a run (including spaces) into one token, and the
+ * quote characters themselves are stripped. Called only AFTER the step-2 global
+ * metacharacter rejection, so by construction a quoted region can hold only
+ * benign characters (no `; & | $ ` > < \ \n` — those were rejected wholesale).
+ *
+ * Why not plain `split(/\s+/)` (SPEC §2.1 step 3)? That hint assumes step 2
+ * "removed every quote char", but step 2's metachar set omits `"` and `'`, so a
+ * multi-word commit message like `git commit -m "[PROTO] Update x"` would split
+ * into stray tokens and be mis-read as out-of-`.app/` paths (false BLOCK).
+ * Quote-aware tokenization honors the SPEC's behavioral contract: §2.1 table
+ * (multi-word messages ALLOW) and AC-2 (an out-of-`.app/` path always BLOCKs,
+ * including one trailing a message — `git commit -m msg src/x.ts`). DISCREPANCY
+ * vs the literal step-3 hint, resolved in favor of the acceptance criteria.
+ */
+function tokenize(cmd: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuote: '"' | "'" | null = null;
+  let hasTok = false;
+  const flush = (): void => {
+    if (hasTok) {
+      out.push(cur);
+      cur = "";
+      hasTok = false;
+    }
+  };
+  for (let i = 0; i < cmd.length; i++) {
+    const ch = cmd[i];
+    if (inQuote) {
+      if (ch === inQuote) {
+        inQuote = null; // closing quote — stripped, not emitted
+      } else {
+        cur += ch;
+        hasTok = true;
+      }
+    } else if (ch === '"' || ch === "'") {
+      inQuote = ch; // opening quote — token begins (even if "")
+      hasTok = true;
+    } else if (/\s/.test(ch)) {
+      flush();
+    } else {
+      cur += ch;
+      hasTok = true;
+    }
+  }
+  flush();
+  return out;
+}
+
+/**
  * Whether the gate is ACTIVE in the given project root. Precedence:
  * BYPASS (off) ▸ ENABLE (on) ▸ project marker ▸ dormant. A malformed or absent
  * marker is dormant (fail-safe).
@@ -174,24 +225,134 @@ export default function enforceOrchestrator(pi: ExtensionAPI): void {
     }
 
     if (tool === "write") {
-      const path = String(input.path ?? "");
-      // Elon owns only the protocol status artifact.
-      if (path.endsWith(".app/PROJECT.md") || path.endsWith("/.app/PROJECT.md")) {
-        return;
-      }
+      const raw = String(input.path ?? "");
+      // Normalize: collapse repeated slashes, drop a trailing slash, strip a leading "./".
+      const norm = raw.replace(/\/+/g, "/").replace(/\/$/, "").replace(/^\.\//, "");
+      // Allow ONLY the protocol status artifact, where ".app" is a real directory
+      // component (start-of-string, or preceded by "/"). Rejects "X.app/PROJECT.md".
+      if (norm === ".app/PROJECT.md" || norm.endsWith("/.app/PROJECT.md")) return;
       return block(
-        `The root orchestrator may only write .app/PROJECT.md (got "${path}"). ` +
+        `The root orchestrator may only write .app/PROJECT.md (got "${raw}"). ` +
           `All other file creation belongs to a team agent — spawn one via task(agent="<name>").`,
       );
     }
 
     if (tool === "bash") {
+      // ── A1: structured git-allowlist gate (decision #2). Steps run in order;
+      //    the FIRST failure returns block(...). Allows only
+      //    `git add|commit|status|diff|log` whose path args resolve under .app/,
+      //    and rejects any shell metacharacter anywhere in the command.
       const command = String(input.command ?? "").trim();
-      if (command === "git" || command.startsWith("git ")) return;
-      return block(
-        `The root orchestrator may only run git commands (for protocol artifact commits). ` +
-          `All other commands belong to a team agent. Command was: ${command.slice(0, 80)}`,
-      );
+
+      // 1. Reject empty.
+      if (!command) {
+        return block(
+          "The root orchestrator may only run git commands for protocol artifact commits (got an empty command).",
+        );
+      }
+
+      // 2. Global metacharacter rejection — FIRST, before any prefix test. Any of
+      //    ; & | $ ` > < newline \ anywhere (incl. inside a would-be commit message)
+      //    ⇒ block. No chaining, subshells, redirects, or escapes.
+      if (/[;&|$`><\n\\]/.test(command)) {
+        return block(
+          "The root orchestrator may run only a single git command — no shell " +
+            "metacharacters (; & | $ ` > < newline \\) are permitted.",
+        );
+      }
+
+      // 3. Tokenize with minimal quote handling (see tokenize()). Plain split(/\s+/)
+      //    would mis-split a quoted multi-word commit message into stray path tokens;
+      //    step 2 already removed every chaining/escape char, so the only quoting left
+      //    to honor is benign "…"/'…' grouping.
+      const argv = tokenize(command);
+
+      // 4. First-token + subcommand allowlist.
+      if (argv[0] !== "git") {
+        return block(
+          `The root orchestrator may only run git commands (got "${argv[0]}"). ` +
+            "All other commands belong to a team agent.",
+        );
+      }
+      const SUB: Record<string, true> = {
+        add: true, commit: true, status: true, diff: true, log: true,
+      };
+      const sub = argv[1];
+      if (!SUB[sub]) {
+        return block(
+          `The root orchestrator may only run git add|commit|status|diff|log (got "${sub ?? "(none)"}").`,
+        );
+      }
+
+      // 5. Mass-stage flag rejection — the long forms and any short flag (single "-",
+      //    not "--") whose character set intersects {a,A,u,p}: covers -a -A -u -p and
+      //    clusters like -am, -Au, -vp. Runs BEFORE option-value skipping, so "-p" is
+      //    blocked even for `git log` (intentional per the spec's "intersects" rule).
+      const args = argv.slice(2);
+      for (const tok of args) {
+        if (tok === "--all" || tok === "--update" || tok === "--patch") {
+          return block(
+            `The root orchestrator may not use git mass-stage flag "${tok}"; stage .app/ paths explicitly.`,
+          );
+        }
+        if (/^-[^-]/.test(tok) && /[aApPu]/.test(tok)) {
+          return block(
+            `The root orchestrator may not use git short flag "${tok}" (intersects the mass-stage set {a,A,u,p}); stage .app/ paths explicitly.`,
+          );
+        }
+      }
+
+      // 6–7. Option-value skipping + path scoping. Iterate argv[2..]; the token right
+      //      after a bare value-taking option is a value (skip), not a path. The
+      //      =-attached form (-m=msg, --message=msg) carries its value inline, so it
+      //      produces no separate token to skip.
+      const VALUE_OPTS: Record<string, true> = {
+        "-m": true, "--message": true, "-F": true, "--file": true,
+        "-c": true, "-C": true, "--author": true, "--date": true,
+        "--reedit-message": true, "--reuse-message": true, "-S": true,
+      };
+      let paths = 0;
+      let skipNext = false;
+      for (const tok of args) {
+        if (skipNext) {
+          skipNext = false;
+          continue;
+        }
+        if (VALUE_OPTS[tok]) {
+          skipNext = true;
+          continue;
+        }
+        // =-attached value option → inline value, not a path.
+        if (tok.startsWith("-") && tok.includes("=") && VALUE_OPTS[tok.slice(0, tok.indexOf("="))]) {
+          continue;
+        }
+        // Any other flag is not a path; mass-stage already rejected the dangerous ones.
+        if (tok.startsWith("-")) continue;
+
+        // Path argument — normalize, then scope to .app/.
+        const norm = tok.replace(/\/+/g, "/").replace(/\/$/, "").replace(/^\.\//, "");
+        if (/(^|\/)\.\.(\/|$)/.test(norm)) {
+          return block(
+            `Path argument "${tok}" escapes .app/ via ".."; the root orchestrator may only touch paths under .app/.`,
+          );
+        }
+        if (norm !== ".app" && !norm.startsWith(".app/")) {
+          return block(
+            `Path argument "${tok}" is not under .app/; the root orchestrator may only commit protocol artifacts under .app/.`,
+          );
+        }
+        paths++;
+      }
+
+      // 8. `add` requires ≥1 explicit .app/ path (reject flag-only `git add`).
+      if (sub === "add" && paths < 1) {
+        return block(
+          "git add requires at least one explicit .app/ path argument (mass-stage flags are rejected).",
+        );
+      }
+
+      // 9. All checks pass — allow.
+      return;
     }
 
     // Everything else (edit, ast_edit, ast_grep, debug, browser, eval,
