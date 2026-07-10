@@ -9,6 +9,28 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v2.7.0] - 2026-07-10
+
+### Security
+
+- **Critical: orchestrator bash-gate bypass closed.** The root enforcement gate (`src/enforce-orchestrator.ts`) now allows only `git add/commit/status/diff/log` of `.app/` paths and rejects shell metacharacters in bash commands, preventing arbitrary shell execution through the orchestrator's restricted bash surface. This closes a security gap where the gate's git-allowlist could be bypassed.
+
+### Added
+
+- **Canonical PROTO.md roster as source-of-truth.** A new `elon-ko-roster` block in `PROTO.md` defines the canonical agent and skill registry, unifying the previously scattered roster references into a single authoritative location.
+- **Automated per-slice validator enforcement (`validate-plugins.sh`).** The validator now performs roster-parse, tool-agreement, and mirror checks (Steps A–I), ensuring plugin structure consistency across every slice.
+- **Write-scope tightening.** The orchestrator's write-path restrictions are hardened to scope writes strictly to `.app/` protocol artifacts.
+
+### Fixed
+
+- **`mess-send`/`mess-fail` tool-policy fixes.** Seven mess-capable skills now correctly list `mess-send` and `mess-fail` in their `<allowed>` tool sets.
+- **`skill://elon` registry: removed MidDev; validator Step D filters by spawner.** The orchestrator skill registry no longer references MidDev, and the validator's Step D now correctly filters by spawner.
+- **Typo fix:** `CONTRICT` → `CONTRADICT` in drpe verdict.
+
+### Changed
+
+- Version bumped to **`2.7.0`** (semver MINOR — new backward-compatible capability: canonical roster source-of-truth + automated enforcement; includes a critical security fix). `package.json#version`, both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`), the `package-lock.json` root version, the installer default tag pin (`elon_ko.sh` `OMP_AGENT_REF`, now `v2.7.0`), and the `README.md`/`.DEVREADME.md` install-example pins were all bumped in lockstep to `2.7.0`.
+
 ## [v2.6.0] - 2026-07-09
 
 ### Added

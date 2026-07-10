@@ -86,7 +86,7 @@ print_usage() { cat >&2 <<'USAGE'
   Flags are position-agnostic and may appear before or after the positional.
 
   Env:
-    OMP_AGENT_REF=<git-ref>     pin Plugin A (elon-ko-gate) to a ref (default v2.6.0)
+    OMP_AGENT_REF=<git-ref>     pin Plugin A (elon-ko-gate) to a ref (default v2.7.0)
     OMP_PRERELEASE_DIR=<dir>    override the pre-release source cache dir
 
   Unknown flags and more than one positional are rejected.
@@ -101,7 +101,7 @@ usage_die() { printf '  ✗ %s\n' "$*" >&2; print_usage; exit 1; }
 # REF, TAG. `-global`/`--global`/`-l` are NOT valid (unknown flag → die, NFR-5).
 INSTALL_MODE=global
 SUB_MODE=stable
-REF="${OMP_AGENT_REF:-v2.6.0}"
+REF="${OMP_AGENT_REF:-v2.7.0}"
 TAG=""
 POSITIONAL=""
 for arg in "$@"; do
