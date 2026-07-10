@@ -1,44 +1,25 @@
-# PROJECT — Debugger Agent Role (IDEA-002)
+# PROJECT — Fix A (gate hardening) + B (roster unification / PROTO.md source of truth)
 
-## Request
-Add a debug agent role to the elon-ko team pipeline. Promoted from parked idea
-IDEA-002 ("Add debug agent role to the team pipeline").
+## Goal
+Address Theme A findings (enforcement-gate bypass holes) and Theme B findings (agent roster has no single source of truth). Make `scaffold/PROTO.md` the canonical source of truth for the agent roster, updated with full info about every agent. Fold in C1/C3 (tool-agreement enforcement) as the durability arm of B.
 
-## Classification
-FULL — DONE. Shipped.
+## Confirmed decisions (GRILL resolved)
+- **Q1 = Docs authority + validator enforcement**: PROTO.md is the canonical roster; `validate-plugins.sh` enforces that gate TEAM constant, `mess-transport` ADDRESSABLE, `skill://elon` registry, and every skill `<allowed>`/frontmatter `tools:` all match PROTO.md.
+- **Q2 = git read/commit of `.app/`, no metacharacters**: bash gate allows `git add/commit/status/diff/log` with `.app/`-scoped path args; reject shell metacharacters (`; & | $ \` > < newline`).
 
-## Workflow
-REQUEST → GRILL → ~~[RESEARCH]~~ → SPEC → DEVELOP → VALIDATE → **DONE**
+## Scope
+- **A** — `src/enforce-orchestrator.ts`: A1 bash-gate bypass, A2 write-scope leak, C-013 dead redundant operand.
+- **B** — roster unification + PROTO.md authority: B1 (skill://elon omits wrapper/debugger/todo), B3 (DEVREADME stale TEAM=6), B4 (skill omits todo), B5 (README/models omit debugger tier), B6 (mirror consistency), C-003 (shared TEAM source across gate + mess-transport).
+- **C1/C3** (folded into B) — `validate-plugins.sh` roster + tool-agreement check; fix 7 skills' `<allowed>` to include `mess-send`/`mess-fail`; fix drpe CONTRICT typo (C2).
 
-VALIDATE passed first cycle (zero defects, no DEVELOP⇄VALIDATE loop).
+## Non-goals (this cycle)
+- Themes D (CI/test gaps incl. D1), E (robustness/optimization), F (doc overclaim) — out of scope unless directly required by A/B/C.
 
-## Outcome
-- **New agent**: `debugger` — read-only diagnostic analyst (pi/task)
-  - Tools: `read, bash, search, find, lsp, debug` — NO write/edit (diagnose-only)
-  - Solo: no spawns. On-demand by Elon (no new pipeline phase).
-  - Scope: CI/CD pipeline failures + general codebase/runtime bugs
-- **Skill**: `skills/debugger/SKILL.md` — root-cause methodology + report format
-- **Registration**: marketplace.json agents[] += debugger, `plugins[0].count = 9`
-  - Resolves IDEA-003 (count field added; agents[] confirmed metadata-only)
-- **Gate**: `src/enforce-orchestrator.ts` TEAM += `debugger` (Elon can spawn it)
-- **Docs**: 8→9 agents / 9→10 skills across README, DEVREADME, AGENTS.md,
-  elon_ko.sh (5), release.yml, PROTO.md, CHANGELOG
+## Path
+FULL: GRILL ✅ → SPEC (LeadDev, in progress) → DEVELOP (LeadDev) ⇄ VALIDATE (Validator, 3-cycle cap) → DONE.
 
-## Commits
-- `dc8624b` [PROTO] GRILL complete
-- `b8ae071` [PROTO] SPEC complete
-- `3014312` feat(agents): add debugger agent
-
-## Validator verdict
-PASS — AC-1 through AC-11 verified; AC-12 (live spawn) deferred to post-release
-(requires omp restart). Zero defects.
-
-## Deferred (post-release)
-- AC-12: live `task(agent="debugger")` spawn test (requires omp restart)
-- Wrapper release cut (version bump + tag) — separate step if desired
-
-## Previous workflow
-v2.5.0 (Per-Agent Model Assignment) — DONE, shipped.
+## Status
+- SPEC: LeadDev producing `.app/SPEC.md`.
 
 ## Pending Asks
-(none)
+- [PA-1] 2026-07-09T10:00:00Z origin=elon status=agreed | "Accept recommended defaults: Q1=A, Q2=A."

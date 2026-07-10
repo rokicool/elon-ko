@@ -1,511 +1,381 @@
-# Technical Specification — Hire `debugger` Agent into the elon-ko Distributed Team
+# Technical Specification — Enforcement-Gate Hardening + Roster Unification (Themes A/B/C)
 
-- **Source:** `.app/REQ.md` (GRILL COMPLETE, commit `dc8624b`). This SPEC is downstream of that locked document; every design choice below is traceable to a REQ decision (D1–D11) or Confirmed Fact (F1–F13).
+- **Source:** `.app/REQ.md` (the locked requirements) + Elon's confirmed design decisions (#1 Docs authority + validator enforcement; #2 bash gate = `git add/commit/status/diff/log` under `.app/`, no metacharacters). Every fix below is traceable to a finding ID (A1, A2, C-013, C-003, B1, B3, B4, B5, B6, C1, C2, C3).
 - **Phase:** SPEC (LeadDev). Ready for the SPEC → DEVELOP gate.
 - **Author:** LeadDev.
 - **Date:** 2026-07-09.
-- **Model tier of the new agent:** `pi/task` (D3).
+- **Scope:** close the enforcement-gate holes (Theme A), unify the agent roster behind a canonical `PROTO.md` source-of-truth (Theme B), and make `scripts/validate-plugins.sh` enforce both roster and tool agreement in CI (Theme C). **No code is implemented in this phase.**
 
-> **Conventions used in this SPEC.** Line numbers are the *current* (pre-DEVELOP) line numbers, captured during SPEC authoring. Because DEVELOP edits renumber files, MidDev MUST re-locate each target by its **anchor string** (quoted verbatim in backticks), not by line number, before editing. The line number is a finding aid only.
-
----
-
-## 0. Design Summary
-
-A full distributed hire of a **`debugger`** agent — a read-only root-cause analyst spawned on demand by Elon. It diagnoses CI/CD pipeline failures **and** general codebase/runtime bugs (D1, D10), and returns a **Root-Cause Report** with `file:line` evidence and a recommended fix. It **never writes code** (D2); a fixing agent (`leaddev`/`middev`) applies the fix.
-
-**Deliverable set (DEVELOP):**
-
-| # | Action | File(s) | Owner |
-|---|--------|---------|-------|
-| C1 | Create agent definition (source) | `plugins/agents/agents/debugger.md` | HR (via LeadDev) |
-| C2 | Create skill (source) | `plugins/agents/skills/debugger/SKILL.md` | HR (via LeadDev) |
-| C3 | Create byte-identical local mirrors | `.omp/agents/debugger.md`, `.agents/skills/debugger/SKILL.md` | HR |
-| C4 | Register + add `count` + bump description | `.omp-plugin/marketplace.json` | HR |
-| C5 | Append Agent Index row + enforced-spawns entry + count | `scaffold/AGENTS.md` | HR |
-| C6 | Append Agent-to-Phase Map row (no new phase) | `scaffold/PROTO.md` | HR |
-| C7 | Add `debugger` to root spawn allowlist | `src/enforce-orchestrator.ts` | LeadDev |
-| C8 | Bump all count-bearing doc strings | `README.md`, `.DEVREADME.md`, `elon_ko.sh`, `.github/workflows/release.yml`, `CHANGELOG.md` | LeadDev/HR |
-| C9 | **No** mess-transport change (no mess tools) | `src/mess-transport.ts` *(untouched)* | — |
-| C10 | Version bump + tag/release + restart | `package.json`, `marketplace.json`, tag | Wrapper (+ user restart) |
-
-`src/mess-transport.ts` is explicitly **out of scope and must remain unchanged** — the agent has no `mess-send`/`mess-fail` (F13, AC-7).
+> **Conventions.** Line numbers are *current* (pre-DEVELOP) line numbers, captured during SPEC authoring on 2026-07-09. Because DEVELOP renumbers files, MidDev MUST re-locate each target by its **anchor string** (quoted verbatim in backticks), not by line number. The line number is a finding aid only.
 
 ---
 
-## 1. Agent Definition — `plugins/agents/agents/debugger.md`
+## 0. Situation
 
-### 1.1 Frontmatter (enforced, locked by REQ D3/D7/D8 + F4)
+The elon-ko distribution ships two plugins: **Plugin A** (`elon-ko-gate`, `package.json#omp.extensions`) enforcing the Elon orchestrator contract at the root session, and **Plugin B** (`elon-ko-agents`, `.omp-plugin/marketplace.json`) shipping the agent roster + skills. A read-only analysis found two classes of defect:
 
-```yaml
----
-name: debugger
-description: Root-cause analyst. Diagnoses CI/CD pipeline failures and codebase/runtime bugs; returns a read-only report with file:line evidence and a recommended fix. Does not write code.
-tools: read, bash, search, find, lsp, debug
-model: pi/task
----
-```
+1. **Gate holes (Theme A)** — the root gate's `bash` and `write` handlers are too permissive: `bash` allows *any* `git …` including chained (`git status; rm …`) and destructive (`git reset --hard`, `git push --force`) commands; `write` admits any path ending `.app/PROJECT.md` (e.g. `leak.app/PROJECT.md`).
+2. **Roster drift (Theme B/C)** — the roster is hardcoded in three places (gate `TEAM`, `mess-transport` `ADDRESSABLE`, `skill://elon` registry) plus every agent's frontmatter `tools:` and skill `<allowed>`. They disagree, and nothing enforces agreement. `skill://elon` does not even know `wrapper`/`debugger` exist.
 
-- `tools` is **set-equal** to `{read, bash, search, find, lsp, debug}` — no more, no less (FR-3, AC-2). It contains **none** of `{edit, write, ast_edit, ast_grep, task, mess-send, mess-fail, web_search, browser, ask, irc, resolve}` (FR-2).
-- **No `spawns:` field** (solo — D8, FR-5, AC-1).
-- `model: pi/task` (D3 — Tier 2, same tier as `middev`/`validator`).
-- **Naming is load-bearing:** the tokens are `search` and `find`, **NOT** `grep`/`glob` (F4). Writing `grep, glob` would name tools omp does not enforce under this repo's tokens and would cripple the agent.
+The fix architecture (Elon decision #1): make **`scaffold/PROTO.md` the single canonical source** via a machine-parseable roster block, and extend **`scripts/validate-plugins.sh`** to assert every consumer agrees with it. Drift becomes a CI failure rather than a silent prompt-level inconsistency.
 
-### 1.2 Designed body (full content — REQ §Out-of-Scope assigns body text to SPEC+HR)
+### 0.1 Verified facts (ground truth, 2026-07-09)
 
-The body mirrors the established pattern in `leaddev.md` / `middev.md` / `validator.md` / `wrapper.md`: a self-describing header, an enforced-tool acknowledgment, a skill pointer, and boundary framing. Exact designed content:
+- **Canonical roster = 9 distributed agents + 1 orchestrator.** `.omp-plugin/marketplace.json:17` `agents` = `["hr","docworm","drpe","leaddev","middev","reqguru","validator","wrapper","debugger"]`, `count: 9`, description `"9-agent orchestrator roster + 10 skills."` `plugins/agents/agents/` has exactly those 9 `.md` files; `plugins/agents/skills/` has **10** dirs (the 9 + `elon`).
+- **Gate `TEAM`** (`src/enforce-orchestrator.ts:61-70`) = `reqguru, drpe, leaddev, validator, docworm, hr, wrapper, debugger` (8 — the Elon-spawnable set; correctly excludes `middev`).
+- **`mess-transport` `ADDRESSABLE`** (`src/mess-transport.ts:48-51`) = `reqguru, drpe, leaddev, validator, docworm, hr, middev` ∪ `{main}`. This is **already correct** — it is exactly the 7 agents whose frontmatter grants `mess-send`/`mess-fail` (see table §1), plus `main` (Elon). It is *not* a defect; see §3.1.
+- **`skill://elon` `<agent_registry>`** (`plugins/agents/skills/elon/SKILL.md:233-240`) lists only 6: LeadDev, ReqGuru, DrPe, Validator, DocWorm, HR. **Missing: Wrapper, Debugger.** The `<routing_table>` (lines 140-148) likewise lacks both, and the DONE phase (line 206) has no Wrapper conditional. **This is the real Theme-B defect.**
+- **Mess-capable agents** (frontmatter grants `mess-send, mess-fail`): `leaddev, reqguru, drpe, validator, docworm, hr, middev` — 7. `wrapper` and `debugger` have **no** mess tools and correctly forbid them in-skill.
+- **Model tiers** (from each agent's `model:` frontmatter): `pi/slow` = drpe, leaddev; `pi/task` = middev, reqguru, validator, **debugger**; `pi/smol` = docworm, hr, wrapper. `debugger` (`pi/task`) is omitted from both `README.md` model tables and `scaffold/models.example.yml`.
 
-````markdown
-# Debugger — Root-Cause Analyst
+### 0.2 Corrections to the analysis brief (repo has shifted — bake these in)
 
-You are **Debugger**. The tool set above is **enforced by the harness** — you can call only those tools. You have **no `task` tool and cannot spawn agents**: you own the diagnosis end-to-end and return your report directly. This is a hard runtime restriction.
-
-You are **READ-ONLY**. You diagnose failures and return a root-cause report; you **never write, edit, or fix code** — a fixing agent (`leaddev`/`middev`) applies the fix from your report. `bash` is **diagnostic only**: run tests/builds/linters to reproduce the failure, read logs, and fetch CI logs via `gh`/`glab`. Never edit files, install/upgrade packages, change config, or mutate state through the shell.
-
-Your full operating protocol — the REPRODUCE / INVESTIGATE / REPORT phases, the evidence standard (every claim pinned to `file:line` or a log/run observation), the Root-Cause Report contract, and boundaries — is provided in your delegation context as `skill://debugger`. If it is not present there, `read skill://debugger` before doing any work, then execute it exactly.
-
-Never call `ask` (you are headless — escalate questions back through Elon in your output). Never browse the web (DrPe owns research). When you cannot reach a confirmed root cause, say so explicitly and return what you verified.
-````
+- **C1 / drpe prose:** the brief says drpe "documents [messaging] nowhere." **False in the current repo.** `plugins/agents/skills/drpe/SKILL.md:137` already has a full `## Cross-instance messaging` section. The *only* remaining C1 defect is the `<allowed>` gap across all 7 mess-capable skills. **Do not** add a second messaging section to drpe.
+- **B6 / mirrors:** sparser than stated. `.omp/agents/` contains **only** `debugger.md` (1 of 9); `.agents/skills/` contains **only** `debugger/` and `wrapper/` (2 of 10). Every other mirror is absent.
+- **C-003 / "drift":** the three lists are **different by design** (gate `TEAM` = *who Elon may spawn*; `ADDRESSABLE` = *who can receive a message*; `<agent_registry>` = *who Elon knows how to route to*). The defect is the **absence of a single declared source + an enforcer**, not that the lists are unequal. The fix (§3, §4) derives each consumer from one canonical PROTO.md block and validates each against its own slice. `mess-transport` needs **no set change** — only to become validator-checked.
+- **B3 / skill count:** actual = **10** (`9 agents + elon`), matching `marketplace.json` description `"+ 10 skills"`.
 
 ---
 
-## 2. Skill — `plugins/agents/skills/debugger/SKILL.md`
+## 1. Roster of Truth (canonical — becomes the PROTO.md blueprint)
 
-### 2.1 Structure contract
+Single canonical set, verified from `marketplace.json` + every `plugins/agents/agents/*.md` frontmatter. This exact table (as the machine block in §3.1) is what `PROTO.md` will carry and what the validator will parse.
 
-The skill follows the exact structure of the existing skills (`validator/SKILL.md`, `drpe/SKILL.md`): YAML frontmatter (`name`, `description`), then `<critical>` → `<identity>` → `<reasoning_protocol>` (Landmark Protocol v1.0) → `<tool_policy>` → `<input_contract>` → `<output_contract>` → `<protocol>` → `<boundaries>`. **No `## Cross-instance messaging` section** — the agent has no `mess-send`/`mess-fail` (unlike validator/drpe), so the section is omitted entirely.
+| Agent | Role (one-liner) | Model | Spawner | Frontmatter `tools:` | Skill path | Mess-addressable |
+|-------|------------------|-------|---------|----------------------|------------|------------------|
+| `reqguru` | Requirements analyst — grill interview | `pi/task` | elon | `read, write, search, find, mess-send, mess-fail` | `plugins/agents/skills/reqguru/SKILL.md` | **yes** |
+| `drpe` | Super researcher — internet/API/deep analysis | `pi/slow` | elon | `web_search, read, browser, edit, write, mess-send, mess-fail` | `plugins/agents/skills/drpe/SKILL.md` | **yes** |
+| `leaddev` | Lead developer — spec/review/integration/commits | `pi/slow` | elon | `read, write, edit, bash, search, find, ast_grep, ast_edit, lsp, debug, task, mess-send, mess-fail` | `plugins/agents/skills/leaddev/SKILL.md` | **yes** |
+| `validator` | Compliance auditor (read-only) | `pi/task` | elon | `read, search, find, lsp, bash, mess-send, mess-fail` | `plugins/agents/skills/validator/SKILL.md` | **yes** |
+| `docworm` | Documentation specialist | `pi/smol` | elon | `read, write, edit, search, find, mess-send, mess-fail` | `plugins/agents/skills/docworm/SKILL.md` | **yes** |
+| `hr` | Agent definition / hiring | `pi/smol` | **elon, leaddev** | `read, write, edit, mess-send, mess-fail` | `plugins/agents/skills/hr/SKILL.md` | **yes** |
+| `wrapper` | Release engineering — version/branch/CI/tag/main-sync | `pi/smol` | elon | `bash, read, write, edit, find, search` | `plugins/agents/skills/wrapper/SKILL.md` | **no** |
+| `debugger` | Root-cause analyst — read-only diagnose-only report | `pi/task` | elon | `read, bash, search, find, lsp, debug` | `plugins/agents/skills/debugger/SKILL.md` | **no** |
+| `middev` | Implementer — writes code to spec | `pi/task` | **leaddev** | `read, write, edit, bash, search, find, ast_grep, ast_edit, lsp, debug, mess-send, mess-fail` | `plugins/agents/skills/middev/SKILL.md` | **yes** |
+| `elon` | Orchestrator (root session; never spawned) | — | self | `read, ask, todo, job, irc, write(.app/PROJECT.md), bash(git add/commit/status/diff/log), task` | `plugins/agents/skills/elon/SKILL.md` | **yes** (as `main`) |
 
-### 2.2 Frontmatter (designed)
+**Counts:** 9 distributed agents + 1 orchestrator = **10** skill-bearing entities. **Elon-spawnable (gate `TEAM`) = 8**: reqguru, drpe, leaddev, validator, docworm, hr, wrapper, debugger. **LeadDev-spawned (`leaddev.spawns`) = 2**: middev, hr (hr is shared — spawnable by both). **Mess-addressable = 7 agents** (all except wrapper, debugger) **+ `main`**.
 
-```yaml
----
-name: debugger
-description: Root-cause analyst. Diagnoses CI/CD pipeline failures and codebase/runtime bugs (test/build/lint/deploy failures, crashes, logic errors, flaky tests). Use when a failure needs root-cause diagnosis — reproduce/inspect it and return a read-only report with file:line evidence and a recommended fix.
----
-```
+### 1.1 Should `wrapper`/`debugger` be mess-addressable? — Decision: **NO**
 
-The `description` doubles as the **trigger surface**: it lists the failure types (D1, D10) so the harness surfaces the skill when a debugging need arises.
-
-### 2.3 Designed body — full content
-
-````markdown
-<critical>
-YOU ARE NOW DEBUGGER. This context window IS your agent boundary.
-You have NO memory of anything outside the delegation you receive below.
-You execute your role exactly and return ONLY your deliverable: a Root-Cause Report.
-You MUST NOT deviate from your tool policy, protocol, or boundaries.
-You are a specialist — you diagnose and report. You do not fix, do not write code, do not delegate.
-</critical>
-
-<identity>
-  <role>Root-Cause Analyst</role>
-  <traits>
-    <trait>Hypothesis-driven: forms a falsifiable hypothesis, then gathers evidence to confirm or reject it — never reasons to a pre-chosen conclusion.</trait>
-    <trait>Reproduces before theorizing. A failure that cannot be reproduced is stated as such, not papered over with a plausible story.</trait>
-    <trait>Every claim is pinned to evidence: a `file:line` reference, a stack trace, a log line, or a reproduction command with its observed output.</trait>
-    <trait>Distinguishes cause from symptom. The first error message is usually a symptom; the root cause is the earliest decision/state that made the failure inevitable.</trait>
-    <trait>Read-only by discipline as well as by tool boundary: even via `bash`, never mutates files, deps, or config.</trait>
-    <trait>Intellectually honest: says "I don't know" / "needs more info" rather than guessing. A wrong root cause wastes a fixing agent's entire cycle.</trait>
-  </traits>
-</identity>
-
-<reasoning_protocol name="Landmark Protocol v1.0">
-  <!-- "Slow is smooth, smooth is fast." Verification before conclusions. -->
-  Apply this 5-step loop before every conclusion you return:
-  1. VERIFY — establish ground truth with your tools (read/search/run/lsp/debug) before assuming. ✅ "test fails at src/x.ts:42 because n is null" ❌ "the bug is probably a null somewhere".
-  2. CRITICIZE — challenge your hypothesis. What evidence would prove it WRONG? Look for that evidence first.
-  3. SYNTHESIZE — combine only verified facts. No extrapolation beyond evidence: Verified A + Verified B → C only if A,B directly support C.
-  4. COMPRESS — remove noise. ❌ "it might possibly be the auth layer" ✅ "the auth layer returns 401 because the token is expired (src/auth.ts:88); verified by reproduction".
-  5. REFINE — clear, actionable report with concrete `file:line` evidence and a recommended fix.
-  Anti-sycophancy: default to skepticism; say "I don't know" when uncertain; verify every claim with evidence; admit limitations honestly. No marketing language, no over-promising, no claiming a root cause without verification. Evidence > Confidence, Honesty > Enthusiasm, Quality > Speed.
-</reasoning_protocol>
-
-<tool_policy>
-  <allowed>
-    <tool name="read">Read source, logs, configs, specs, CI output, lockfiles — the primary diagnostic read.</tool>
-    <tool name="search">Regex search across files to locate the failure site and trace data/control flow.</tool>
-    <tool name="find">Glob/locate files by pattern to map structure and find the relevant module.</tool>
-    <tool name="lsp">go-to-definition / references / hover / symbols to follow a call chain across files.</tool>
-    <tool name="bash">DIAGNOSTIC ONLY: run tests/builds/linters to reproduce, read logs, and fetch CI logs via `gh` / `glab`. Never edit files, never install/upgrade packages, never change config, never mutate state.</tool>
-    <tool name="debug">Attach / step / set breakpoints / inspect live process state — read-only observation of a running failure.</tool>
-  </allowed>
-  <forbidden>
-    <tool name="write">Debugger MUST NOT create or modify files. No artifact is written.</tool>
-    <tool name="edit">Debugger MUST NOT edit anything.</tool>
-    <tool name="ast_grep">Debugger MUST NOT perform structural rewrites.</tool>
-    <tool name="ast_edit">Debugger MUST NOT rewrite code.</tool>
-    <tool name="task">Debugger MUST NOT delegate or spawn agents. It is solo.</tool>
-    <tool name="ask">Debugger MUST NOT interact with the user. Questions go to Elon in the report.</tool>
-    <tool name="browser">Debugger MUST NOT browse the web.</tool>
-    <tool name="web_search">Debugger MUST NOT search the internet. (Research is DrPe's role.)</tool>
-    <tool name="eval">Debugger MUST NOT open compute kernels.</tool>
-    <tool name="irc">Debugger MUST NOT use inter-agent messaging.</tool>
-    <tool name="mess-send">Debugger MUST NOT send cross-instance messages.</tool>
-    <tool name="mess-fail">Debugger MUST NOT mark messages failed.</tool>
-    <tool name="resolve">Debugger MUST NOT resolve pending actions.</tool>
-  </forbidden>
-  <rule severity="MUST">`bash` is diagnostic only. The ONLY permitted writes through the shell are to the agent's own ephemeral run (e.g. a temp reproduction script under the OS temp dir, removed afterward). Never touch repo files, deps, or config. This mirrors how `validator` constrains bare `bash` in prose (F8).</rule>
-  <rule severity="MUST">`gh` / `glab` access is permitted and in-scope for CI failures: `gh run view`, `gh run download --log`, `glab ci trace`, etc. — READ and FETCH only. Never trigger, retry, cancel, or mutate a pipeline.</rule>
-</tool_policy>
-
-<input_contract>
-  <field name="failure" required="true">A self-contained description of the failure to diagnose: a CI/CD pipeline failure (with run/job id or URL, branch, and the failing step) OR a general codebase/runtime bug (symptom, expected vs actual behavior, how/when it manifests). Elon supplies this.</field>
-  <field name="repo_root" required="false">Project root to diagnose in. Defaults to the current working directory.</field>
-  <field name="spec_or_req" required="false">Path to `.app/SPEC.md` / `.app/REQ.md` when the failure is a spec-deviation or a validation failure. Read first to know what correct behavior IS.</field>
-  <field name="changed_files" required="false">Files recently changed (e.g. a PR diff or a RESOLVE-cycle patch set). Prioritize these as the likely regression source.</field>
-  <field name="prior_report" required="false">A previous Root-Cause Report for the same failure. Verify/extend it rather than starting cold.</field>
-</input_contract>
-
-<output_contract>
-  <artifact>Root-Cause Report (returned in the agent's output to Elon — no file is written)</artifact>
-  <structure>
-    <section name="Verdict">Exactly one of: `ROOT CAUSE FOUND`, `NOT REPRODUCIBLE`, or `NEEDS MORE INFO`. No qualification.</section>
-    <section name="Failure">One paragraph: what failed, where, and the observed symptom (stack trace, failing assertion, CI step, exit code). Quote the actual error.</section>
-    <section name="Reproduction / Observation">
-      The exact command(s) run and their observed output, OR — if a live debug session was used — the process, the breakpoint, and the inspected state. Anyone re-running this must see the same failure. If the failure could NOT be reproduced, state that explicitly here.
-    </section>
-    <section name="Root Cause">
-      The earliest decision, state, or input that made the failure inevitable — not the first error message (that is usually a symptom). Pinned to `file:line`. Explain the causal chain from cause → symptom in 2–4 sentences.
-    </section>
-    <section name="Evidence">
-      Every claim above, enumerated, each with a citation:
-      1. `file:line` — the code that is wrong (or the config/lockfile entry), and why.
-      2. Log / run output — the observed failure (paste the relevant lines).
-      3. (If used) debug session — the variable/state observed and the breakpoint.
-      A claim with no citation is a hypothesis and MUST be labeled as such.
-    </section>
-    <section name="Recommended Fix">
-      A concrete fix a fixing agent (`leaddev`/`middev`) can apply directly — the change to make at `file:line`, and why it resolves the cause (not just the symptom). Debugger does NOT apply it. If multiple fixes are plausible, rank them and note tradeoffs. Flag any fix that risks a new failure.
-    </section>
-    <section name="Prevention" optional="true">If a test, assertion, or guard would have caught this earlier, name it. Optional, brief.</section>
-    <section name="Out of Scope / Limitations">Anything Debugger could NOT verify (e.g. a failure that needs a credential, an environment Debugger can't reproduce, profiling beyond the tool surface). State it; do not hide it.</section>
-  </structure>
-</output_contract>
-
-<protocol>
-  <phase name="REPRODUCE">
-    <step order="1">Read the delegation. Confirm the failure type (CI/CD vs codebase/runtime), the repo root, and any `spec_or_req` / `changed_files` / `prior_report`.</step>
-    <step order="2">If `spec_or_req` is supplied, read it first — you cannot diagnose a deviation without knowing the intended behavior.</step>
-    <step order="3">Reproduce the failure. For CI/CD: fetch the run logs (`gh run view` / `gh run download --log` / `glab ci trace`), read the failing step, note the exact command and exit code. For codebase/runtime: run the reported reproduction (test, build, script) via `bash` and capture the output. Do not theorize before observing.</step>
-    <step order="4">If the failure does NOT reproduce, do not fabricate a cause. Record what you tried and proceed to set Verdict = `NOT REPRODUCIBLE` (or `NEEDS MORE INFO` if a credential/environment is missing).</step>
-  </phase>
-  <phase name="INVESTIGATE">
-    <step order="5">Form one falsifiable hypothesis about the root cause from the reproduced symptom. State it.</step>
-    <step order="6">Gather evidence to CONFIRM or REJECT it:
-      <substep>Use `read` / `search` / `find` / `lsp` to trace the failing path back to its origin — definitions, references, the data shape at each hop.</substep>
-      <substep>Read logs, stack traces, and CI output for the causal chain. The root cause is the earliest point of inevitability.</substep>
-      <substep>If static reading is insufficient, use `debug` to attach, set a breakpoint near the failure, and inspect live state (variable values, branch taken, null/empty inputs).</substep>
-      <substep>Pin EVERY claim to `file:line`, a log line, or a debug observation.</substep>
-    </step>
-    <step order="7">CRITICIZE: actively look for evidence that would DISPROVE your hypothesis. If found, form a new hypothesis and repeat. A root cause that survives an attempt to disprove it is far more likely to be correct.</step>
-    <step order="8">Distinguish cause from symptom. The first error is usually downstream; keep tracing until further tracing adds no new causal information.</step>
-  </phase>
-  <phase name="REPORT">
-    <step order="9">Assemble the Root-Cause Report per the output contract exactly. Set the Verdict from the evidence (FOUND / NOT REPRODUCIBLE / NEEDS MORE INFO).</step>
-    <step order="10">Every Evidence item MUST have a citation. Any uncited claim MUST be explicitly labeled a hypothesis.</step>
-    <step order="11">Write the Recommended Fix concretely enough that `leaddev`/`middev` can apply it without re-diagnosing. You do NOT apply it.</step>
-    <step order="12">Return the report to Elon. Debugger's work is complete. Do not route to other agents — Elon decides whether a fixing agent runs.</step>
-  </phase>
-</protocol>
-
-<boundaries>
-  <rule>NEVER write or edit code, files, configs, or deps. Debugger is READ-ONLY — by tool boundary AND by discipline (no mutation through `bash`).</rule>
-  <rule>NEVER delegate or spawn agents. No `task` tool. Solo.</rule>
-  <rule>NEVER call `ask`. Debugger is headless; questions/ambiguities go in the report to Elon.</rule>
-  <rule>NEVER report a root cause you did not verify with evidence. An unverified cause is a hypothesis — label it as such or omit it.</rule>
-  <rule>NEVER confuse symptom with cause. The root cause is the earliest point of inevitability, not the first error message.</rule>
-  <rule>NEVER mutate a CI pipeline via `gh`/`glab` (no retry/cancel/trigger/run). READ and FETCH logs only.</rule>
-  <rule>NEVER browse the web or search the internet. (Research is DrPe's role.)</rule>
-  <rule>NEVER apply the fix. Your deliverable is a report with a RECOMMENDED fix; a fixing agent applies it.</rule>
-  <rule>NEVER hide a limitation. If the failure needs an environment/credential/tool you lack, say so under Out of Scope.</rule>
-  <rule>NEVER perform work outside the Debugger role. No spec writing, no implementation, no documentation, no release.</rule>
-</boundaries>
-````
+Keep both **non-addressable** (no `mess-send`/`mess-fail`). Justification: they are **synchronous, fire-and-forget, on-demand** agents. Wrapper runs a release to completion and returns an escalation-or-success report; Debugger returns a single read-only root-cause report. Neither holds a multi-turn, cross-instance conversation. The 7 mess-capable agents are the *phase-owning / conversational* agents that may need to coordinate across omp instances (delegations, deliverables, handoffs on the shared `.app/` disk). Adding mess tools to wrapper/debugger would be pure scope creep with no use case, and would *also* require new frontmatter + skill `<allowed>` entries (C1's expansion from 7→9). Therefore `ADDRESSABLE` stays `{7 mess-capable} ∪ {main}`, and the validator enforces `ADDRESSABLE \ {main} == {agents whose frontmatter grants mess tools}` — derived from PROTO.md.
 
 ---
 
-## 3. marketplace.json — `.omp-plugin/marketplace.json`
+## 2. Theme A — Enforcement-Gate Holes (`src/enforce-orchestrator.ts`)
 
-### 3.1 Three edits to `plugins[0]`
+All changes are inside the `pi.on("tool_call", …)` handler. Do **not** change opt-in logic, the advisory `session_start` re-inject, `ROOT_ALLOWED`, or the `task`/TEAM block.
 
-**Edit A — append `"debugger"` to `agents[]`.** Anchor: the current array (line 17):
-```
-`"agents": ["hr", "docworm", "drpe", "leaddev", "middev", "reqguru", "validator", "wrapper"],`
-```
-→ append `, "debugger"` before the closing `]`. Result is a 9-entry array.
+### 2.1 A1 / C-001 (CRITICAL) — harden the `bash` gate (decision #2)
 
-**Edit B — bump `description` (both counts).** Anchor (line 13):
-- OLD: `"description": "8-agent orchestrator roster + 9 skills.",`
-- NEW: `"description": "9-agent orchestrator roster + 10 skills.",`
+**Anchor:** the block beginning `if (tool === "bash") {` (currently lines 188-195), whose body is the single line `if (command === "git" || command.startsWith("git ")) return;`. Replace that permissive one-liner with the structured procedure below.
 
-(F6, F7 — the string embeds BOTH the agent count and the skill count; both bump.)
+**The exact contract (decision #2):** allow *only* `git add | commit | status | diff | log` whose **path arguments resolve under `.app/`**, and **reject any shell metacharacter** anywhere in the command. Preserve Elon's ability to stage + commit `.app/{REQ,RESEARCH,SPEC,PROJECT}.md`.
 
-**Edit C — add a `count` field.** See §3.2.
+**Algorithm (implement in this order; first failure ⇒ `block(...)`):**
 
-### 3.2 `count` field — placement decision (REQUIRED BY D6)
+1. **Trim** the command. Reject empty.
+2. **Metacharacter rejection (global, on the whole command string).** Reject if it contains any character in the set **`{ ; & | $ ` ` > < newline \ }`** — i.e. the regex `/[;&|$`><\n\\]/`. This is the *first* check (before the prefix test), per decision #2. "Any" means *anywhere* — including inside what would be a commit message. (Rationale + the migration consequence are in §6.1.)
+3. **Tokenize** on runs of whitespace (`split(/\s+/)`). (Safe: step 2 already removed every character that could form a quote/escape/chaining construct, so naive whitespace splitting cannot be subverted.)
+4. **First-token + subcommand allowlist.** `argv[0]` MUST equal the literal `git`. `argv[1]` (the subcommand) MUST be one of **`add`, `commit`, `status`, `diff`, `log`**. Anything else (`push`, `reset`, `checkout`, `rm`, `clean`, …) ⇒ block.
+5. **Mass-stage flag rejection.** Reject any flag token that would stage or commit files *beyond explicit path arguments*: the long forms `--all`, `--update`, `--patch` and any short flag whose character set intersects **`{ a A u p }`** (covers `-a`, `-A`, `-u`, `-p`, and combined forms like `-am`, `-Au`). Rationale: these are the path-equivalent of "." (everything) / tracked-modifications / arbitrary-hunk staging, none of which "resolves under `.app/`".
+6. **Option-value skipping.** When iterating `argv[2..]`, the value immediately following a **value-taking option** is NOT a path and MUST be skipped. Value-taking options: **`-m`, `--message`, `-F`, `--file`, `-c`, `-C`, `--author`, `--date`, `--reedit-message`, `--reuse-message`, `-S`**, plus their `=`-attached forms (`-m=msg`, `--message=msg`, etc. — these carry the value inline and produce no separate token).
+7. **Path scoping.** Every remaining non-flag token is a **path argument**. Normalize each: collapse repeated `/`, strip a trailing `/`, strip a leading `./`, then **reject if it contains a `..` segment** (prevents `.app/../etc/x`). A path is valid iff, after normalization, it **equals `.app`** or **starts with `.app/`**. Any path outside `.app/` ⇒ block.
+8. **`add` minimum.** For subcommand `add`: require **≥ 1** valid `.app/` path argument (reject flag-only `git add` with no path). For `commit`/`status`/`diff`/`log`: zero paths is allowed (e.g. `git status`, `git commit -m "…"`).
+9. If all checks pass ⇒ `return;` (allow).
 
-**Decision: `"count": 9` placed inside `plugins[0]`, as a sibling of `agents[]`** (i.e. at the per-plugin object level).
+**Mandatory test cases (pin behavior; add to `src/enforce-orchestrator.test.ts` — see §2.3):**
 
-**Justification:**
+| Command | Expected | Reason |
+|---------|----------|--------|
+| `git status` | ALLOW | subcommand ok, no paths |
+| `git log` | ALLOW | subcommand ok, no paths |
+| `git diff` | ALLOW | subcommand ok, no paths |
+| `git diff .app/SPEC.md` | ALLOW | path under `.app/` |
+| `git add .app/PROJECT.md` | ALLOW | path under `.app/` |
+| `git add .app/REQ.md .app/PROJECT.md` | ALLOW | multiple `.app/` paths |
+| `git commit -m "[PROTO] Update SPEC.md"` | ALLOW | message value skipped; msg has no metachar |
+| `git commit .app/PROJECT.md -m "[PROTO] x"` | ALLOW | explicit `.app/` path + skipped message |
+| `git status; rm -rf /` | **BLOCK** | metachar `;` |
+| `git log && npm run build` | **BLOCK** | metachar `&` |
+| `git diff | cat` | **BLOCK** | metachar `|` |
+| `git commit -m "$(whoami)"` | **BLOCK** | metachar `$` |
+| `git status > out.txt` | **BLOCK** | metachar `>` |
+| `` git status`whoami` `` | **BLOCK** | metachar backtick |
+| `git reset --hard` | **BLOCK** | subcommand `reset` not allowed |
+| `git push --force` | **BLOCK** | subcommand `push` not allowed |
+| `git checkout main` | **BLOCK** | subcommand `checkout` not allowed |
+| `npm run build` | **BLOCK** | first token ≠ `git` |
+| `git add .` | **BLOCK** | path `.` not under `.app/` |
+| `git add src/foo.ts` | **BLOCK** | path not under `.app/` |
+| `git add -A` | **BLOCK** | mass-stage flag `-A` |
+| `git commit -a -m x` | **BLOCK** | mass-stage flag `-a` |
+| `git add .app/../etc/passwd` | **BLOCK** | `..` escapes `.app/` |
 
-1. **Semantic correctness (decisive).** `count` describes "how many agents THIS plugin declares" — and `agents[]` is already a per-plugin field (`plugins[0].agents`). A `count` sibling to `agents[]` is the natural, unambiguous home. A *top-level* or *`metadata`-level* `count` would be marketplace-global and would become ambiguous the moment a second plugin entry is ever added (its `metadata` already holds marketplace-global `description`/`version`/`pluginRoot`). Per-plugin scope matches per-plugin `agents[]`.
+### 2.2 A2 / C-002 (HIGH) + C-013 (LOW) — tighten the `write` gate
 
-2. **CI-safe (F9).** `scripts/validate-plugins.sh` validates the file only with `jq -e .` (well-formed JSON) and reads `.name`, `.source`, `.agents[]`, `.metadata.pluginRoot`, and `.plugins[]` (lines 77–130). It performs **no JSON-schema validation** against the declared `$schema` URL and **does not reject unknown fields**. Therefore a `count` field at ANY level passes the repo CI gate. (Verified during SPEC authorship: the per-plugin loop at lines 102–108 reads `.agents//[]` defensively; nothing asserts a closed property set.)
+**Anchor:** the `if (tool === "write") {` block (lines 176-186), condition at line 179: `if (path.endsWith(".app/PROJECT.md") || path.endsWith("/.app/PROJECT.md"))`.
 
-3. **Consistent with the locked REQ.** REQ §Registration item 2 and D6 already specify `plugins[0]` with value 9; this SPEC adopts and justifies that placement.
+**Defect A2:** the first operand `path.endsWith(".app/PROJECT.md")` admits any `X.app/PROJECT.md` (e.g. `leak.app/PROJECT.md`) because it never requires a path separator before `.app`. **Defect C-013:** the second operand `path.endsWith("/.app/PROJECT.md")` is a strict subset of the first (anything ending `/.app/PROJECT.md` also ends `.app/PROJECT.md`), so it is dead/redundant.
 
-**Residual risk (OQ-1) and fallback — documented, not blocking:**
+**Fix — replace the whole condition with one normalized, non-redundant test:**
 
-The file declares `"$schema": "https://anthropic.com/claude-code/marketplace.schema.json"`. RESEARCH was skipped for this hire (IDEA-003 pre-resolved), so whether the *external* schema enforces `additionalProperties:false` — and whether omp validates against it at `plugin marketplace add` — is the one unresolved item (REQ OQ-1). However:
-
-- Prior in-repo research (F10) confirmed omp's own `marketplace/types.ts` has **no** `count` and does **not consume** it; agents register by filesystem scan of `<installPath>/agents/*.md` (`task/discovery.ts`), not from `agents[]` or `count`. So `count` is **catalog metadata, not load-bearing**.
-- The existing file already carries fields absent from any strict Anthropic schema shape (`metadata.description`, `metadata.pluginRoot`, `plugins[].category`, `plugins[].homepage`), which indicates permissive handling in practice.
-- **Blocker status is LOW.** Even in the worst case (omp rejects `count` at install), the functional hire is unaffected — `agents[]` + the description bump + the filesystem-scanned definition are the load-bearing registrations.
-
-**Fallback (contingency only):** if DEVELOP or post-install smoke (AC-12) shows omp rejecting the unknown field, **drop `count` entirely** (do not relocate). Rationale: `count` is non-load-bearing documentation; its value is cosmetic and already encoded in the `9-agent` description string. Dropping loses nothing functional and cannot introduce a schema violation. (Relocating to `metadata` is a secondary option only if a count field is explicitly desired despite a `plugins[]`-level rejection — but drop-first is the safe default.) This fallback does NOT require re-opening GRILL; it is a DEVELOP-time engineering call within the locked D6 ("add a count field") intent, gated on empirical evidence.
-
-### 3.3 Resulting `plugins[0]` object (designed)
-
-```json
-{
-  "name": "elon-ko-agents",
-  "description": "9-agent orchestrator roster + 10 skills.",
-  "source": "./agents",
-  "category": "development",
-  "version": "2.5.0",
-  "agents": ["hr", "docworm", "drpe", "leaddev", "middev", "reqguru", "validator", "wrapper", "debugger"],
-  "count": 9,
-  "homepage": "https://github.com/rokicool/elon-ko"
+```ts
+if (tool === "write") {
+  const raw = String(input.path ?? "");
+  // Normalize: collapse repeated slashes, drop a trailing slash, strip a leading "./".
+  const norm = raw.replace(/\/+/g, "/").replace(/\/$/, "").replace(/^\.\//, "");
+  // Allow ONLY the protocol status artifact, where ".app" is a real directory
+  // component (start-of-string, or preceded by "/"). Rejects "X.app/PROJECT.md".
+  if (norm === ".app/PROJECT.md" || norm.endsWith("/.app/PROJECT.md")) return;
+  return block(
+    `The root orchestrator may only write .app/PROJECT.md (got "${raw}"). ` +
+      `All other file creation belongs to a team agent — spawn one via task(agent="<name>").`,
+  );
 }
 ```
 
-`metadata.version` and `plugins[].version` are bumped by Wrapper at release (§6), not in this registration edit.
+The two operands now cover distinct, non-overlapping cases (bare relative `.app/PROJECT.md` vs. slash-prefixed/absolute `…/.app/PROJECT.md`); the redundant second operand is gone (C-013), and the loose bare-suffix operand is replaced by an exact equality (A2).
+
+**Path-scoping matrix (must hold):**
+
+| `path` | Normalized | Expected |
+|--------|-----------|----------|
+| `.app/PROJECT.md` | `.app/PROJECT.md` | ALLOW |
+| `./.app/PROJECT.md` | `.app/PROJECT.md` | ALLOW |
+| `.app/PROJECT.md/` | `.app/PROJECT.md` | ALLOW |
+| `/Users/x/elon-ko/.app/PROJECT.md` | (ends `/.app/PROJECT.md`) | ALLOW |
+| `a/b/.app/PROJECT.md` | (ends `/.app/PROJECT.md`) | ALLOW |
+| `leak.app/PROJECT.md` | `leak.app/PROJECT.md` | **BLOCK** (no separator before `.app`) |
+| `foo.app/PROJECT.md` | `foo.app/PROJECT.md` | **BLOCK** |
+| `.app/REQ.md` | `.app/REQ.md` | **BLOCK** (wrong artifact) |
+| `src/.app/PROJECT.md`-as-distinct | (ends `/.app/PROJECT.md`) | ALLOW* |
+
+\*`src/.app/PROJECT.md` matches the suffix rule; it is an accepted, non-threatening edge (Elon cannot create `src/.app/` without tools the gate already blocks, and the only effect is a file under the repo). The meaningful boundary — rejecting suffix-without-separator (`leak.app/…`) — is enforced. Do not over-engineer cwd-relative checking; it is out of scope.
+
+### 2.3 Tests to add — `src/enforce-orchestrator.test.ts`
+
+Add two `describe` blocks (or extend existing) covering §2.1's table and §2.2's matrix. Each case drives the gate's `tool_call` handler with the literal `input` and asserts allow (no `block`) vs. the block reason substring. Positive bash cases must exercise `git add`, `git commit -m`, `git status`, `git diff <path>`, `git log`; negative cases must cover one of each rejection class (metachar, bad subcommand, non-`git` first token, out-of-`.app/` path, mass-stage flag, `..` escape). These tests are the executable contract Validator will check.
 
 ---
 
-## 4. enforce-orchestrator.ts — root spawn allowlist
+## 3. Theme B — PROTO.md Canonical Roster + Validator Source-of-Truth
 
-**File:** `src/enforce-orchestrator.ts`. **Anchor:** the `TEAM` const (lines 60–69):
+### 3.1 C3 (part 1) — `scaffold/PROTO.md`: add the canonical, machine-parseable roster block
 
-```ts
-`/** Agents Elon (the root) is permitted to spawn. */
-const TEAM = [
-  "reqguru",
-  "drpe",
-  "leaddev",
-  "validator",
-  "docworm",
-  "hr",
-  "wrapper",
-] as const;`
+`PROTO.md` already has a human "Agent-to-Phase Map" table (lines 254-265). **Add a new machine-parseable block** immediately before that table (or as a new `## Canonical Agent Roster` section right after the `## Overview`), formatted as a fenced code block with the infostring **`elon-ko-roster`**. This block is the single source the validator parses (§4). One data line per agent; fields pipe-delimited; `#`-prefixed lines are comments the validator skips:
+
+````markdown
+## Canonical Agent Roster (single source of truth)
+
+> Every consumer — the gate `TEAM` (`src/enforce-orchestrator.ts`), `mess-transport.ts`
+> `ADDRESSABLE`, `skill://elon` `<agent_registry>`, each agent's `tools:` frontmatter, and
+> each skill's `<allowed>` — MUST agree with the attributes declared here.
+> `scripts/validate-plugins.sh` enforces it; drift is a CI failure.
+
+```elon-ko-roster
+# name | model | spawner(csv) | spawns(csv or -) | tools(csv) | skill | mess(yes/no)
+reqguru|pi/task|elon|-|read,write,search,find,mess-send,mess-fail|plugins/agents/skills/reqguru/SKILL.md|yes
+drpe|pi/slow|elon|-|web_search,read,browser,edit,write,mess-send,mess-fail|plugins/agents/skills/drpe/SKILL.md|yes
+leaddev|pi/slow|elon|middev,hr|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,task,mess-send,mess-fail|plugins/agents/skills/leaddev/SKILL.md|yes
+validator|pi/task|elon|-|read,search,find,lsp,bash,mess-send,mess-fail|plugins/agents/skills/validator/SKILL.md|yes
+docworm|pi/smol|elon|-|read,write,edit,search,find,mess-send,mess-fail|plugins/agents/skills/docworm/SKILL.md|yes
+hr|pi/smol|elon,leaddev|-|read,write,edit,mess-send,mess-fail|plugins/agents/skills/hr/SKILL.md|yes
+wrapper|pi/smol|elon|-|bash,read,write,edit,find,search|plugins/agents/skills/wrapper/SKILL.md|no
+debugger|pi/task|elon|-|read,bash,search,find,lsp,debug|plugins/agents/skills/debugger/SKILL.md|no
+middev|pi/task|leaddev|-|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,mess-send,mess-fail|plugins/agents/skills/middev/SKILL.md|yes
+elon|-|self|-|read,ask,todo,job,irc,write,bash,task|plugins/agents/skills/elon/SKILL.md|main
 ```
+````
 
-**Change:** insert `"debugger",` as a new entry. The semantically correct position is appended after `"wrapper",` (the list is unordered for enforcement — it is a membership set — so position is cosmetic; append to minimize diff):
+**Why this format:** bash-native parsing (no `yq`/`yq`-like dependency) — the validator extracts lines inside the ```` ```elon-ko-roster ```` fence, skips `#` lines, splits each on `|`. Pipe-delimited fields avoid the comma ambiguity that would arise if `tools` (itself comma-csv) were a column delimiter. `spawner` is a csv so `hr` can declare `elon,leaddev` and the gate-derivation (`spawner` contains `elon`) and leaddev-derivation (`spawns` lists `hr`) both resolve consistently. `elon`'s `mess` value `main` flags the special `main` recipient.
 
-```ts
-const TEAM = [
-  "reqguru",
-  "drpe",
-  "leaddev",
-  "validator",
-  "docworm",
-  "hr",
-  "wrapper",
-  "debugger",
-] as const;
+### 3.2 C3 (part 2) — `scripts/validate-plugins.sh`: add roster + tool-agreement checks
+
+Add a new section `== Plugin B: roster & tool-agreement (source-of-truth) ==` after the existing per-plugin loop (after line 130). It runs only bash + `jq` + `awk`/`grep` (already required). **Parse the roster first**, then assert each consumer. Failures append to `$ERRS` (existing convention).
+
+**Step A — parse the canonical roster from PROTO.md.** Extract the fenced block:
+```bash
+ROSTER_FILE="scaffold/PROTO.md"
+ROSTER="$(awk '/^```elon-ko-roster$/{f=1;next} /^```$/{if(f){f=0}} f' "$ROSTER_FILE" | grep -v '^#')"
 ```
+If empty ⇒ `err "PROTO.md: no \`\`\`elon-ko-roster block found"`. For each non-comment line, split on `|` into `name|model|spawner|spawns|tools|skill|mess`. Build sorted sets per check below.
 
-This is the change that makes `task(agent="debugger")` pass the gate (FR-7, AC-6). Without it, Elon's spawn is hard-blocked by the `tool_call` handler even though the agent file exists.
+**Step B — gate `TEAM` agreement** (gate = agents Elon may spawn). Extract the array literal from `src/enforce-orchestrator.ts` (between `const TEAM = [` and `] as const;`), collect quoted names. Assert (sorted, set-equal) it equals `{ name : spawner ∋ elon }` from the roster ⇒ the 8 `reqguru, drpe, leaddev, validator, docworm, hr, wrapper, debugger`. Currently passes (gate is correct) — this check *locks* it.
 
-**No other change to this file.** The `ROOT_ALLOWED` map (line 72), the opt-in logic, and the APPEND_SYSTEM injection are untouched.
+**Step C — `mess-transport` `ADDRESSABLE` agreement.** Extract the `TEAM` array from `src/mess-transport.ts:48` and confirm `ADDRESSABLE` = that ∪ `{main}`. Assert the extracted set (sorted, set-equal) equals `{ name : mess == yes AND name != elon }` ⇒ the 7 `reqguru, drpe, leaddev, validator, docworm, hr, middev`. Assert `main` is also addressable. Currently passes (mess-transport is correct) — this check *locks* it and documents that the set intentionally differs from the gate.
 
----
+**Step D — `skill://elon` registry completeness.** Extract every `<agent name="X" …/>` from the `<agent_registry>` block in `plugins/agents/skills/elon/SKILL.md`. Assert the set equals the 9 non-`elon` roster agents (reqguru…debugger). **Currently FAILS** (only 6) — this check is what forces the §3.3 fix.
 
-## 5. PROTO.md — Agent-to-Phase Map row (no new phase)
+**Step E — marketplace agreement.** Assert `jq '.plugins[0].agents'` (sorted) equals the 9 non-`elon` agents, and `.plugins[0].count == 9`, and the description embeds `9-agent` and `10 skills`.
 
-**File:** `scaffold/PROTO.md`. **Anchor:** the "Agent-to-Phase Map" table (lines 254–264). **Append one row** after the Wrapper row (line 264). Columns: `Agent | Phase(s) | Artifacts Owned | Responsibility`.
+**Step F — frontmatter `tools:` agreement (per agent).** For each of the 9 agent `.md` files, parse the `tools:` line from frontmatter (the validator already extracts frontmatter via `awk` at line 113 — reuse that helper). Assert (sorted, set-equal) the parsed tools equal the roster `tools` field for that agent. Catches a hire that adds a tool to the definition but forgets PROTO.md (or vice-versa).
 
-Designed row:
+**Step G — skill `<allowed>` agreement (per agent) — the C1 enforcement.** For each agent skill, `awk` the region between `<allowed>` and `</allowed>`, extract every `name="X"` from `<tool name="X">`. Assert (sorted, set-equal) `{<allowed> names}` == `{frontmatter tools}` (the same set as Step F). Additionally assert `{<forbidden> names} ∩ {frontmatter tools} == ∅` (a granted tool must never appear in `<forbidden>`). **Currently FAILS for the 7 mess-capable agents** (their `<allowed>` omits `mess-send`/`mess-fail`) — this check forces the §5.1 fix and locks the hr-skill rule ("definition tools and skill allowed/forbidden MUST agree exactly"). For `skill://elon`, parse its `<allowed>` and assert it equals the `elon` roster `tools` set (`read, ask, todo, job, irc, write, bash, task`); note write/bash are scope-qualified in prose but the base names must match.
 
-| Agent | Phase(s) | Artifacts Owned | Responsibility |
-|-------|----------|-----------------|----------------|
-| Debugger | on-demand (cross-phase) | — | Root-cause analyst — diagnoses CI/CD pipeline failures and codebase/runtime bugs; returns a read-only report with `file:line` evidence and a recommended fix. Spawned by Elon on demand (not a phase owner); never writes code — a fixing agent applies the fix. |
+**Step H — spawns agreement.** For agents whose roster `spawns != -` (currently only `leaddev` → `middev,hr`), assert the `spawns:` frontmatter line equals it.
 
-**Critical constraint (D5 / T1 / OQ-2):** this is a **registration row only**. DEVELOP MUST NOT add a new phase subsection, MUST NOT add a workflow gate, and MUST NOT alter the Path Selection / Full-Path-Phases sections. The phase column reads "on-demand (cross-phase)" precisely because debugger owns no phase (D5). Adding a phase would contradict D5 and is a validation FAIL (AC-9).
+**Pass/fail:** the script exits 1 if `$ERRS` is non-empty (existing convention, lines 134-141). Every check above appends a precise `err` message naming the file + the expected vs. found set on mismatch.
 
----
+### 3.3 B1 / F-002 (HIGH) — `skill://elon`: add Wrapper + Debugger awareness
 
-## 6. scaffold/AGENTS.md — Index row, enforced-spawns, count
+File: `plugins/agents/skills/elon/SKILL.md`.
 
-**File:** `scaffold/AGENTS.md`. Three edits:
+1. **`<routing_table>` (lines 140-148):** add two routes before the "No suitable agent" fallback:
+   - `<route task="Ship a release: version bump, branch/push, CI gate, PR/MR, tag/release, main sync" agent="Wrapper" skill="wrapper"/>`
+   - `<route task="Diagnose a CI/CD pipeline failure or a codebase/runtime bug; root-cause report with file:line evidence" agent="Debugger" skill="debugger" note="On-demand, cross-phase. Debugger returns a read-only report; a fixing agent (leaddev/middev) applies the fix."/>`
+2. **`<agent_registry>` (lines 233-240):** add two entries:
+   - `<agent name="Wrapper" skill="wrapper" path="plugins/agents/skills/wrapper/SKILL.md">Release engineering — version bump, branch/push, CI gate, PR/MR, tag/release, main sync. On demand in DONE.</agent>`
+   - `<agent name="Debugger" skill="debugger" path="plugins/agents/skills/debugger/SKILL.md">Root-cause analyst — read-only diagnose-only report with file:line evidence. On demand, cross-phase.</agent>`
+3. **DONE phase (line 206):** add a Wrapper conditional mirroring `scaffold/PROTO.md` Phase 6 (lines 208-223). The current DONE line becomes: evaluate DocWorm (existing rule) **and** Wrapper — Wrapper runs iff the change is being released (needs version bump + tag); otherwise skip with a noted reason. (Debugger is on-demand/cross-phase and needs no DONE block.)
 
-### 6.1 Count string (line 8)
-- OLD: `` …a marketplace entry (`source: ./agents`) whose 8 agent definitions live under… ``
-- NEW: `` …a marketplace entry (`source: ./agents`) whose 9 agent definitions live under… ``
+### 3.4 B4 / F-008 (MEDIUM) — `skill://elon`: add `todo` to `<allowed>`
 
-### 6.2 Elon enforced-spawns cell (line 37)
-Append `, debugger` to the `task` row's "Enforced `spawns`" cell:
-- OLD: `` `reqguru, drpe, leaddev, validator, docworm, hr, wrapper` ``
-- NEW: `` `reqguru, drpe, leaddev, validator, docworm, hr, wrapper, debugger` ``
-
-This must stay in lockstep with `TEAM` in `src/enforce-orchestrator.ts` (§4) — they are the two surfaces that make debugger spawnable (F12, FR-7).
-
-### 6.3 Agent Index row (after the Wrapper row, line 45)
-Columns: `Agent | Defined at | Skill (protocol) | Enforced tools | Enforced spawns | Role`.
-
-Designed row:
-
-| Agent | Defined at | Skill (protocol) | Enforced `tools` | Enforced `spawns` | Role |
-|---|---|---|---|---|---|
-| **Debugger** | `plugins/agents/agents/debugger.md` | `skill://debugger` | `read, bash, search, find, lsp, debug` | — | Root-cause analyst — diagnoses CI/CD & runtime bugs; read-only report with `file:line` evidence + recommended fix. Spawned on demand; never writes code. |
+The gate `ROOT_ALLOWED` (line 73) already grants `todo`; `AGENTS.md`/`.DEVREADME.md` grant it; only the skill `<allowed>` (lines 35-43) omits it, so the skill's own `<boundaries>` rule "Use any tool not explicitly listed in `<allowed>`" forbids what the runtime allows. Add:
+`<tool name="todo">MUST use ONLY for workflow/phase status tracking (which phase is active, what is blocked). NEVER as a substitute for spawning agents or for implementation.</tool>`
+Insert it among the other allowed tools (e.g. after `irc`). This also satisfies Step G of the validator for `skill://elon` (its `<allowed>` must equal the roster `tools` set, which includes `todo`).
 
 ---
 
-## 7. Count-bearing doc updates (exact old → new)
+## 4. Theme B — Documentation Reconciliation
 
-Single source of truth after DEVELOP: **9 agents / 10 skills**. Every string below is anchored verbatim; DEVELOP locates by the anchor string (line numbers are pre-DEVELOP aids).
+### 4.1 B3 / F-003 (HIGH) — `.DEVREADME.md`
 
-| File:line | OLD (anchor) | NEW |
-|---|---|---|
-| `.omp-plugin/marketplace.json:13` | `"8-agent orchestrator roster + 9 skills."` | `"9-agent orchestrator roster + 10 skills."` |
-| `README.md:20` | `**8 specialist agents** + **9 skills**: \`reqguru\`, \`drpe\`, \`leaddev\`, \`middev\`, \`validator\`, \`docworm\`, \`hr\`, \`wrapper\`` | `**9 specialist agents** + **10 skills**: \`reqguru\`, \`drpe\`, \`leaddev\`, \`middev\`, \`validator\`, \`docworm\`, \`hr\`, \`wrapper\`, \`debugger\`` |
-| `.DEVREADME.md:15` | `8 agent definitions + 9 skills` | `9 agent definitions + 10 skills` |
-| `.DEVREADME.md:34` | `# 8 agent definitions (Plugin B)` | `# 9 agent definitions (Plugin B)` |
-| `.DEVREADME.md:35` ⚠️ | `# 9 skills (Plugin B, co-located)` | `# 10 skills (Plugin B, co-located)` |
-| `scaffold/AGENTS.md:8` | `whose 8 agent definitions live under` | `whose 9 agent definitions live under` |
-| `elon_ko.sh:7` | `8 agents + 9 skills (marketplace)` | `9 agents + 10 skills (marketplace)` |
-| `elon_ko.sh:561` | `8 agents + 9 skills (pinned to tag '%s')` | `9 agents + 10 skills (pinned to tag '%s')` |
-| `elon_ko.sh:564` | `8 agents + 9 skills (always latest)` | `9 agents + 10 skills (always latest)` |
-| `elon_ko.sh:696` | `8 agents + 9 skills (from the tag, not latest)` | `9 agents + 10 skills (from the tag, not latest)` |
-| `elon_ko.sh:723` | `8 agents + 9 skills (always latest)` | `9 agents + 10 skills (always latest)` |
-| `.github/workflows/release.yml:98` | `(8 agents + 9 skills; markdown only)` | `(9 agents + 10 skills; markdown only)` |
+File: `.DEVREADME.md`. Four edits (re-anchor by string, not line):
 
-> ⚠️ **SPEC addition vs REQ's list:** REQ's count-bearing-docs list (§Acceptance Criteria) enumerates `.DEVREADME.md:15` and `:34` but **omits `.DEVREADME.md:35`** (`# 9 skills (Plugin B, co-located)`), which ALSO carries the skill count. This SPEC adds it. It is required for NFR-5 (internal consistency: 10 skills everywhere). Caught by a repo-wide count audit during SPEC authorship (`grep "8 agent|9 skill"`).
+1. **TEAM list (lines 54-55):** the inline `task → allowed only when agent ∈ TEAM (reqguru, drpe, leaddev, validator, docworm, hr)` → append `, wrapper, debugger` (8 total).
+2. **Elon row `task` cell (line 69):** the cell `task | reqguru, drpe, leaddev, validator, docworm, hr` → append `, wrapper, debugger` (8). Also the table (lines 67-76) currently omits Wrapper and Debugger rows — **add two rows**:
+   - `| **Wrapper** | bash, read, write, edit, find, search | — | Release engineering (git/gh/glab only) |`
+   - `| **Debugger** | read, bash, search, find, lsp, debug | — | Root-cause analyst (read-only, diagnose-only) |`
+3. **Skill count (lines 167-168):** `The roster ships 8: `elon`, `hr`, `middev`, `reqguru`, `validator`, `drpe`, `leaddev`, `docworm`.` → `The roster ships 10: `elon`, `hr`, `middev`, `reqguru`, `validator`, `drpe`, `leaddev`, `docworm`, `wrapper`, `debugger`.`
+4. **(Mirror policy doc — B6, §4.4)** add the mirror/link policy sentence to the "Extending: add or change an agent" section.
 
-**Explicitly NOT changed (historical / illustrative / other-workflow):**
-- `.app/REQ.md`, `.app/RESEARCH.md`, `.app/RESEARCH-SCAFFOLD.md`, `.app/PROJECT.md`, `.app/IDEAS.md` — protocol/prior-workflow artifacts; their "8 agents" references are the historical record and REQ.md itself is the locked source of truth (not edited post-GRILL).
-- `.app/SPEC.md:553` (`8 agents + 9 skills [<latest | pinned to tag TAG>]`) — belongs to the *scaffold* effort (SCAFFOLD-SPEC.md), a different workflow. REQ §Count-bearing-docs marks it optional; leave unless consistency is explicitly requested.
-- `plugins/agents/skills/hr/SKILL.md:110` — its `8-agent → 9-agent` is generic illustrative procedure prose (the count mandate), not a live count. Remains illustrative (REQ :192).
-- `CHANGELOG.md:68` — a historical wrapper-fix narrative; not a live count. Left as historical record.
+> **Observation (NOT a spec deliverable — flag to Elon):** line 179's `package.json` extensions example lists 4 entries and omits `./src/idea-storage.ts` (actual = 5). This is a separate doc drift, not in the finding list; left for Elon to decide. Do not bundle unless Elon approves.
 
-## 8. CHANGELOG.md — new entry
+### 4.2 B5 / F-005/F-009 (MEDIUM) — `README.md`
 
-**File:** `CHANGELOG.md`. **Anchor:** the `## [Unreleased]` section (line 12), currently `_Nothing yet._` (line 14). Replace the placeholder and add an `### Added` subsection. Designed entry (Keep a Changelog format, matching the existing style at `[v2.5.0]`):
+File: `README.md`. Three edits:
 
-```markdown
-## [Unreleased]
+1. **Spawn list (line 233):** ``(`reqguru`, `drpe`, `leaddev`, `validator`, `docworm`, `hr`, `wrapper`)`` → append `, `debugger`` (8 Elon-spawnable; `middev` stays out — it is LeadDev-spawned).
+2. **Model table (lines 260-264):** the `pi/task` row ``| `pi/task` | `middev`, `reqguru`, `validator` | …`` → append `, `debugger``.
+3. **Model YAML comments (lines 281-283):** `task: anthropic/claude-sonnet-4-5      # middev, reqguru, validator` → append `, debugger`.
 
-### Added
+### 4.3 B5 (cont.) — `scaffold/models.example.yml`
 
-- **`debugger` agent — read-only root-cause analyst.** A new distributed team agent (`pi/task`) that diagnoses CI/CD pipeline failures **and** general codebase/runtime bugs (test/build/lint/deploy failures, crashes, logic errors, flaky tests) and returns a Root-Cause Report with `file:line` evidence and a recommended fix. It is **diagnose-only**: it never writes code — a fixing agent (`leaddev`/`middev`) applies the fix. Tools enforced: `read, bash, search, find, lsp, debug`. Spawned **on demand by Elon** (no new pipeline phase); runs solo (no `spawns`). Registered in `marketplace.json` `agents[]` + a per-plugin `count` field (value 9); roster is now **9 agents / 10 skills**. `debugger` added to the root spawn allowlist (`src/enforce-orchestrator.ts` `TEAM`) and `scaffold/AGENTS.md` enforced-spawns.
+File: `scaffold/models.example.yml`. Three edits, all adding `debugger` to the **`pi/task` (Tier 2)** tier:
+
+1. Header comment **line 7:** `#   Tier 2 (strong general):      middev, reqguru, validator -> model: pi/task` → append `, debugger`.
+2. Inline comment **line 33:** `  # Tier 2 - strong general (middev, reqguru, validator).` → append `, debugger`.
+3. (The `modelRoles` block has no per-agent list to edit beyond the comments; the alias values are tier-level. No value change needed.)
+
+### 4.4 B6 / F-010 (LOW) — mirror policy
+
+**Verified state:** `.omp/agents/` holds only `debugger.md`; `.agents/skills/` holds only `debugger/` and `wrapper/`. The installer (`elon_ko.sh`) uses `omp plugin install` (not `omp plugin link`), and `scaffold/PROTO.md:279-288` documents the mirror as the *default* dev-session convention with `link` as the drift-free alternative. The HR skill mirrors in the dev repo by procedure. The current state is therefore an **incomplete mirror**, not a link setup.
+
+**Decision: MIRROR ALL** (complete the set), enforced by the validator. Aligns with the documented HR convention and the existing (partial) mirrors; contradicted by nothing in repo state. Concretely:
+
+- **Policy:** every `plugins/agents/agents/<n>.md` is mirrored **byte-identical** to `.omp/agents/<n>.md`; every `plugins/agents/skills/<n>/SKILL.md` is mirrored byte-identical to `.agents/skills/<n>/SKILL.md`. This means adding the 8 missing agent mirrors (`reqguru, drpe, leaddev, validator, docworm, hr, wrapper, middev` — debugger already mirrored) and the 8 missing skill mirrors (`reqguru, drpe, leaddev, validator, docworm, hr, middev, elon` — debugger + wrapper already mirrored).
+- **Validator check (add to §3.2, Step I):** for each of the 9 agents, `cmp -s plugins/agents/agents/<n>.md .omp/agents/<n>.md` (err if missing or differs); for each of the 10 skills, `cmp -s plugins/agents/skills/<n>/SKILL.md .agents/skills/<n>/SKILL.md`. Byte-identity = zero drift.
+- **Document in `.DEVREADME.md`** (the "Extending: add or change an agent" section, ~lines 131-163): state the mirror-ALL policy explicitly — *"The dev session mirrors every distributed agent + skill byte-identically into `.omp/agents/` + `.agents/skills/`; `scripts/validate-plugins.sh` enforces byte-identity. The drift-free alternative is `omp plugin link` (then delete all mirrors); this repo uses mirrors."*
+- **Side-effect fixed:** `plugins/agents/skills/wrapper/SKILL.md:50` references `.omp/agents/wrapper.md` as the enforced-tools source; under mirror-ALL that file will exist, so the reference becomes accurate (no text change needed beyond creating the mirror).
+
+> The alternative (link + mirror NONE, deleting the 3 existing mirrors) is equally drift-free and lower-maintenance, and is noted in DEVREADME as the escape. Mirror-ALL is chosen because it matches the evidenced convention and needs no dev-environment action.
+
+---
+
+## 5. Theme C — Folded Consistency Fixes
+
+### 5.1 C1 / F-001 (HIGH) — add `mess-send, mess-fail` to 7 skills' `<allowed>`
+
+For each of the 7 mess-capable agent skills — `leaddev`, `reqguru`, `drpe`, `validator`, `docworm`, `hr`, `middev` — the frontmatter `tools:` grants `mess-send, mess-fail` and a prose `## Cross-instance messaging` section documents them, but the XML `<tool_policy><allowed>` block OMITS both. This violates the hr skill's own rule ("definition tools and skill allowed/forbidden MUST agree exactly") and will fail validator Step G (§3.2).
+
+**Fix:** in each of the 7 skills, add to the `<allowed>` block:
 ```
+    <tool name="mess-send">Deliver a message to an agent that may run in a different omp instance; co-located receivers are reached in-app, others via a file under `.app/mess/`. See "Cross-instance messaging" below.</tool>
+    <tool name="mess-fail">Mark a received message failed (increments attempts; after 3 it is moved to `arc/`).</tool>
+```
+Insert adjacent to the other allowed tools (e.g. after the last existing `<tool>` in `<allowed>`). **Do not** duplicate the prose section — it already exists in all 7 (including drpe, per §0.2 correction). `wrapper` and `debugger` are **excluded** — they have no mess tools and correctly list them under `<forbidden>`.
 
-The version number / release date / `### Changed` version-bump subsection are filled by **Wrapper** at release cut (§9); SPEC fixes only the `### Added` entry under `[Unreleased]`.
+### 5.2 C2 / F-007 (MEDIUM) — drpe verdict typo
 
----
-
-## 9. Release & activation (Wrapper + ops)
-
-- **Version bump (Wrapper):** `package.json#version`, `marketplace.json` `metadata.version` and `plugins[].version`, `package-lock.json` root version, and the `elon_ko.sh` `OMP_AGENT_REF` tag pin — all bumped in lockstep to the next version (semver MINOR: a new backward-compatible agent, no breaking change). Wrapper owns the exact number and the `### Changed` CHANGELOG subsection.
-- **Tag + release + main sync:** per Wrapper's standard procedure.
-- **Runtime registration:** omp discovers agents by filesystem scan of `<installPath>/agents/*.md` (F10). A **full omp restart** is required before `task(agent="debugger")` is recognized (REQ §Release). AC-12 (post-restart smoke) is the final acceptance gate.
+File: `plugins/agents/agents/drpe.md`, **line 12** — the body sentence spells the verdict `CONTRICT`. The skill (`plugins/agents/skills/drpe/SKILL.md:95`) spells it `CONTRADICT`. **Fix: `CONTRICT` → `CONTRADICT`** (the definition file is wrong; the skill's `CLEAR/EXPAND/CONTRADICT/UNCLEAR` is the intended word — "findings contradict or invalidate requirements"). Single-character-word correction in the one sentence.
 
 ---
 
-## 10. AGENTS.md root file
+## 6. Acceptance Criteria (what Validator checks)
 
-**There is no root `AGENTS.md` in this source repo.** `scaffold/AGENTS.md` is the source-of-record; the installer (`elon_ko.sh`) *deploys* a copy of it to `<cwd>/AGENTS.md` in client projects at install time (overwritten on every install). Therefore the only AGENTS.md edit in this repo is `scaffold/AGENTS.md` (§6). No separate root file exists to update. (Confirmed by a repo-wide glob during SPEC authorship.)
+Numbered; each is observable/testable. REQ-traceability in brackets.
 
----
-
-## 11. Validation / CI impact
-
-### 11.1 `scripts/validate-plugins.sh` — does it need changes?
-
-**No source change required, but it WILL exercise the new files automatically.** Tracing the script's Plugin B loop (lines 93–130):
-
-- It iterates `.plugins[]`; for `elon-ko-agents` it reads `.agents[]` (line 103). Because Edit A (§3.1) adds `debugger` to that array, the loop will assert `plugins/agents/agents/debugger.md` **exists** (line 105–107). DEVELOP must create that file (C1) or CI fails — correct, desired behavior.
-- It scans every `plugins/agents/agents/*.md` for `name:` + `description:` frontmatter (lines 111–117). The new `debugger.md` frontmatter (§1.1) satisfies both. ✓
-- It scans every `plugins/agents/skills/*/` for a `SKILL.md` (lines 119–127). The new `plugins/agents/skills/debugger/SKILL.md` (C2) satisfies it. ✓
-- It reads `.name`, `.source`, `.metadata.pluginRoot`, `.plugins[]`. It does **NOT** read `.count`, does **NOT** validate against `$schema`, does **NOT** reject unknown fields (F9). So `count` is invisible to it. ✓
-
-**Net:** no script edit. The existing assertions *become* the coverage for the new agent/skill. The skill-count `note` line (line 128) will print `10 skill(s)` after the hire — a useful sanity signal, not an assertion.
-
-### 11.2 Agent-count assertion?
-
-**There is none.** The script asserts only `NPLUG > 0` (plugins listed, line 87–89) and per-skill `found_skills > 0` (line 128, a `note`, not an error). No hard-coded "8 agents" or "9 skills" constant exists in the script, so **no count assertion needs updating**. (Verified by full read of the script, lines 1–142.)
-
-### 11.3 Repo typecheck (`npm run typecheck`)
-
-The only TypeScript change is adding one string literal to the `TEAM` array in `src/enforce-orchestrator.ts`. `TEAM` is `as const` (a readonly tuple of string literals) consumed only by membership check; adding an element cannot break the type. The existing `enforce-orchestrator.test.ts` should still pass. DEVELOP runs `npm run typecheck` to confirm (NFR-4).
-
-### 11.4 New test for the debugger agent?
-
-**Not required by REQ, and not cost-effective.** The agent is pure markdown (definition + skill) plus one allowlist string. The enforced behavior (read-only, solo, pi/task, spawnable) is verified by:
-- `validate-plugins.sh` (frontmatter presence + file existence) — already covers it.
-- The Validator's spec-vs-implementation audit (AC-1…AC-11) at VALIDATE.
-- AC-12 (post-restart `task(agent="debugger")` smoke) for runtime recognition.
-
-A unit test asserting `"debugger" ∈ TEAM` is可选; if DEVELOP adds one it belongs in `enforce-orchestrator.test.ts` as a trivial membership assertion. SPEC does not mandate it (REQ has no FR for it). **Recommendation: skip — the Validator audit + AC-12 are stronger signals than a tautological string-membership test.**
+- **AC-1 [A1]** `src/enforce-orchestrator.test.ts` contains cases asserting every row of the §2.1 table passes (ALLOW for the green rows; BLOCK with the matching reason substring for the red rows). `npm test` is green.
+- **AC-2 [A1]** No path through the new `bash` handler allows a command containing `; & | $ ` ` > < \` or newline, or a `git` subcommand outside `{add,commit,status,diff,log}`, or a path argument outside `.app/`.
+- **AC-3 [A2]** The `write` handler BLOCKS `leak.app/PROJECT.md` and any `X.app/PROJECT.md` (no separator), and ALLOWS `.app/PROJECT.md`, `./.app/PROJECT.md`, and absolute `…/.app/PROJECT.md`. The redundant second OR operand is removed (C-013).
+- **AC-4 [B1]** `plugins/agents/skills/elon/SKILL.md` `<agent_registry>` lists 8 agents (adds Wrapper, Debugger); `<routing_table>` has Wrapper + Debugger routes; the DONE phase has a Wrapper conditional.
+- **AC-5 [B4]** `skill://elon` `<allowed>` includes `todo`.
+- **AC-6 [B3]** `.DEVREADME.md` TEAM = 8 (adds wrapper, debugger); Elon `task` cell = 8; agent table has Wrapper + Debugger rows; skill count = 10 with all 10 listed.
+- **AC-7 [B5]** `README.md` spawn list includes `debugger` (8); both model-tier locations (table + YAML comments) list `debugger` under `pi/task`.
+- **AC-8 [B5]** `scaffold/models.example.yml` lists `debugger` under the `pi/task` tier (header + inline comments).
+- **AC-9 [B6]** `.omp/agents/` mirrors all 9 agent definitions byte-identically; `.agents/skills/` mirrors all 10 skills byte-identically.
+- **AC-10 [C1]** Each of the 7 mess-capable skills' `<allowed>` contains `mess-send` and `mess-fail` (set-equal to its frontmatter `tools:`).
+- **AC-11 [C2]** `plugins/agents/agents/drpe.md` spells the verdict `CONTRADICT`.
+- **AC-12 [C3]** `scaffold/PROTO.md` contains a ```` ```elon-ko-roster ```` block listing all 10 entities with the §3.1 fields.
+- **AC-13 [C3]** `bash scripts/validate-plugins.sh` exits 0 against the post-DEVELOP tree, exercising Steps A–I (roster parse; gate TEAM; mess-transport ADDRESSABLE; skill://elon registry; marketplace; frontmatter tools; skill `<allowed>`; spawns; mirror byte-identity). Drift in any consumer ⇒ exit 1 with a named error.
+- **AC-14 [non-regression]** `npm run typecheck` is green (the gate is TypeScript; the write/bash rewrite must type-check). No existing passing test is broken.
 
 ---
 
-## 12. Files to create / modify (consolidated DEVELOP manifest)
+## 7. Risks & Migration Notes
 
-**CREATE (4):**
-1. `plugins/agents/agents/debugger.md` — content per §1.1 + §1.2.
-2. `plugins/agents/skills/debugger/SKILL.md` — content per §2.
-3. `.omp/agents/debugger.md` — byte-identical copy of #1 (C3, AC-4).
-4. `.agents/skills/debugger/SKILL.md` — byte-identical copy of #2 (C3, AC-4).
+### 7.1 Bash tightening changes Elon's commit habit (the flagged risk — YES, intentionally)
 
-**MODIFY (9):**
-5. `.omp-plugin/marketplace.json` — §3 (agents[] append, description bump, add count).
-6. `scaffold/PROTO.md` — §5 (append Agent-to-Phase Map row; no phase subsection).
-7. `scaffold/AGENTS.md` — §6 (count string, enforced-spawns cell, Index row).
-8. `src/enforce-orchestrator.ts` — §4 (add `"debugger"` to `TEAM`).
-9. `README.md` — §7 (line 20).
-10. `.DEVREADME.md` — §7 (lines 15, 34, 35).
-11. `elon_ko.sh` — §7 (lines 7, 561, 564, 696, 723).
-12. `.github/workflows/release.yml` — §7 (line 98).
-13. `CHANGELOG.md` — §8 (`[Unreleased]` → `### Added`).
+Today the gate allows *anything* starting with `git `, so Elon can (and the protocol examples imply he does) chain: `git add .app/REQ.md && git commit -m "[PROTO] …"`. **After A1, `&&` is a metachar ⇒ BLOCKED.** Migration: Elon must issue **two separate `bash` calls** — `git add .app/<file>` then `git commit -m "…"` — both still allowed. This preserves the ability to stage + commit `.app/{REQ,RESEARCH,SPEC,PROJECT}.md` (decision #2's explicit requirement) while removing chaining. **Document this in the completion report** so the user knows the new two-step flow.
 
-**MODIFY by Wrapper at release (not DEVELOP):** `package.json`, `marketplace.json` version fields, `package-lock.json`, `elon_ko.sh` `OMP_AGENT_REF`, CHANGELOG `### Changed`.
+Secondary consequence: because metachar rejection is global, **commit messages must not contain `; & | $ ` ` > < \ `** or newlines. Protocol labels (`[PROTO]`, `[SPEC §N]`, `[FIX]`, `[TRIVIAL]`) and ordinary prose contain none of these, so real impact is limited to messages with arrows (`->`) or ampersands — rewrite as plain text. Flagged, accepted.
 
-**DO NOT TOUCH:** `src/mess-transport.ts` (F13, AC-7), `scripts/validate-plugins.sh` (§11.1), `.app/REQ.md` (locked), and the historical/illustrative strings in §7's exclusion list.
+### 7.2 Mass-stage flags (`-A`, `-a`) are now rejected
 
----
+`git add -A` / `git commit -a` are blocked (§2.1 step 5) because they stage/commit beyond explicit `.app/` paths, violating "Elon commits only protocol artifacts." Elon must name `.app/` files explicitly. Low risk: the protocol already names them explicitly. (Residual, out of scope: a bare `git commit -m x` with no path commits whatever is *already staged* — but staging is now `.app/`-scoped, so this is safe.)
 
-## 13. Design decisions that deviate from (or extend) REQ.md
+### 7.3 `mess-transport.ts` is intentionally NOT changed
 
-This SPEC deviates from / extends REQ in exactly three places. All are within SPEC's design authority (REQ's §Out-of-Scope explicitly assigns body text and placement justification to SPEC), and none re-opens a GRILL-locked decision:
+C-003 reads as "the lists disagree → fix them," but `ADDRESSABLE` is already correct (the 7 mess-capable + main). The spec makes it **validator-checked** (Step C) rather than editing the set. MidDev must NOT add wrapper/debugger to `ADDRESSABLE` (that would be wrong — they have no mess tools; see §1.1) and must NOT remove `middev` (it IS mess-capable).
 
-1. **`count` placement justified and fallback specified (§3.2).** REQ D6 fixed the *decision* to add `count` (=9) at `plugins[0]`; this SPEC adds the *engineering justification* (per-plugin semantic scope + CI-safety + schema-risk analysis) and a documented **fallback** (drop `count` if omp rejects it at install — it is non-load-bearing per F10). The fallback is a DEVELOP-time contingency, not a re-litigation of D6.
+### 7.4 Adding `todo` to `skill://elon` is additive only
 
-2. **`.DEVREADME.md:35` added to the count-bearing-docs list (§7).** REQ's list omits it. This SPEC adds it because it carries the skill count and NFR-5 demands a single consistent source of truth. (Addition, not contradiction.)
+The runtime already grants `todo` (`ROOT_ALLOWED`); this spec only makes the skill's `<allowed>` honest about it. No behavioral change at runtime; removes a self-contradiction. The validator's Step G for `skill://elon` requires the roster `tools` set to include `todo` — keep them in sync.
 
-3. **No new unit test mandated (§11.4).** REQ has no FR requiring a debugger test. This SPEC explicitly recommends *against* a tautological `TEAM`-membership unit test in favor of the Validator audit + AC-12 smoke, and leaves it optional. (Scope discipline, not a deviation from a REQ requirement.)
+### 7.5 Mirror-ALL adds files but no behavior change
 
-**No GRILL-locked decision (D1–D11) is contradicted.** In particular: D2 (diagnose-only) is enforced by the tool boundary AND the skill discipline; D5 (on-demand, no new phase) is honored by §5; D7 (exact tool set, corrected tokens) by §1.1; D8 (solo, no spawns) by the absent `spawns:` field.
+Creating 8 agent mirrors + 8 skill mirrors is pure duplication for the dev session; end users are unaffected (they `omp plugin install`). Byte-identity is `cmp`-enforced. Risk: future edits to `plugins/` that forget the mirror ⇒ CI failure (which is the point). The HR skill already documents this two-write procedure.
+
+### 7.6 Validator now fails-fast on drift
+
+After §3.2, any future hire/edit that updates one touchpoint but not PROTO.md (or vice-versa) turns the build red. This is the intended enforcement; it converts today's silent drift into an explicit CI gate. The first run after DEVELOP must pass cleanly (all consumers reconciled by this spec).
+
+### 7.7 PROTO.md roster block must stay hand-edited carefully
+
+The ```` ```elon-ko-roster ```` block is the source. If a hire adds an agent, HR/LeadDev must add the row here FIRST, then the validator confirms every consumer matches. A malformed block (wrong field count, missing fence) ⇒ validator Step A fails with a clear message. Keep the field order/name stable (the validator indexes positionally).
 
 ---
 
-## 14. Traceability to Acceptance Criteria (REQ AC-1…AC-12)
+## 8. Deliverable Checklist (for DEVELOP)
 
-| AC | Satisfied by | Verification |
-|----|--------------|--------------|
-| AC-1 def + skill exist, frontmatter, no spawns | §1.1, §2, §12 #1–#4 | `validate-plugins.sh` + Validator |
-| AC-2 tools set-equal, no mutation/mess tools | §1.1, §2.3 tool_policy | grep the frontmatter |
-| AC-3 model == pi/task | §1.1 | grep frontmatter |
-| AC-4 mirrors byte-identical | §12 #3–#4 | `diff` / `cmp` |
-| AC-5 marketplace agents[]+count+description | §3.1, §3.2 | `jq` |
-| AC-6 TEAM includes debugger | §4 | grep `TEAM` |
-| AC-7 mess-transport.ts unchanged | §0 C9, §12 DO NOT TOUCH | git diff (no debugger edit) |
-| AC-8 AGENTS.md Index row + enforced-spawns | §6.2, §6.3 | read AGENTS.md |
-| AC-9 PROTO.md row on-demand, no phase subsection | §5 | read PROTO.md |
-| AC-10 all count docs show 9/10 | §7 | repo-wide grep |
-| AC-11 validate-plugins.sh exits 0 | §11.1 | `bash scripts/validate-plugins.sh` |
-| AC-12 post-restart task smoke | §9 | manual post-restart spawn |
+| ID | Finding | File(s) | Change |
+|----|---------|---------|--------|
+| D-A1 | A1/C-001 | `src/enforce-orchestrator.ts`, `src/enforce-orchestrator.test.ts` | Rewrite `bash` handler per §2.1; add §2.1 test table |
+| D-A2 | A2/C-002 + C-013 | `src/enforce-orchestrator.ts` | Replace `write` condition per §2.2 |
+| D-C3a | C3 | `scaffold/PROTO.md` | Add `## Canonical Agent Roster` + ```` ```elon-ko-roster ```` block (§3.1) |
+| D-C3b | C3 | `scripts/validate-plugins.sh` | Add Steps A–I (§3.2) |
+| D-B1 | B1/F-002 | `plugins/agents/skills/elon/SKILL.md` | Add Wrapper+Debugger routes/registry + DONE Wrapper block (§3.3) |
+| D-B4 | B4/F-008 | `plugins/agents/skills/elon/SKILL.md` | Add `todo` to `<allowed>` (§3.4) |
+| D-B3 | B3/F-003 | `.DEVREADME.md` | TEAM=8, table rows, skill count=10, mirror-policy sentence (§4.1, §4.4) |
+| D-B5a | B5/F-005,009 | `README.md` | spawn list +debugger; model table + comments +debugger (§4.2) |
+| D-B5b | B5 | `scaffold/models.example.yml` | debugger in `pi/task` tier comments (§4.3) |
+| D-B6 | B6/F-010 | `.omp/agents/*.md`, `.agents/skills/*/SKILL.md` | Mirror all 9 agents + 10 skills byte-identical (§4.4) |
+| D-C1 | C1/F-001 | 7 skill `SKILL.md` | Add `mess-send, mess-fail` to `<allowed>` (§5.1) |
+| D-C2 | C2/F-007 | `plugins/agents/agents/drpe.md` | `CONTRICT` → `CONTRADICT` (§5.2) |
+
+**Out of scope (do NOT touch):** Themes D/E/F (except C3's validator check, which IS in scope). No CI-workflow test additions (D1). No `mess-transport.ts` set change. No full test-suite/lint runs beyond the gate's own tests + typecheck (AC-1, AC-14).
 
 ---
 
-**SPEC is complete enough that an independent Validator can audit the implementation against it, and an independent implementer (HR + MidDev) can build it without further design input.** Hand off to DEVELOP.
+**SPEC is complete enough that an independent Validator can audit the implementation against AC-1…AC-14, and an independent implementer (MidDev) can build it without further design input.** Hand off to DEVELOP.
