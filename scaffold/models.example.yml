@@ -4,7 +4,7 @@
 # Each elon-ko agent declares a model ROLE alias in its frontmatter:
 #
 #   Tier 1 (strongest reasoning): drpe, leaddev              -> model: pi/slow
-#   Tier 2 (strong general):      middev, reqguru, validator -> model: pi/task
+#   Tier 2 (strong general):      middev, reqguru, validator, debugger -> model: pi/task
 #   Tier 3 (small / fast):        docworm, hr, wrapper       -> model: pi/smol
 #
 # OUT OF THE BOX these aliases resolve WITHOUT this file: an unset role falls
@@ -30,7 +30,7 @@
 modelRoles:
   # Tier 1 - strongest reasoning (drpe, leaddev). :high engages deep thinking.
   slow: anthropic/claude-opus-4-5:high
-  # Tier 2 - strong general (middev, reqguru, validator).
+  # Tier 2 - strong general (middev, reqguru, validator, debugger).
   task: anthropic/claude-sonnet-4-5
   # Tier 3 - small / fast (docworm, hr, wrapper).
   smol: openai/gpt-4.1-mini

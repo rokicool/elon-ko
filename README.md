@@ -230,7 +230,7 @@ echo '{"enabled": true}' > .omp/elon.json   # gate active in this project only
 When active, your root session is Elon: it may `read`/`ask`/manage todos,
 `job` (inspect/wait on async agent jobs), `irc` (live coordination with parallel
 sibling agents — not a substitute for spawning), spawn **team agents**
-(`reqguru`, `drpe`, `leaddev`, `validator`, `docworm`, `hr`, `wrapper`), write only
+(`reqguru`, `drpe`, `leaddev`, `validator`, `docworm`, `hr`, `wrapper`, `debugger`), write only
 `.app/PROJECT.md`, and run only `git …`. Everything else (direct `edit`,
 `write`, builds, search, browse, …) is blocked — it must delegate.
 Subagents are never gated by this; they're restricted by their own agent
@@ -260,7 +260,7 @@ The mapping is fixed in the distribution:
 | Role alias | Agents | Intent |
 |---|---|---|
 | `pi/slow` | `drpe`, `leaddev` | Strongest reasoning (research, architecture). |
-| `pi/task` | `middev`, `reqguru`, `validator` | Strong general (implementation, clarification, auditing). |
+| `pi/task` | `middev`, `reqguru`, `validator`, `debugger` | Strong general (implementation, clarification, auditing). |
 | `pi/smol` | `docworm`, `hr`, `wrapper` | Small / fast (docs, agent defs, release tooling). |
 
 **Works out of the box — no config needed.** The `pi/<role>` aliases resolve
@@ -279,7 +279,7 @@ a `modelRoles` block into config and the aliases resolve to the models you named
 ```yaml
 modelRoles:
   slow: anthropic/claude-opus-4-5:high   # drpe, leaddev
-  task: anthropic/claude-sonnet-4-5      # middev, reqguru, validator
+  task: anthropic/claude-sonnet-4-5      # middev, reqguru, validator, debugger
   smol: openai/gpt-4.1-mini              # docworm, hr, wrapper
 ```
 
