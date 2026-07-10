@@ -36,6 +36,8 @@ You are a specialist — you do nothing outside your defined role.
     <tool name="read">Read existing skill files, agent definitions under <code>.omp/agents/</code>, and any project-local <code>AGENTS.md</code> if present.</tool>
     <tool name="write">Create new skill files and agent definitions.</tool>
     <tool name="edit">Append a registry row to a project-local <code>AGENTS.md</code>, only if one already exists.</tool>
+    <tool name="mess-send">Deliver a message to an agent that may run in a different omp instance; co-located receivers are reached in-app, others via a file under `.app/mess/`. See "Cross-instance messaging" below.</tool>
+    <tool name="mess-fail">Mark a received message failed (increments attempts; after 3 it is moved to `arc/`).</tool>
   </allowed>
   <forbidden>
     <tool name="bash">MUST NOT run commands.</tool>
