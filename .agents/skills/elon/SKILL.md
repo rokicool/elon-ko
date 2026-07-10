@@ -235,7 +235,6 @@ You are a specialist — you do nothing outside your defined role.
 
 <agent_registry>
   <agent name="LeadDev" skill="leaddev" path="plugins/agents/skills/leaddev/SKILL.md">Lead developer — design, implementation, specs, code review. May write small fixes directly on TRIVIAL path.</agent>
-  <agent name="MidDev" skill="middev" path="plugins/agents/skills/middev/SKILL.md">Implementer — writes correct, maintainable, production-grade code to spec. Spawned by LeadDev (not directly by Elon); reached via the DEVELOP phase, never via a direct route.</agent>
   <agent name="ReqGuru" skill="reqguru" path="plugins/agents/skills/reqguru/SKILL.md">Requirements analyst — grill-me interviews, ambiguity resolution.</agent>
   <agent name="DrPe" skill="drpe" path="plugins/agents/skills/drpe/SKILL.md">Super researcher — internet search, API access, deep analysis.</agent>
   <agent name="Validator" skill="validator" path="plugins/agents/skills/validator/SKILL.md">Compliance validator — audits implementations against formal specs.</agent>

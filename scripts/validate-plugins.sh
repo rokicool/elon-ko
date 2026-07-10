@@ -195,22 +195,30 @@ exp="$(norm_csv "$exp")"
 if grep -qE 'ADDRESSABLE.*"main"' src/mess-transport.ts; then ok "mess-transport ADDRESSABLE includes 'main' (Elon)"
 else err "mess-transport ADDRESSABLE does not include 'main'"; fi
 
-# ── Step D: skill://elon <agent_registry> == 9 non-elon roster agents ──
+# ── Step D: skill://elon <agent_registry> == 8 Elon-spawnable roster agents ──
 registry="$(awk '/<agent_registry>/{f=1;next} f&&/<\/agent_registry>/{f=0;next} f' plugins/agents/skills/elon/SKILL.md | grep -oE '<agent name="[A-Za-z]+"' | sed -E 's/.*name="([A-Za-z]+)".*/\1/' | tr 'A-Z' 'a-z' | sort -u | paste -sd',' -)"
-exp=""
+d_exp=""
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  name="$(printf '%s' "$line" | cut -d'|' -f1)"; sp="$(printf '%s' "$line" | cut -d'|' -f3)"
+  [ "$name" = "elon" ] && continue
+  case ",$sp," in *",elon,"*) d_exp="${d_exp:+$d_exp,}$name";; esac
+done < "$ROSTER_TMP"
+d_exp="$(norm_csv "$d_exp")"
+[ "$registry" = "$d_exp" ] && ok "skill://elon <agent_registry> lists 8 Elon-spawnable agents: $d_exp" || err "skill://elon <agent_registry> ($registry) != 8 Elon-spawnable agents ($d_exp)"
+
+# ── Step E: marketplace roster == 9 non-elon agents; count=9; description tags ──
+e_exp=""
 while IFS= read -r line; do
   [ -z "$line" ] && continue
   name="$(printf '%s' "$line" | cut -d'|' -f1)"; [ "$name" = "elon" ] && continue
-  exp="${exp:+$exp,}$name"
+  e_exp="${e_exp:+$e_exp,}$name"
 done < "$ROSTER_TMP"
-exp="$(norm_csv "$exp")"
-[ "$registry" = "$exp" ] && ok "skill://elon <agent_registry> lists all 9 roster agents: $exp" || err "skill://elon <agent_registry> ($registry) != 9 roster agents ($exp)"
-
-# ── Step E: marketplace roster == 9 non-elon agents; count=9; description tags ──
+e_exp="$(norm_csv "$e_exp")"
 mp_agents="$(jq -r '.plugins[0].agents | sort | join(",")' "$MP" 2>/dev/null)"
 mp_count="$(jq -r '.plugins[0].count' "$MP" 2>/dev/null)"
 mp_desc="$(jq -r '.plugins[0].description' "$MP" 2>/dev/null)"
-[ "$mp_agents" = "$exp" ] && ok "marketplace agents == roster: $exp" || err "marketplace agents ($mp_agents) != 9 roster agents ($exp)"
+[ "$mp_agents" = "$e_exp" ] && ok "marketplace agents == roster: $e_exp" || err "marketplace agents ($mp_agents) != 9 roster agents ($e_exp)"
 [ "$mp_count" = "9" ] && ok "marketplace count = 9" || err "marketplace count ($mp_count) != 9"
 case "$mp_desc" in *"9-agent"*"10 skills"*) ok "marketplace description embeds '9-agent' + '10 skills'";; *) err "marketplace description missing '9-agent'/'10 skills': $mp_desc";; esac
 
