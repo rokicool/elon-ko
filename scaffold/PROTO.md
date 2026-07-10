@@ -8,6 +8,29 @@ Every feature or software request flows through gated phases. Each agent operate
 
 ---
 
+## Canonical Agent Roster (single source of truth)
+
+> Every consumer — the gate `TEAM` (`src/enforce-orchestrator.ts`), `mess-transport.ts`
+> `ADDRESSABLE`, `skill://elon` `<agent_registry>`, each agent's `tools:` frontmatter, and
+> each skill's `<allowed>` — MUST agree with the attributes declared here.
+> `scripts/validate-plugins.sh` enforces it; drift is a CI failure.
+
+```elon-ko-roster
+# name | model | spawner(csv) | spawns(csv or -) | tools(csv) | skill | mess(yes/no)
+reqguru|pi/task|elon|-|read,write,search,find,mess-send,mess-fail|plugins/agents/skills/reqguru/SKILL.md|yes
+drpe|pi/slow|elon|-|web_search,read,browser,edit,write,mess-send,mess-fail|plugins/agents/skills/drpe/SKILL.md|yes
+leaddev|pi/slow|elon|middev,hr|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,task,mess-send,mess-fail|plugins/agents/skills/leaddev/SKILL.md|yes
+validator|pi/task|elon|-|read,search,find,lsp,bash,mess-send,mess-fail|plugins/agents/skills/validator/SKILL.md|yes
+docworm|pi/smol|elon|-|read,write,edit,search,find,mess-send,mess-fail|plugins/agents/skills/docworm/SKILL.md|yes
+hr|pi/smol|elon,leaddev|-|read,write,edit,mess-send,mess-fail|plugins/agents/skills/hr/SKILL.md|yes
+wrapper|pi/smol|elon|-|bash,read,write,edit,find,search|plugins/agents/skills/wrapper/SKILL.md|no
+debugger|pi/task|elon|-|read,bash,search,find,lsp,debug|plugins/agents/skills/debugger/SKILL.md|no
+middev|pi/task|leaddev|-|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,mess-send,mess-fail|plugins/agents/skills/middev/SKILL.md|yes
+elon|-|self|-|read,ask,todo,job,irc,write,bash,task|plugins/agents/skills/elon/SKILL.md|main
+```
+
+---
+
 ## Artifacts
 
 The `.app/` directory holds the canonical protocol artifacts:
