@@ -1,25 +1,29 @@
 # PROJECT — Fix A (gate hardening) + B (roster unification / PROTO.md source of truth)
 
 ## Goal
-Address Theme A findings (enforcement-gate bypass holes) and Theme B findings (agent roster has no single source of truth). Make `scaffold/PROTO.md` the canonical source of truth for the agent roster, updated with full info about every agent. Fold in C1/C3 (tool-agreement enforcement) as the durability arm of B.
+Address Theme A (gate bypass holes) + Theme B (roster source of truth). PROTO.md = canonical roster; validator enforces per-slice agreement. C1/C2/C3 folded as durability arm.
 
-## Confirmed decisions (GRILL resolved)
-- **Q1 = Docs authority + validator enforcement**: PROTO.md is the canonical roster; `validate-plugins.sh` enforces that gate TEAM constant, `mess-transport` ADDRESSABLE, `skill://elon` registry, and every skill `<allowed>`/frontmatter `tools:` all match PROTO.md.
-- **Q2 = git read/commit of `.app/`, no metacharacters**: bash gate allows `git add/commit/status/diff/log` with `.app/`-scoped path args; reject shell metacharacters (`; & | $ \` > < newline`).
+## Confirmed decisions
+- Q1 = Docs authority + validator enforcement (per-slice, NOT forced equality).
+- Q2 = bash gate {add,commit,status,diff,log} of `.app/`; metachars rejected globally+first; mass-stage flags rejected; path-scoped.
 
-## Scope
-- **A** — `src/enforce-orchestrator.ts`: A1 bash-gate bypass, A2 write-scope leak, C-013 dead redundant operand.
-- **B** — roster unification + PROTO.md authority: B1 (skill://elon omits wrapper/debugger/todo), B3 (DEVREADME stale TEAM=6), B4 (skill omits todo), B5 (README/models omit debugger tier), B6 (mirror consistency), C-003 (shared TEAM source across gate + mess-transport).
-- **C1/C3** (folded into B) — `validate-plugins.sh` roster + tool-agreement check; fix 7 skills' `<allowed>` to include `mess-send`/`mess-fail`; fix drpe CONTRICT typo (C2).
+## Result: DONE ✅ — VALIDATE PASS (14/14 ACs), DocWorm clean.
+Commits: SPEC fc1d94b · DEVELOP ba5eac7..2789121 (9) · RESOLVE c4664a3 · DocWorm (no change).
 
-## Non-goals (this cycle)
-- Themes D (CI/test gaps incl. D1), E (robustness/optimization), F (doc overclaim) — out of scope unless directly required by A/B/C.
+## Verification (independent, re-run by Validator)
+- Gate tests: 39/39 pass (8 ALLOW + 15 BLOCK bash; 5 ALLOW + 3 BLOCK write). Covers `git status; x`, `git reset --hard`, `git push -f`, `-A/-a`, path escapes, `leak.app/PROJECT.md`.
+- `validate-plugins.sh`: ALL CHECKS PASSED (Steps A–I). Per-slice: Step B gate TEAM=8 (spawner∋elon), Step C mess=7, Step D registry=8, Step E marketplace=9.
+- `npm run typecheck`: EXIT 0. Mirrors: 9 agents + 10 skills byte-identical.
 
-## Path
-FULL: GRILL ✅ → SPEC (LeadDev, in progress) → DEVELOP (LeadDev) ⇄ VALIDATE (Validator, 3-cycle cap) → DONE.
+## Key correction (caught at VALIDATE cycle 1, fixed at RESOLVE)
+AC-4 modeling error: MidDev had been added to skill://elon's `<agent_registry>` (9) to satisfy a buggy validator Step D. Fix: removed MidDev (→8, matches routing table); Step D now filters by spawner∋elon (8) with its own var; Step E marketplace decoupled at 9. MidDev stays LeadDev-spawned, present everywhere except Elon's registry.
 
 ## Status
-- SPEC: LeadDev producing `.app/SPEC.md`.
+- COMPLETE. All themes A/B + folded C1/C2/C3 delivered and validated.
+
+## Out of scope (noted, not done)
+- Themes D/E/F. F-011 (DEVREADME extensions example omits idea-storage.ts). INFO: `-p` rejection blocks read-only `git log -p`/`git diff -p` (per-spec §2.1 step 5).
+- Migration note: new bash gate blocks `&`/`;`, so `git add … && git commit` is rejected — use two separate calls. (Active after plugin reload.)
 
 ## Pending Asks
-- [PA-1] 2026-07-09T10:00:00Z origin=elon status=agreed | "Accept recommended defaults: Q1=A, Q2=A."
+(none)
