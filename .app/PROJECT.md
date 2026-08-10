@@ -1,29 +1,57 @@
-# PROJECT — Fix A (gate hardening) + B (roster unification / PROTO.md source of truth)
+# PROJECT — Logging Design & Development Skill
 
-## Goal
-Address Theme A (gate bypass holes) + Theme B (roster source of truth). PROTO.md = canonical roster; validator enforces per-slice agreement. C1/C2/C3 folded as durability arm.
+## Summary
+Create a skill (knowledge/methodology artifact) that formalizes how logging support is designed
+and developed in projects. The skill must be available to drpe, leaddev, middev, validator, and
+docworm so that every agent applies a consistent logging methodology.
 
-## Confirmed decisions
-- Q1 = Docs authority + validator enforcement (per-slice, NOT forced equality).
-- Q2 = bash gate {add,commit,status,diff,log} of `.app/`; metachars rejected globally+first; mass-stage flags rejected; path-scoped.
+## User-Supplied Principles (verbatim)
+1. Logs must be clear.
+2. Every log entry should include its **type** (WRN, MSG, ERR, VRB, …).
+3. Every log entry should include its **source** (module, function, script name).
+4. Every log entry should include the **goal of the operation** with full information about parameters.
+5. If a parameter is a **secret**, represent it as first three characters + length — e.g. `AbC(30)`.
+6. User explicitly invited additional rules: "Suggest more rules if you believe they are important."
 
-## Result: DONE ✅ — VALIDATE PASS (14/14 ACs), DocWorm clean.
-Commits: SPEC fc1d94b · DEVELOP ba5eac7..2789121 (9) · RESOLVE c4664a3 · DocWorm (no change).
+## Classification
+FULL — new skill artifact, cross-cutting methodology, design decisions required.
 
-## Verification (independent, re-run by Validator)
-- Gate tests: 39/39 pass (8 ALLOW + 15 BLOCK bash; 5 ALLOW + 3 BLOCK write). Covers `git status; x`, `git reset --hard`, `git push -f`, `-A/-a`, path escapes, `leak.app/PROJECT.md`.
-- `validate-plugins.sh`: ALL CHECKS PASSED (Steps A–I). Per-slice: Step B gate TEAM=8 (spawner∋elon), Step C mess=7, Step D registry=8, Step E marketplace=9.
-- `npm run typecheck`: EXIT 0. Mirrors: 9 agents + 10 skills byte-identical.
+## Workflow
+- [x] REQUEST  — captured here; scope ambiguous → GRILL.
+- [~] GRILL    — ReqGuru interviews user. Was BLOCKED by delegation gate; user chose "fix gate, retry".
+- [ ] RESEARCH — conditional.
+- [ ] SPEC     — LeadDev Technical Specification.
+- [ ] DEVELOP  — LeadDev/MidDev implement the skill artifact.
+- [ ] VALIDATE — Validator audits skill against spec.
+- [ ] DONE     — present deliverable.
 
-## Key correction (caught at VALIDATE cycle 1, fixed at RESOLVE)
-AC-4 modeling error: MidDev had been added to skill://elon's `<agent_registry>` (9) to satisfy a buggy validator Step D. Fix: removed MidDev (→8, matches routing table); Step D now filters by spawner∋elon (8) with its own var; Step E marketplace decoupled at 9. MidDev stays LeadDev-spawned, present everywhere except Elon's registry.
+## Open Ambiguities (for ReqGuru to resolve)
+- Target scope: language-agnostic methodology vs. language-specific?
+- Type taxonomy: closed set {WRN,MSG,ERR,VRB} vs. extensible? canonical list?
+- Secret detection mechanism: name patterns / type-based / allowlist? nested/structured params?
+- Granularity of "goal + full params": every line, or operation-boundary lines only?
+- Representation: human-readable one-line, structured/JSON, or both?
+- How is the skill scoped to exactly {drpe, leaddev, middev, validator, docworm}?
 
-## Status
-- COMPLETE. All themes A/B + folded C1/C2/C3 delivered and validated.
+## Candidate Additional Rules (Elon suggestions, for ReqGuru to weigh)
+- Timestamps (UTC ISO-8601, fixed precision).
+- Correlation / request / trace IDs.
+- Separate log LEVEL (severity) from log TYPE (semantic category).
+- Stable structured fields + deterministic ordering.
+- PII / sensitive (non-secret) data handling.
+- Side-effect-free logging that never throws.
 
-## Out of scope (noted, not done)
-- Themes D/E/F. F-011 (DEVREADME extensions example omits idea-storage.ts). INFO: `-p` rejection blocks read-only `git log -p`/`git diff -p` (per-spec §2.1 step 5).
-- Migration note: new bash gate blocks `&`/`;`, so `git add … && git commit` is rejected — use two separate calls. (Active after plugin reload.)
+## BLOCKER log — orchestrator delegation gate (2026-08-10)
+- `elon-ko-gate` rejected every team-agent spawn with `agent=(none)` across 8 attempts.
+- Harness `task` schema = omp batch form `{context, i, tasks}` (additionalProperties:false);
+  agent is per-item `tasks[].agent`; gate reads top-level `agent` → always (none).
+- write also gated to `.app/PROJECT.md` only (could not file xd://report_issue).
+- User decision: "Fix the gate, then I retry." Retrying delegation now.
+
+## Decision Log
+- 2026-08-10 — Classified FULL. Routed to ReqGuru for GRILL.
+- 2026-08-10 — Delegation blocked by gate/tool-schema mismatch. Escalated to user.
+- 2026-08-10 — User chose "Fix the gate, then retry." Retrying.
 
 ## Pending Asks
-(none)
+(none active — awaiting delegation retry result)
