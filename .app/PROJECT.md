@@ -11,9 +11,9 @@
 - **What was done**:
   1. Verified the repo source fix is correct — added 15 `task`-handler regression tests (`enforce-orchestrator.test.ts` §2.3); full suite 54/54 pass with `OMP_BYPASS_ORCHESTRATOR` unset.
   2. Deployed the fixed source to the installed copy (`~/.omp/plugins/node_modules/elon-ko-gate/src/enforce-orchestrator.ts`), now byte-identical (SHA-256 `a9b8c10b…`) to the tested repo source.
-  3. Repinned the local install (`~/.omp/plugins/package.json`) from `#v2.7.0` to `#main` so a plugin update no longer regresses.
+  3. Repinned the local install (`~/.omp/plugins/package.json`) from the stale `#v2.7.0` tag to `#v2.7.1` so a plugin update no longer regresses.
 - **Result**: A gated orchestrator session may now delegate via `task({ tasks: [{ agent: "<team>", ... }] })` to any of the 8 TEAM agents (`reqguru, drpe, leaddev, validator, docworm, hr, wrapper, debugger`). `middev` remains intentionally excluded from the orchestrator's spawn set (per `c4664a3`).
-- **Outstanding (optional)**: cut a `v2.7.1` release tag so the distribution pin is a versioned tag rather than `main` (release workflow asserts tag == `package.json#version`; bump both manifests + installer/README pins in lockstep).
+- **Released**: cut and pushed the `v2.7.1` tag (triggers `release.yml` → versioned GitHub release). All version pins bumped in lockstep (package.json, marketplace.json, package-lock.json root, `elon_ko.sh` `OMP_AGENT_REF`, README/.DEVREADME). CI gates pass locally: typecheck clean, validate-plugins `ALL CHECKS PASSED`, gate suite 54/54.
 
 ## Notes for the next orchestrator session
 - The gate is active for the root seat when `.omp/elon.json` has `{"enabled": true}` (it does) and `OMP_BYPASS_ORCHESTRATOR` is unset.

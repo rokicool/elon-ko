@@ -9,6 +9,20 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v2.7.1] - 2026-08-10
+
+### Fixed
+
+- **Critical: orchestrator delegation gate read the wrong field.** The root enforcement gate (`src/enforce-orchestrator.ts`) rejected every `task` delegation with `agent="(none)"`: its `task` handler read a flat top-level `input.agent`, but the omp `task` tool carries `agent` only inside each `tasks[]` item (the batch schema exposes no top-level `agent`). The two never met, so the orchestrator could not spawn any team agent. The handler now validates `input.tasks[].agent` against the TEAM allowlist (batch form), retaining the top-level form for backward compatibility. The installed copy was also stale (pinned to the pre-fix `v2.7.0` tag); the fix is redeployed and the local install repinned.
+
+### Added
+
+- **`task`-handler regression tests (§2.3).** The gate's `task` tool handler previously had zero tests, letting the regression ship undetected. A new §2.3 matrix covers batch ALLOW (valid team agent, multi-item, case-insensitive, trimmed, top-level back-compat, empty-tasks fallthrough) and BLOCK (non-team agents incl. `middev`/`scout`/the default `task` worker, missing agent, one-valid-plus-one-invalid, top-level, no-agent). Gate suite now 54/54.
+
+### Changed
+
+- Version bumped to **`2.7.1`** (semver PATCH — a critical bug fix; no breaking changes). `package.json#version`, both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`), the `package-lock.json` root version, the installer default tag pin (`elon_ko.sh` `OMP_AGENT_REF`, now `v2.7.1`), and the `README.md`/`.DEVREADME.md` install-example pins were all bumped in lockstep to `2.7.1`.
+
 ## [v2.7.0] - 2026-07-10
 
 ### Security
