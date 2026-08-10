@@ -215,6 +215,21 @@ export default function enforceOrchestrator(pi: ExtensionAPI): void {
     if (ROOT_ALLOWED[tool]) return;
 
     if (tool === "task") {
+      // Batch form: { context, i, tasks: [{ agent, task }] } — validate every item.
+      const tasks = Array.isArray(input.tasks) ? input.tasks : [];
+      if (tasks.length > 0) {
+        for (const t of tasks) {
+          const a = String((t as Record<string, unknown>)?.agent ?? "").toLowerCase().trim();
+          if (!(TEAM as readonly string[]).includes(a)) {
+            return block(
+              `The root orchestrator may only spawn team agents (${TEAM.join(", ")}). ` +
+                `A task item passed agent="${a || "(none)"}". Delegate through the pipeline; do not implement directly.`,
+            );
+          }
+        }
+        return; // all items reference valid team agents
+      }
+      // Top-level agent form (non-batch).
       const agent = String(input.agent ?? "").toLowerCase().trim();
       if ((TEAM as readonly string[]).includes(agent)) return;
       const passedAgent = agent || "(none)";
