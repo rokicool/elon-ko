@@ -240,3 +240,55 @@ describe("handler write §2.2: path-scoping matrix (A2 / C-002 / C-013)", () => 
     });
   }
 });
+
+// ─── handler task §2.3: agent validation matrix (batch form = the fix) ────
+// The omp `task` tool exposes a BATCH schema { i, context, tasks: [{agent,…}] }
+// with no top-level `agent`. The gate MUST read input.tasks[].agent (the bug
+// was reading only input.agent → every delegation blocked as agent="(none)").
+// ALLOW ⇒ undefined; BLOCK ⇒ result.block with a reason naming the agent value.
+
+describe("handler task §2.3: ALLOW rows (batch form reads tasks[].agent)", () => {
+  // [input, label]
+  const CASES: ReadonlyArray<readonly [Record<string, unknown>, string]> = [
+    [{ tasks: [{ agent: "validator", task: "audit" }] }, "single valid team agent"],
+    [{ tasks: [{ agent: "leaddev", task: "x" }, { agent: "docworm", task: "y" }] }, "multiple valid agents"],
+    [{ tasks: [{ agent: "DrPe", task: "x" }] }, "agent case-insensitive (DrPe)"],
+    [{ tasks: [{ agent: " WRAPPER ", task: "x" }] }, "agent trimmed (WRAPPER)"],
+    [{ agent: "hr" }, "top-level agent form — backward compat"],
+    [{ tasks: [], agent: "reqguru" }, "empty tasks falls through to top-level form"],
+  ];
+  for (const [input, label] of CASES) {
+    test(`ALLOW — ${label}`, async () => {
+      equal(await runGate("task", input), undefined, "ALLOW ⇒ undefined");
+    });
+  }
+});
+
+describe("handler task §2.3: BLOCK rows (non-team or missing agent)", () => {
+  // [input, reasonKeyword, label]
+  const CASES: ReadonlyArray<readonly [Record<string, unknown>, string, string]> = [
+    // The regression: a real batch delegation with NO top-level agent must be
+    // ALLOWED when tasks[].agent is valid. The BLOCK below proves the inverse.
+    [{ tasks: [{ agent: "middev", task: "x" }] }, "team agents", "middev not in orchestrator TEAM (excluded by design)"],
+    [{ tasks: [{ agent: "scout", task: "x" }] }, "team agents", "scout is not a registered team agent"],
+    [{ tasks: [{ agent: "task", task: "x" }] }, "team agents", "default worker 'task' is not a team agent"],
+    [{ tasks: [{ task: "no agent field" }] }, "(none)", "task item missing agent ⇒ (none)"],
+    [{ tasks: [{ agent: "", task: "x" }] }, "(none)", "task item with empty agent ⇒ (none)"],
+    [{ tasks: [{ agent: "validator", task: "ok" }, { agent: "scout", task: "bad" }] }, "scout", "one valid + one invalid agent blocks"],
+    [{ agent: "scout" }, "scout", "top-level non-team agent"],
+    [{ agent: "" }, "(none)", "top-level missing agent ⇒ (none)"],
+    [{}, "(none)", "no agent anywhere ⇒ (none)"],
+  ];
+  for (const [input, kw, label] of CASES) {
+    test(`BLOCK — ${label}`, async () => {
+      const res = await runGate("task", input);
+      const reason = res?.reason;
+      ok(res !== undefined && res.block === true, `expected BLOCK for ${JSON.stringify(input)}`);
+      ok(typeof reason === "string" && reason.length > 0, "block carries a non-empty reason");
+      ok(
+        typeof reason === "string" && reason.includes(kw),
+        `reason must contain "${kw}" (got: ${JSON.stringify(reason)})`,
+      );
+    });
+  }
+});
