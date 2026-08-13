@@ -21,6 +21,7 @@ reqguru|pi/task|elon|-|read,write,search,find,mess-send,mess-fail|plugins/agents
 drpe|pi/slow|elon|-|web_search,read,browser,edit,write,mess-send,mess-fail|plugins/agents/skills/drpe/SKILL.md|yes
 leaddev|pi/slow|elon|middev,hr|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,task,mess-send,mess-fail|plugins/agents/skills/leaddev/SKILL.md|yes
 validator|pi/task|elon|-|read,search,find,lsp,bash,mess-send,mess-fail|plugins/agents/skills/validator/SKILL.md|yes
+purecode|pi/task|elon|-|read,search,find,lsp,ast_grep,bash,mess-send,mess-fail|plugins/agents/skills/purecode/SKILL.md|yes
 docworm|pi/smol|elon|-|read,write,edit,search,find,mess-send,mess-fail|plugins/agents/skills/docworm/SKILL.md|yes
 hr|pi/smol|elon,leaddev|-|read,write,edit,mess-send,mess-fail|plugins/agents/skills/hr/SKILL.md|yes
 wrapper|pi/smol|elon|-|bash,read,write,edit,find,search|plugins/agents/skills/wrapper/SKILL.md|no
@@ -62,7 +63,7 @@ Every request enters at REQUEST. Elon classifies the request and selects one of 
 ```
 REQUEST ─→ classify ─┬─ TRIVIAL ─→ LEADDEV → VALIDATE ─→ DONE
                       │
-                      └─ FULL ─→ GRILL ─→ [RESEARCH] ─→ SPEC ─→ DEVELOP ⇄ VALIDATE ─→ DONE
+                      └─ FULL ─→ GRILL ─→ [RESEARCH] ─→ SPEC ─→ DEVELOP ⇄ VALIDATE ─→ PURECODE ─→ DONE
 ```
 
 ---
@@ -202,13 +203,35 @@ The DEVELOP ⇄ VALIDATE loop has a **maximum of 3 cycles**. If Validator return
 
 **Loop:** DEVELOP → VALIDATE → RESOLVE → VALIDATE → … (max 3 cycles before escalation).
 
+#### 5e. PURECODE (Code Purity Gate)
+
+Runs on the FULL path, AFTER Validator returns PASS and BEFORE DONE. PureCode is advisory + gating: it assesses code quality; `leaddev` (via `middev`) executes any refactor. PureCode never writes code.
+
+| Actor | Action |
+|-------|--------|
+| Elon | Spawns **PureCode** with the implementation, changed files, and cycle number. PureCode assumes Validator already PASSed — it does NOT re-check spec compliance. |
+| PureCode | Runs analysis tooling (linters, complexity/duplication/dead-code analyzers, formatters in check mode) and assesses the code across three dimensions: cleanliness, verbosity, optimization. |
+| PureCode | Returns a **Purity Report** with a verdict. |
+
+**Verdict routing:**
+
+| Verdict | Elon's Action |
+|---------|---------------|
+| `needs-alterations` | Spawn **LeadDev** with the PureCode Recommendation (file:line issues + refactor guidance). LeadDev refactors. Re-enter **VALIDATE** (confirm the refactor broke nothing), then **PURECODE** again. |
+| `code-fine` | Proceed to **DONE** (DocWorm/Wrapper conditional as usual). |
+
+**PURECODE refactor loop — max 2 cycles (separate budget).** The `PURECODE → leaddev(refactor) → VALIDATE → PURECODE` loop is capped at 2 cycles. This is a SEPARATE budget from the DEVELOP ⇄ VALIDATE correctness limit (3 cycles): the two gates govern orthogonal concerns — correctness vs quality. A correctness-PASS must not risk a global cap over style nits, and because every purecode-driven refactor re-enters VALIDATE before returning to PURECODE, correctness is never bypassed. On the 2nd cycle with only minor residuals, PureCode emits `code-fine` with non-blocking notes — it never hard-blocks past its budget.
+
+**TRIVIAL path:** PureCode is OPTIONAL — Elon MAY spawn it after T2-VALIDATE PASS for changes touching substantial code, and MAY skip for one-liners. It is default-on for the FULL path only.
+
 ---
 
 ### Phase 6: DONE
 
 | Actor | Action |
 |-------|--------|
-| Validator | Final PASS verdict. |
+| Validator | Final correctness PASS. |
+| PureCode | Final quality verdict (`code-fine`) — the post-validation purity gate (FULL path). |
 | Elon | Evaluates whether DocWorm is needed (see below). |
 | Elon | Marks the request complete. Archives artifacts. Updates `.app/PROJECT.md`. |
 
@@ -282,6 +305,7 @@ Same as the Full Path Phase 6, with the same conditional DocWorm rules.
 | LeadDev | SPEC, DEVELOP, RESOLVE, T1 | `.app/SPEC.md` | Architecture, spec, implementation delegation, review, integration, commits, validation fixes. |
 | MidDev | DEVELOP (via LeadDev) | — | Implementation — writes code to spec. May return CLARIFICATION requests. |
 | Validator | VALIDATE, T2 | — | Compliance auditing — spec-vs-implementation verification. |
+| PureCode | PURECODE (5e, post-VALIDATE) | — | Code purity gate — post-validation cleanliness/verbosity/optimization review; recommends refactors to LeadDev. Read-mostly; never writes code. Max 2-cycle refactor loop (separate budget). |
 | DocWorm | DONE (conditional) | `README.md` | Documentation — creates/updates docs when needed. |
 | HR | DEVELOP (on demand) | — | Agent definition — creates new skill files for specialist expertise. |
 | Wrapper | DONE (on demand) | — | Release engineering — ships the release (version bump, branch/push, CI gate, PR/MR, tag/release, main sync) after Validator PASS. Escalates merge-approval / ambiguous-version / CI-failure back to Elon. |

@@ -195,7 +195,7 @@ exp="$(norm_csv "$exp")"
 if grep -qE 'ADDRESSABLE.*"main"' src/mess-transport.ts; then ok "mess-transport ADDRESSABLE includes 'main' (Elon)"
 else err "mess-transport ADDRESSABLE does not include 'main'"; fi
 
-# ── Step D: skill://elon <agent_registry> == 8 Elon-spawnable roster agents ──
+# ── Step D: skill://elon <agent_registry> == Elon-spawnable roster agents ──
 registry="$(awk '/<agent_registry>/{f=1;next} f&&/<\/agent_registry>/{f=0;next} f' plugins/agents/skills/elon/SKILL.md | grep -oE '<agent name="[A-Za-z]+"' | sed -E 's/.*name="([A-Za-z]+)".*/\1/' | tr 'A-Z' 'a-z' | sort -u | paste -sd',' -)"
 d_exp=""
 while IFS= read -r line; do
@@ -205,9 +205,9 @@ while IFS= read -r line; do
   case ",$sp," in *",elon,"*) d_exp="${d_exp:+$d_exp,}$name";; esac
 done < "$ROSTER_TMP"
 d_exp="$(norm_csv "$d_exp")"
-[ "$registry" = "$d_exp" ] && ok "skill://elon <agent_registry> lists 8 Elon-spawnable agents: $d_exp" || err "skill://elon <agent_registry> ($registry) != 8 Elon-spawnable agents ($d_exp)"
+[ "$registry" = "$d_exp" ] && ok "skill://elon <agent_registry> == Elon-spawnable set: $d_exp" || err "skill://elon <agent_registry> ($registry) != Elon-spawnable set ($d_exp)"
 
-# ── Step E: marketplace roster == 9 non-elon agents; count=9; description tags ──
+# ── Step E: marketplace roster == non-elon agents; count + description tags (dynamic) ──
 e_exp=""
 while IFS= read -r line; do
   [ -z "$line" ] && continue
@@ -215,12 +215,14 @@ while IFS= read -r line; do
   e_exp="${e_exp:+$e_exp,}$name"
 done < "$ROSTER_TMP"
 e_exp="$(norm_csv "$e_exp")"
+exp_count="$(printf '%s\n' "$e_exp" | tr ',' '\n' | grep -c . | tr -d ' ')"
+exp_skills="$(find plugins/agents/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
 mp_agents="$(jq -r '.plugins[0].agents | sort | join(",")' "$MP" 2>/dev/null)"
 mp_count="$(jq -r '.plugins[0].count' "$MP" 2>/dev/null)"
 mp_desc="$(jq -r '.plugins[0].description' "$MP" 2>/dev/null)"
-[ "$mp_agents" = "$e_exp" ] && ok "marketplace agents == roster: $e_exp" || err "marketplace agents ($mp_agents) != 9 roster agents ($e_exp)"
-[ "$mp_count" = "9" ] && ok "marketplace count = 9" || err "marketplace count ($mp_count) != 9"
-case "$mp_desc" in *"9-agent"*"10 skills"*) ok "marketplace description embeds '9-agent' + '10 skills'";; *) err "marketplace description missing '9-agent'/'10 skills': $mp_desc";; esac
+[ "$mp_agents" = "$e_exp" ] && ok "marketplace agents == roster: $e_exp" || err "marketplace agents ($mp_agents) != roster non-elon agents ($e_exp)"
+[ "$mp_count" = "$exp_count" ] && ok "marketplace count = $exp_count" || err "marketplace count ($mp_count) != roster count ($exp_count)"
+case "$mp_desc" in *"${exp_count}-agent"*"${exp_skills} skills"*) ok "marketplace description embeds '${exp_count}-agent' + '${exp_skills} skills'";; *) err "marketplace description missing '${exp_count}-agent'/'${exp_skills} skills': $mp_desc";; esac
 
 # ── Step F: each distributed agent's frontmatter tools: == roster tools ──
 while IFS= read -r line; do
