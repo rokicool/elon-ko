@@ -63,6 +63,7 @@ const TEAM = [
   "drpe",
   "leaddev",
   "validator",
+  "purecode",
   "docworm",
   "hr",
   "wrapper",

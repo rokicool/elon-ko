@@ -44,8 +44,8 @@ import { optedIn } from "./enforce-orchestrator.ts";
 // Constants (SPEC §6)
 // ---------------------------------------------------------------------------
 
-/** Agents eligible to be a `to:` recipient (the 7 team agents + `main`). */
-const TEAM = ["reqguru", "drpe", "leaddev", "validator", "docworm", "hr", "middev"] as const;
+/** Agents eligible to be a `to:` recipient (the 8 team agents + `main`). */
+const TEAM = ["reqguru", "drpe", "leaddev", "validator", "purecode", "docworm", "hr", "middev"] as const;
 
 /** Addressable set (case-insensitive): TEAM plus the Main agent / Elon. */
 const ADDRESSABLE: ReadonlySet<string> = new Set<string>([...TEAM, "main"]);
