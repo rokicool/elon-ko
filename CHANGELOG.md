@@ -9,6 +9,20 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v2.8.0] - 2026-08-13
+
+### Added
+
+- **New `purecode` agent — Code Purity Gate (post-VALIDATION quality gate).** A read-mostly, advisory team agent that runs on the FULL path once VALIDATE returns PASS: it assesses the implementation for **cleanliness, verbosity, and optimization** and emits a **Purity Report**. It is **advisory and diagnose-only** — it never writes code. Verdict routing: `needs-alterations` → the recommendation is routed to **LeadDev** (re-DEVELOP → re-VALIDATE → re-PURECODE), governed by a **separate 2-cycle budget** distinct from the correctness 3-cycle limit, so refactors re-enter VALIDATE and correctness is never bypassed; `code-fine` → proceed to DocWorm/DONE. Registered as agent **#10** with its own skill (**#11**, `skill://purecode`); added to the marketplace `agents[]` (roster now **10 agents / 11 skills**). Headline commit: `2edaf87 feat(agents): add purecode Code Purity Gate agent`.
+
+### Fixed
+
+- **`purecode` registered in the gate `TEAM` + mess-transport `TEAM`.** The enforced orchestrator gate (`src/enforce-orchestrator.ts` `TEAM` const) and the mess-transport team map (`src/mess-transport.ts` `TEAM`) now admit `purecode`, making it spawnable under orchestrator enforcement and reachable via cross-instance messaging. Without this wiring the gate rejected `purecode` spawn attempts as not in the allowlist. Commit: `7cc2270 [FIX] register purecode in gate TEAM + mess-transport TEAM`.
+
+### Changed
+
+- Version bumped to **`2.8.0`** (semver MINOR — a new backward-compatible agent/feature; no breaking changes). `package.json#version`, both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`), the `package-lock.json` root version, the installer default tag pin (`elon_ko.sh` `OMP_AGENT_REF`, now `v2.8.0`), and the `README.md`/`.DEVREADME.md` install-example pins were all bumped in lockstep to `2.8.0`.
+
 ## [v2.7.1] - 2026-08-10
 
 ### Fixed
