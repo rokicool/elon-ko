@@ -17,7 +17,7 @@ Two plugins, installed together:
 | Plugin | What it provides |
 |---|---|
 | **`elon-ko-gate`** | The enforcement **gate** (the root session can only route — direct `edit`/`write`/build are hard-blocked), a Definition-of-Done rule. |
-| **`elon-ko-agents`** | **10 specialist agents** + **11 skills**: `reqguru`, `drpe`, `leaddev`, `middev`, `validator`, `purecode`, `docworm`, `hr`, `wrapper`, `debugger` (plus the `elon` orchestrator protocol). |
+| **`elon-ko-agents`** | **10 specialist agents** + **12 skills**: `reqguru`, `drpe`, `leaddev`, `middev`, `validator`, `purecode`, `docworm`, `hr`, `wrapper`, `debugger` (plus the `elon` orchestrator protocol). |
 
 oh-my-pi has two disjoint plugin mechanisms — TypeScript extensions vs. agent
 marketplaces — so this repo ships **both from one tree**. You don't deal with

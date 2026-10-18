@@ -9,6 +9,16 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v2.8.1] - 2026-10-18
+
+### Added
+
+- **New `logging-design` reference skill (skill #12, `skill://logging-design`).** The Logging Design skill (single `SKILL.md`, previously at `.claude/skills/logging-design/`) is promoted into Plugin B (`elon-ko-agents`) at `plugins/agents/skills/logging-design/` — the same placement mechanism that ships the 11 roster skills — so omp lists and dispatches it by default in any project after install; the `.claude/` tree is removed. Not a roster entity: no PROTO.md roster row, agent definition, or `<allowed>`/`<forbidden>` block. The `.agents/skills/logging-design/` mirror follows the repo's byte-identical convention. Existing installs pick it up by re-running `elon_ko.sh` or `omp plugin marketplace update elon-ko` + `omp plugin install elon-ko-agents@elon-ko --force`.
+
+### Changed
+
+- Version bumped to **`2.8.1`** (semver PATCH — additive content; no breaking changes). `package.json#version` and both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`) bumped in lockstep to `2.8.1`. Count surfaces updated: marketplace description, `README.md`, `.DEVREADME.md`, release-notes boilerplate (`.github/workflows/release.yml`).
+
 ## [v2.8.0] - 2026-08-13
 
 ### Added
