@@ -1,26 +1,26 @@
-# PROJECT — Team Expansion: `purecode` agent
+# PROJECT.md — Ship `logging-design` skill with elon-ko
 
-## Goal
-Define and register a new team agent role, **`purecode`** — make the code pure (cleaner, less verbose, more optimized) and gate the workflow post-validation.
+## Workflow
+- Path: FULL
+- Current phase: Proposal gate (awaiting user decision on installation approach)
+- Phase log: REQUEST → RESEARCH (done, committed) → **Proposal gate (active)** → SPEC → DEVELOP → VALIDATE → DONE
 
-## Responsibilities (per user)
-- Analysis/cleanup/optimization tooling to assess DEVELOP⇄VALIDATE output.
-- Steps in after VALIDATE succeeds.
-- Needs-alterations → recommendation for leaddev; Elon re-enters DEVELOP. Code-fine → Elon transfers to docworm/DONE.
+## Request (verbatim, condensed)
+> We have a skill at `.claude/skills/logging-design` in this repo (elon-ko). I like its scale; the problem is the `.claude` folder is not installed or used anywhere by any installation of this project. Do research and suggest a solution for installing this particular skill across the entire elon-ko system. Target of installation is omp (oh-my-pi) — the `.claude` folder does NOT have to be used. After installing elon-ko (Elon and Core), omp in this or any project should start using this skill by default.
 
-## Workflow impact
-`REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → PURECODE → (leaddev refactor loop) | docworm → DONE`
+## Constraints
+- Target runtime: omp (oh-my-pi) skill system (`skill://` scheme).
+- Skill must become available by default in ANY project after elon-ko is installed — no per-project copy in `.claude/`.
+- Implementation only after user approval (proposal gate).
 
-## Status — DONE
-- [done] hr: define + register purecode (docs/config: definition + skill + mirrors, marketplace.json 9→10 agents / 10→11 skills, scaffold/AGENTS.md, scaffold/PROTO.md Phase 5e, skill://elon route+phase+2-cycle budget rule, validate-plugins.sh dynamic Step D/E).
-- [done] validator cycle-1: FAIL — 2 code-registration defects (enforce-orchestrator.ts + mess-transport.ts TEAM arrays missing purecode).
-- [done] leaddev: wired purecode into both TEAM arrays; validate-plugins.sh exit 0 (ALL CHECKS PASSED). Commit 7cc2270.
-- [done] docworm: fixed stale purecode prose in README.md + .DEVREADME.md (counts + roster lists + table row).
-- [done] wrapper: consolidated DONE-gate commit 2edaf87 (13 files, +472/−50); post-commit status clean.
+## Research outcome (DrPe, .app/RESEARCH.md)
+- `logging-design` = single SKILL.md (280 lines), orphaned from all packaging (marketplace, installer, validator, docs).
+- omp loads skills by filesystem placement: `<plugin-root>/skills/<name>/SKILL.md`; user-scoped plugin installs are available in ALL projects and auto-listed in every session prompt (root + subagents).
+- Options: (A) move into `plugins/agents/skills/` [recommended, zero new machinery]; (B) bundle into Plugin A (`elon-ko-gate`) via package.json#files; (C) installer copies to omp user-global skills root.
+- Impact assessment: CLEAR → proceed to SPEC after user picks an option.
 
-## Verification
-- scripts/validate-plugins.sh → exit 0, ALL CHECKS PASSED (Steps B & C now green; all 80+ checks green).
-- git log: 2edaf87 (feature) ← 7cc2270 (code fix) on main; working tree clean.
+## Delegation Log
+- [2026-10-18] DrPe — research omp skill loading + elon-ko packaging. Status: COMPLETED (.app/RESEARCH.md, 280 lines).
 
 ## Pending Asks
-(none)
+- [PA-1] 2026-10-18 origin=elon status=pending | "Which installation approach to take to SPEC: Option A (move into plugins/agents/skills/, recommended), B, or C?"

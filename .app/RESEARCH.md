@@ -1,478 +1,280 @@
-# Research Report — Per-Agent Model Assignment in the oh-my-pi (omp) Harness
+# Research Report: Distributing the `logging-design` Skill Across the elon-ko System
 
 ## Scope
 
-This report answers **how the oh-my-pi (omp) harness lets you assign a specific
-model to a specific agent/subagent**, within a single coding session where
-different subagents may run on different models.
+Researched how the skill at `.claude/skills/logging-design/` (currently orphaned from any
+installation path) can be shipped so that **after installing elon-ko, omp starts using it by
+default in any project**. Constraints: target is omp (not Claude Code); `.claude/` must not be
+required at runtime; no per-project copying.
 
-Dimensions covered, all verified against primary sources:
-1. Exact syntax for specifying a model per agent (frontmatter? config key? call-time arg?).
-2. Where the model declaration lives (agent definition file format, registry/marketplace schema, runtime overrides).
-3. Fallback behavior when no model is defined (default-resolution order).
-4. Per-invocation overrides via `task(...)` and precedence.
-5. Model identifier format with real examples.
-6. Validated examples — an agent definition WITH a model field, and one WITHOUT (fallback path).
-
-**Sources consulted** (all cited inline and listed in §Sources Consulted):
-- Bundled omp harness docs (`omp://` scheme): `models.md`, `task-agent-discovery.md`, `tools/task.md`, `marketplace.md`, `settings.md`, `config-usage.md`, `environment-variables.md`.
-- omp harness **source code** on GitHub (`can1357/oh-my-pi`, `main`): `packages/coding-agent/src/task/executor.ts`, `packages/coding-agent/src/config/model-resolver.ts`, `packages/coding-agent/src/task/index.ts`.
-- GitHub issue [#1544](https://github.com/can1357/oh-my-pi/issues/1544) (maintainer comment corroborating frontmatter shape).
-- The elon-ko plugin's own agent definition files (`plugins/agents/agents/*.md`) and `.omp-plugin/marketplace.json`.
-
-> Note on `.app/REQ.md`: a `REQ.md` exists in this repo but is a **leftover artifact
-> of a prior "scaffold" workflow** (see sibling `RESEARCH-SCAFFOLD.md` /
-> `SCAFFOLD-SPEC.md`). It is unrelated to this model-assignment research, so this
-> report is anchored to the delegation brief itself, not to that stale REQ.
+Sources: direct reads of every load-bearing file in this repo (skill, manifests, installer,
+validator, scaffold docs, changelog); the omp harness's bundled documentation (`omp://skills.md`,
+`omp://marketplace.md`, `omp://skills/authoring-marketplaces.md`, `omp://tools/manage_skill.md`);
+and the **live installed state on this machine** (`~/.omp/marketplaces.json`,
+`~/.omp/plugins/installed_plugins.json`, `~/.omp/plugins/omp-plugins.lock.json`, the plugin cache
+trees, and the current session's own skill listing). No shell access; all verification is by
+reading primary sources.
 
 ---
 
-## Findings
+## 1. Skill inventory
 
-### Dimension 1 — Exact syntax for specifying a model per agent
+**Contents.** `.claude/skills/` contains exactly one skill directory (`logging-design/`), which
+contains exactly one file: `SKILL.md` (12.9 KB, 280 lines). No bundled scripts/references.
 
-There are **two** mechanisms. A per-invocation argument on `task(...)` is **NOT**
-one of them (see Dimension 4).
+**Frontmatter** (`.claude/skills/logging-design/SKILL.md:1-10`):
 
-#### (a) `model:` frontmatter field on the agent definition markdown file
+- `name: logging-design`
+- `description: >` — *"Methodology for designing and implementing structured logging support in
+  any project. Use when working on logging, log entries, logger design, or structured logging —
+  covers canonical line format, type taxonomy, secret redaction, timestamps, correlation IDs, PII
+  handling, never-throws semantics, and clarity principles. Available to drpe, leaddev, middev,
+  validator, docworm. Triggers on: logging, log, log entry, logger, structured logging."*
 
-An agent is a markdown file with YAML frontmatter. The normalized
-`AgentDefinition` type carries an optional `model` field, parsed from
-frontmatter by `parseAgentFields()` (`src/discovery/helpers.ts`).
+The body is language-agnostic reference material: canonical log-line format, ERR/WRN/MSG/VRB
+taxonomy, secret-redaction denylist, PII handling, never-throws rule, review checklist. It is a
+**reference skill** (read on demand), not an agent protocol.
 
-> Source: `omp://task-agent-discovery.md` — *"Task agents normalize into
-> `AgentDefinition` (`src/task/types.ts`): `name`, `description`, `systemPrompt`
-> (required) … optional `tools`, `spawns`, **`model`**, `thinkingLevel`,
-> `output`, `blocking`, `autoloadSkills`, `readSummarize` … Parsing comes from
-> frontmatter via `parseAgentFields()`."*
+**It is unreferenced by any packaging/install path.** Evidence (exhaustive over every file that
+governs packaging, install, and validation):
 
-Corroborated by the maintainer comment on GitHub issue #1544:
-
-> *"Custom subagents — drop a markdown file (with YAML frontmatter: `name`,
-> `description`, `tools`, **model**, etc.) into `.omp/agents/*.md` (project) or
-> `~/.omp/agent/agents/*.md` (user). They're discovered by `discoverAgents` in
-> `packages/coding-agent/src/task/discovery.ts` and become valid `agent` values
-> for the `task` tool."*
-> — https://github.com/can1357/oh-my-pi/issues/1544
-
-Concrete shape (frontmatter only):
-
-```markdown
----
-name: drpe
-description: Super researcher...
-tools: web_search, read, browser, edit, write
-model: anthropic/claude-sonnet-4-5
----
-```
-
-`model` accepts a **string or a CSV/array of patterns** (the resolver normalizes
-both via `normalizeModelPatterns` / `normalizeModelPatternList`). A companion
-`thinkingLevel:` frontmatter field sets the reasoning depth
-(`minimal|low|medium|high|xhigh|auto`), and a model pattern may also carry a
-trailing `:level` thinking suffix (e.g. `anthropic/claude-opus-4-5:high`).
-
-#### (b) `task.agentModelOverrides` — a per-agent-name settings map
-
-This is the **highest-priority** per-agent override and it lives in settings
-(`~/.omp/agent/config.yml` or `<repo>/.omp/config.yml`), **not** in the agent
-file. It is keyed by agent name. It was not named in the bundled settings
-catalog prose (which only says "`task.*` (subagent concurrency, isolation,
-model overrides)") but is **verified from source** in `#runSpawn`
-(`packages/coding-agent/src/task/index.ts`):
-
-```js
-// Apply per-agent model override from settings (highest priority)
-const agentModelOverrides = this.session.settings.get("task.agentModelOverrides");
-const settingsModelOverride = agentModelOverrides[agentName];
-```
-
-It feeds `resolveAgentModelPatterns({ settingsOverride: settingsModelOverride, … })`
-first, ahead of the agent's own frontmatter `model` (see Dimension 3).
-
-**Confidence: High** — primary docs + source + maintainer issue comment.
-
----
-
-### Dimension 2 — Where the model declaration lives
-
-#### Agent definition files (frontmatter) — the primary location
-
-Discovery roots, in first-wins order by exact `agent.name`
-(`omp://task-agent-discovery.md`, §"Filesystem and plugin discovery" +
-§"Actual source order"):
-
-| Priority | Root | Example path |
+| Consumer | Evidence | `logging-design` / `.claude` referenced? |
 |---|---|---|
-| 1 (highest) | project `.omp` agents dir | `<cwd>/.omp/agents/<name>.md` |
-| 2 | user `.omp` agents dir | `~/.omp/agent/agents/<name>.md` |
-| 3 | Claude/OMP **plugin** `agents/` dirs (project-scope then user-scope) | `<plugin>/agents/<name>.md` |
-| 4 (lowest) | bundled agents | `explore`, `plan`, `designer`, `reviewer`, `librarian`, `oracle`, `task`, `sonic` |
+| Marketplace catalog | `.omp-plugin/marketplace.json:13` — "10-agent orchestrator roster + **11 skills**"; no `skills[]` field exists | No |
+| Plugin A npm packaging | `package.json:7-11` — `files: ["src", "rules", …]` | No |
+| Structural validator | `scripts/validate-plugins.sh:119-128` (scans only `plugins/agents/skills/*/`), `:219` (counts only `plugins/agents/skills`) | No |
+| One-line installer | `elon_ko.sh:220-261` (`deploy_scaffold` writes only `AGENTS.md`, `PROTO.md`, `.omp/config.example.yml`); no other file-deployment code in all 750 lines | No |
+| Docs | `README.md:20` and `.DEVREADME.md:172-173` enumerate the 11 shipped skills — `logging-design` absent | No |
+| Changelog | `CHANGELOG.md:12-143` (v2.2.0–v2.8.0, the era the file dates from, ~2 months ago) | No |
+| Gitignore | `.gitignore:1-6` does **not** ignore `.claude/` — so it *is* committed and present in the marketplace clone | (context) |
 
-Cross-harness roots (`.claude/agents`, `.codex/agents`, `.gemini/agents`) are
-**intentionally skipped** — their frontmatter schema is not the OMP task-agent
-contract (`TASK_AGENT_CONFIG_SOURCE = ".omp"`).
+**One premise correction (important nuance).** The user's statement "the `.claude` folder is not
+installed or used anywhere" is true of *elon-ko's installation*, but **omp itself does read it
+when cwd is inside this repo**: omp's `claude` skill provider loads project-level
+`.claude/skills/` by default (`omp://skills.md`, §Source toggles: "Foreign user-level providers
+are opt-in through `enabledProviders`; their **project roots still load by default**"). Proof by
+elimination on this machine: the current session's system-prompt skill list **does** contain
+`logging-design`, while every other possible source was checked and lacks it — the installed
+plugin cache (11 skills, no `logging-design`), `~/.agents/skills/` (the user's 45-skill pack —
+no `logging-design`), `~/.omp/agent/` (no `skills/`, no `managed-skills/`, no `skills.lock.json`),
+and the repo (no `.omp/skills/`, no `.github/skills/`). The one-line description shown in the
+prompt list ("Use for logging, logger design, or structured logging work only.") differs
+textually from the frontmatter — [INFERENCE] omp condenses descriptions for the prompt listing
+(there is a `skill-descriptions.db` under `~/.omp/agent/`); the *source* is confirmed regardless.
 
-The elon-ko team's 8 agents ship as **plugin** agents at
-`plugins/agents/agents/*.md` (`hr`, `docworm`, `drpe`, `leaddev`, `middev`,
-`reqguru`, `validator`, `wrapper`), registered by
-`.omp-plugin/marketplace.json` (plugin `elon-ko-agents`, `source: "./agents"`).
-
-#### `.omp-plugin/marketplace.json` — informational only, NOT load-bearing for models
-
-The marketplace catalog's per-plugin `agents` array
-(`.omp-plugin/marketplace.json` L17) only **lists** agent names as metadata
-(`omp://marketplace.md`, §"Plugin entry fields": `agents` → *"Agents provided"*,
-optional). The actual agent definitions — including any `model:` field — are
-discovered from the plugin's `agents/*.md` files at runtime, not from
-`marketplace.json`. **No model field exists in the marketplace schema**, and
-there is no `count` field either (this also resolves elon-ko IDEA-003's
-open question: `agents[]` is display metadata, not a registration mechanism
-the runtime depends on for model selection).
-
-#### Runtime/settings overrides
-
-`task.agentModelOverrides` (see Dimension 1b) lives in `config.yml` and is the
-runtime per-agent override layer. The settings precedence model is
-(`omp://settings.md`, §"Precedence"):
-
-```
-built-in defaults  <-  global config  <-  project config  <-  CLI overlays  <-  runtime overrides
-```
-
-**Confidence: High** — `omp://task-agent-discovery.md` + `omp://marketplace.md`
-+ local elon-ko files + source.
+So today the skill works **only in clones of elon-ko itself** and only by omp's courtesy scan of
+a foreign layout — invisible to every other project, which is exactly the user's complaint.
 
 ---
 
-### Dimension 3 — Fallback behavior when NO model is defined
+## 2. Installation map — how elon-ko ships today
 
-This is the most important dimension and it is **fully verified from source**.
-The behavior is **not** a hard-fail: an agent with no model inherits the
-session's effective default model through a multi-step chain.
+Two plugins from one tree (`README.md:15-24`, `.DEVREADME.md:10-19`):
 
-The resolution happens in `TaskTool.#runSpawn`
-(`packages/coding-agent/src/task/index.ts`), which calls
-`resolveAgentModelPatterns(...)` and passes the result to `runSubprocess` as
-`modelOverride`. `resolveAgentModelPatterns`
-(`packages/coding-agent/src/config/model-resolver.ts`) implements this order
-(highest → lowest):
-
-| # | Source | What it is | How it's obtained |
+| Plugin | Mechanism | Manifest | Payload |
 |---|---|---|---|
-| 1 | `task.agentModelOverrides[<agentName>]` | per-agent-name settings override | `this.session.settings.get("task.agentModelOverrides")[agentName]` |
-| 2 | agent frontmatter `model:` | the agent's declared model (concrete id, or the `pi/task` role alias) | `effectiveAgent.model` |
-| 3 | **parent session's active model** | whatever the parent (orchestrator) is currently running on | `this.session.getActiveModelString()` → `activeModelPattern` |
-| 4 | `fallbackModelPattern` | session model string fallback | `this.session.getModelString()` |
-| 5 | `modelRoles.default` | the `default` model role from settings | `settings.getModelRole("default")` |
+| **A: `elon-ko-gate`** | extension-package (npm-style) | `package.json:21-29` (`omp.extensions`) | TS extensions + `rules/` |
+| **B: `elon-ko-agents`** | marketplace | `.omp-plugin/marketplace.json` (`pluginRoot: "./plugins"`, source `"./agents"`) | 10 agent defs + 11 skills, pure markdown |
 
-The exact fallback line in `resolveAgentModelPatterns`:
+**Install flow** (`elon_ko.sh`, verified against live state):
 
-```js
-const fallback =
-    activeModelPattern?.trim() || fallbackModelPattern?.trim()
-    || settings?.getModelRole("default")?.trim() || "";
-return resolveConfiguredModelPatterns(fallback, settings);
-```
+1. `omp plugin marketplace remove/add rokicool/elon-ko` + `update` — `elon_ko.sh:651-665`
+   → registry `~/.omp/marketplaces.json:12-19`, clone at
+   `~/.omp/plugins/cache/marketplaces/elon-ko/` (full repo clone, including `.claude/` — but
+   nothing reads it there).
+2. `omp plugin install github:rokicool/elon-ko#v2.8.0 --force` (Plugin A, tag-pinned) —
+   `elon_ko.sh:674-677` → `~/.omp/plugins/package.json:4-6` + `omp-plugins.lock.json:8-12`.
+3. `omp plugin install elon-ko-agents@elon-ko --force` (Plugin B, tracks latest) —
+   `elon_ko.sh:680-682` → `~/.omp/plugins/installed_plugins.json:4-12`: **`scope: "user"`**,
+   `installPath: ~/.omp/plugins/cache/plugins/elon-ko___elon-ko-agents___2.8.0`.
+   The installed tree contains **only** `agents/*.md` (10) + `skills/<name>/SKILL.md` (11) —
+   the `plugins/agents` subtree copied verbatim (verified by directory listing). `.claude/` does
+   not make it into the installed plugin.
+4. `deploy_scaffold` writes `AGENTS.md` + `PROTO.md` (+ optional `config.example.yml`) into
+   `<cwd>` — `elon_ko.sh:220-261`. This is the only file-copying the installer ever does.
 
-So **when an agent declares no `model:` and there is no
-`task.agentModelOverrides` entry, the subagent runs on the parent session's
-active model** (i.e. the orchestrator's current model), falling back to
-`modelRoles.default` if the parent has no active model string.
-
-#### Auth-aware fallback to the parent model (defense in depth)
-
-After `resolveAgentModelPatterns` produces patterns, `runSubprocess`
-(`packages/coding-agent/src/task/executor.ts`) resolves them to a concrete
-`Model` via `resolveModelOverrideWithAuthFallback(modelPatterns,
-parentActiveModelPattern, modelRegistry, settings)`. If the chosen model
-**resolves but has no working credentials**, it transparently falls back to the
-**parent session's active model** (only if that one is authenticated). This is
-documented inline:
-
-> *"If the resolved subagent model has no working credentials (provider has no
-> usable auth), and the parent's active model resolves with working auth, use
-> the parent's model instead."* — `model-resolver.ts`, `resolveModelOverrideWithAuthFallback`
-
-Keyless local providers (`ollama`, `llama.cpp`, `lm-studio`) advertise a
-`kNoAuth` sentinel and are treated as authenticated, so an explicitly
-configured local model is never silently rerouted.
-
-#### Terminal fallback inside the child session
-
-If the patterns resolve to **no model at all** (e.g. nothing available),
-`runSubprocess` passes `model: undefined, modelPattern: undefined` to
-`createAgentSession`, which then runs its own initial-model selection
-(`findInitialModel`, per `omp://models.md` §"Initial model selection priority"):
-
-```
-explicit CLI provider+model → first scoped model → saved default provider/model
-  → known provider defaults → first available model
-```
-
-The child also receives an **isolated snapshot of the parent's settings**
-(`createSubagentSettings` in `executor.ts`), so `modelRoles`, `enabledModels`,
-`modelProviderOrder`, etc. are inherited. The child's service tier defaults to
-**`inherit`** (`tier.subagent: inherit`) — i.e. it tracks the parent's
-per-family tier unless overridden (`omp://settings.md`, §"Sampling").
-
-#### The `task` model role (`modelRoles.task` / `pi/task`)
-
-`task` is a **built-in model role** (`omp://settings.md` §"Models":
-*"Built-in roles: `default`, `smol`, `slow`, `vision`, `plan`, `designer`,
-`commit`, `tiny`, `task`, `advisor`"*). It is configured via
-`modelRoles.task` in `config.yml`. An agent **explicitly opts into it** by
-declaring `model: pi/task` — this is special-cased in
-`resolveAgentModelPatterns` to resolve through the `task` role's configured
-patterns (or its built-in priority chain if unset), rather than falling through
-to the parent active model:
-
-```js
-if (configuredAgentPatterns.length > 0) {
-    if (!agentInheritsSessionModel) return configuredAgentPatterns;
-    if (singleAgentPattern === "pi/task") return configuredAgentPatterns;  // pi/task is a real override
-}
-```
-
-> **Important nuance:** `modelRoles.task` is **NOT auto-applied** to agents that
-> declare no `model:`. A model-less agent inherits the **parent's active model**,
-> not `modelRoles.task`. The `task` role only takes effect when an agent
-> explicitly sets `model: pi/task` (or when something references the role).
-
-**Confidence: High** — verified line-by-line in `task/index.ts` (`#runSpawn`),
-`config/model-resolver.ts` (`resolveAgentModelPatterns`,
-`resolveModelOverride`, `resolveModelOverrideWithAuthFallback`), and
-`task/executor.ts` (`runSubprocess`, `createSubagentSettings`).
+**Key distribution facts:** marketplace `agents[]`/`count` are display metadata only — runtime
+discovery is a filesystem scan of the installed plugin tree (resolved previously in IDEA-003,
+`.app/IDEAS.md:53`; reconfirmed by `omp://marketplace.md` §Plugin entry fields: "Agent metadata;
+preserved but **not consumed**"). User scope = "available in all projects"
+(`omp://marketplace.md` §Scopes). Update path: catalog refresh (`marketplace.autoUpdate`,
+default `notify`, 24 h) + `omp plugin upgrade` / re-running `elon_ko.sh` (force-reinstalls
+Plugin B at latest).
 
 ---
 
-### Dimension 4 — Per-invocation overrides via `task(...)`
+## 3. Omp skill-loading mechanism (verified)
 
-**There is NO per-call `model` parameter on the `task` tool.**
+How a skill becomes callable via `skill://<name>` by default in any project
+(`omp://skills.md`, corroborated by live state):
 
-The `task` wire schema (`omp://tools/task.md`, §"Inputs") accepts only:
-`agent`, `context`, `tasks`, `id`, `description`, `role`, `assignment`,
-`isolated`. The doc is explicit that structured-output `schema` is rejected
-("There is no per-call `schema` parameter"), and **`model` is similarly
-absent** — confirmed in source: `#runSpawn` never reads a `params.model`; the
-model comes exclusively from `task.agentModelOverrides` + the agent's
-frontmatter `model` + the parent active model (Dimension 3).
+1. **Layout convention.** Skills are discovered as **one level under a `skills/` root**:
+   `<root>/skills/<skill-name>/SKILL.md` (non-recursive). A marketplace plugin directory "ships
+   its content in conventional locations … `skills/<name>/SKILL.md` ← skills"
+   (`omp://skills/authoring-marketplaces.md` §Plugin structure). **No registration beyond
+   placing the directory** — confirmed independently by `.DEVREADME.md:172-177` ("loaded by
+   omp's skills provider from the plugin's `skills/` tree and resolved as `skill://<name>`. No
+   registration beyond placing the directory is needed") and by the live install (no
+   per-skill manifest entries anywhere; the 11 skills resolve purely from the tree).
+2. **Frontmatter contract.** `name` + `description` required for omp plugin skills
+   (`omp://skills.md` §SKILL.md frontmatter: `requireDescription: true` for omp-plugins-family
+   providers). `logging-design` already satisfies this; `name` matches the directory name.
+3. **User-scoped install → every project.** "user (default) — available in all projects"
+   (`omp://marketplace.md` §Scopes) — verified live: `installed_plugins.json` shows
+   `scope: "user"`, and the elon-ko skills are listed in this session from the plugin cache.
+4. **System-prompt auto-listing.** At startup omp discovers all skills and puts
+   *name + description* metadata into the system prompt whenever a `readsSkillUris` tool is
+   active (`read` is the compatibility fallback) — i.e., effectively every session
+   (`omp://skills.md` §System prompt exposure). **Subagents get the same list**: "Task tool
+   subagents receive the session's discovered/provided skills list via normal session creation."
+   Content loads on demand via `read skill://<name>` (or `/skill:<name>`).
+5. **Precedence/collisions.** Provider priority: native `.omp` (100) > skillshare (95) >
+   omp-plugins/installed plugins (90) > claude (80) > agents (70) > … On a same-name collision
+   the higher-precedence skill keeps the bare name; identical bodies collapse silently,
+   differing bodies get namespaced (`omp://skills.md` §Collision handling). A plugin-bundled
+   `logging-design` therefore wins the bare name over any project `.claude/` copy.
+6. **Not gated.** Skill discovery is session-level, unrelated to the orchestrator opt-in
+   (`.omp/elon.json`) — a shipped skill is listed in every omp session on the machine, gated or
+   not. That matches the goal "omp in this or any project should start using this skill by
+   default."
 
-#### Precedence (frontmatter-declared model vs. call-time model)
-
-Because `task(...)` carries no model, the effective precedence among the
-mechanisms that DO exist is:
-
-```
-task.agentModelOverrides[<agentName>]   (settings, per-agent-name)   HIGHEST
-        ↓
-agent frontmatter model:                (the agent .md file)
-        ↓
-parent session active model             (inheritance)
-        ↓
-modelRoles.default                      (global default role)
-```
-
-So a **settings override beats the agent's own frontmatter**. The reverse — a
-call-time override beating frontmatter — is **not possible from `task(...)`**.
-
-#### The one call-time model override path: the eval `agent()` bridge
-
-The executor's `ExecutorOptions` does expose a `modelOverride?: string | string[]`
-field, but it is populated by `resolveAgentModelPatterns` in the `task` path
-(not by the caller). The only caller that supplies a true **ad-hoc call-time**
-model is the **eval `agent(prompt, schema)` bridge**
-(`omp://tools/task.md`: *"ad-hoc structured workflows go through the eval
-bridge's `agent(prompt, schema)`"*). That is a programmatic JS bridge, not the
-model-facing `task` tool the orchestrator uses.
-
-**Confidence: High** — `omp://tools/task.md` + source (`#runSpawn` reads no
-`params.model`; `ExecutorOptions.modelOverride` is fed by the resolver).
-
----
-
-### Dimension 5 — Model identifier format
-
-A valid model string is one of (`omp://models.md` §"Runtime model resolution" +
-`model-resolver.ts` `parseModelString`/`parseModelPattern`):
-
-| Form | Example | Notes |
-|---|---|---|
-| **`provider/modelId`** (exact concrete) | `anthropic/claude-sonnet-4-5`, `openai/gpt-4.1-mini` | bypasses canonical coalescing |
-| **canonical model id** (bare) | `gpt-5.3-codex`, `claude-opus-4-6`, `claude-haiku-4-5` | resolves through the canonical index; provider inferred |
-| **bare concrete id** | `claude-sonnet-4-5` | provider inferred from available models |
-| **role alias** `pi/<role>` | `pi/task`, `pi/smol`, `pi/slow`, `pi/default` | expands through `settings.modelRoles`; `pi/task` → `modelRoles.task` |
-| **with `:thinkingLevel` suffix** | `anthropic/claude-opus-4-5:high`, `gpt-5.3-codex:medium` | `off\|minimal\|low\|medium\|high\|xhigh`; also `:max` (→xhigh) and `:auto` aliases |
-| **glob scope** | `openai/*`, `*sonnet*` | expands to all matching concrete models |
-| **`@upstream` routing** | `openrouter/z-ai/glm-4.7@cerebras` | single-upstream routing on OpenRouter / Vercel AI Gateway |
-
-CSV/array forms are accepted in frontmatter (`model: anthropic/claude-sonnet-4-5, openai/gpt-4.1-mini`),
-resolved first-match.
-
-**Confidence: High** — `omp://models.md` + `model-resolver.ts`.
+**"Used by default" therefore means**: auto-listed with its description in every session's
+system prompt (root and subagents), where description-based triggering makes agents read
+`skill://logging-design` when a task concerns logging — the same dispatch omp already applies to
+the 11 existing skills (observed live: `logging-design` is being dispatched on in this very
+session from the `.claude` copy). No stronger "always loaded" mechanism is needed or idiomatic
+(`alwaysApply` exists as frontmatter metadata but "globs and alwaysApply are metadata here, not
+automatic skill-invocation controls").
 
 ---
 
-### Dimension 6 — Validated examples
+## 4. Solution options
 
-#### Example A — agent definition WITH a `model:` field (copy-pasteable)
+### Option A — Promote into Plugin B's skills tree (repo convention; recommended)
 
-This is a valid OMP agent file (frontmatter shape verified against
-`AgentDefinition` and issue #1544). Drop it at `.omp/agents/researcher.md`
-(project) or `~/.omp/agent/agents/researcher.md` (user):
+**Changes:**
+1. Move `.claude/skills/logging-design/SKILL.md` → `plugins/agents/skills/logging-design/SKILL.md`.
+2. `.omp-plugin/marketplace.json:13`: description "…+ 11 skills." → "…+ **12** skills." —
+   **mandatory**: `validate-plugins.sh:219,225` counts skill dirs dynamically and requires the
+   description to embed the exact count; CI fails otherwise.
+3. Mirror byte-identically into `.agents/skills/logging-design/SKILL.md` (dev-session mirror
+   convention, `.DEVREADME.md:164`; validator Step I `:276-283` enforces mirrors only for
+   roster skills, but consistency is the repo's stated practice).
+4. Delete `.claude/skills/` (git history preserves it). Keeping it creates a divergent duplicate
+   in this repo only — omp would collapse identical copies but warn/drift once they differ.
+5. Release: CHANGELOG entry + lockstep version bumps per `.DEVREADME.md:250-256` (Wrapper's
+   job, out of research scope).
 
-```markdown
----
-name: researcher
-description: Deep-research specialist that runs on a strong reasoning model.
-tools: web_search, read, browser, edit, write
-model: anthropic/claude-opus-4-5:high
-thinkingLevel: high
----
+**What is *not* needed** (verified against `validate-plugins.sh` Steps B–I, all roster-driven
+from `scaffold/PROTO.md:18-31`): no agent `.md`, no roster line, no `<allowed>`/`<forbidden>`
+block (Step G `:239-253` only checks skills of roster agents), no gate/mess `TEAM` change, no
+installer change.
 
-# Researcher
+**Blast radius:** Plugin B tree + its one-line catalog description. Nothing else.
 
-You are a researcher. Use the tools above to investigate and report.
-```
+**Distribution:** rides the existing marketplace flow — catalog `notify`/update → `omp plugin
+upgrade elon-ko-agents@elon-ko`, or re-running the one-liner (force-reinstalls latest,
+`elon_ko.sh:680-682`). Pre-release pinning works unchanged (tag tarball flow).
 
-Equivalent alternative pinning to the `task` model role instead of a concrete
-model:
+**Downsides:** existing installs see it only after update/upgrade/reinstall (standard for every
+skill this repo has ever shipped, e.g. the `purecode` hire, `CHANGELOG.md:16`); the
+count-in-description invariant is brittle (validator catches drift — by design); the installer's
+own summary strings say "10 skills" already (`elon_ko.sh:7,561,564,696,723` — pre-existing
+staleness, optional cleanup opportunity).
 
-```markdown
----
-name: researcher
-description: Deep-research specialist.
-tools: web_search, read, browser, edit, write
-model: pi/task
----
-```
+### Option B — Ship as a Plugin A (extension-package) bundled skill
 
-With `model: pi/task`, the agent resolves through `modelRoles.task`; configure
-that role once in `~/.omp/agent/config.yml`:
+Add `skills/logging-design/SKILL.md` at the repo root next to `package.json`, and add `"skills"`
+to `package.json#files` (`:7-11`). The `omp-plugins` provider loads "skills/ bundled next to
+extension packages … or installed plugins under `~/.omp/plugins/node_modules`"
+(`omp://skills.md` §providers, priority 90).
 
-```yaml
-modelRoles:
-  default: anthropic/claude-sonnet-4-5
-  task: anthropic/claude-opus-4-5:high
-  smol: openai/gpt-4.1-mini
-```
+- **Blast radius:** Plugin A manifest + npm packaging; Plugin A would ship markdown content for
+  the first time.
+- **Downsides:** breaks the repo's explicit convention (`.DEVREADME.md:288-289`: "agents/skills
+  → Plugin B"); **slower distribution** — Plugin A installs are pinned to an exact release tag
+  (`elon_ko.sh:403,676`), so users get the skill only by reinstalling a *new* tag, vs Plugin B
+  tracking latest; requires `files` sync discipline. Dominated by Option A on every axis.
 
-#### Example B — agent definition WITHOUT a model (the fallback path) — REAL, not synthetic
+### Option C — Installer copies it to omp's user-global skills root (native provider)
 
-**All 8 elon-ko team agents ship with NO `model:` field.** Verified by reading
-every file. Their frontmatter contains only `name`, `description`, `tools`
-(and `spawns` on `leaddev`). Example — `plugins/agents/agents/drpe.md`
-(actual file):
+`elon_ko.sh` would `mkdir -p ~/.omp/agent/skills && cp -r …` (global mode) with a LOCAL-mode
+equivalent under the relocated home; omp's `native` provider (priority 100) lists it everywhere,
+even with plugins disabled.
 
-```markdown
----
-name: drpe
-description: Super researcher. Internet search, external API access, deep analysis...
-tools: web_search, read, browser, edit, write
----
-```
+- **Blast radius:** largest — new installer machinery in both modes, plus uninstall
+  (`elon_ko.sh:310-360`) must learn to remove it, and updates diverge from the marketplace
+  lifecycle (a plugin upgrade would no longer refresh the copied skill).
+- **Downsides:** invents a third content channel the repo has never used; the skill escapes
+  plugin enable/disable/uninstall semantics entirely. Contrary to "prefer existing repo
+  conventions." Listed for completeness because the user asked about user-global vs
+  plugin-bundled.
 
-Because there is no `model:` and (by default) no `task.agentModelOverrides`
-entry, each of these agents follows the Dimension-3 fallback: it **inherits the
-parent (orchestrator) session's active model**, then `modelRoles.default`, then
-`findInitialModel`. Concretely, if Elon is running on `zai/glm-5.2` (this
-session's model), every team agent that omits `model:` will also run on
-`zai/glm-5.2` unless overridden.
-
-This is precisely **why "different subagents can run on different models within
-one session"**: to diverge, an agent must either (a) declare its own `model:`
-frontmatter, or (b) be given an entry in `task.agentModelOverrides`. A model-less
-agent inherits the parent's model — it does **not** diverge.
-
-#### How the orchestrator assigns each of the 8 team members a model
-
-Given the elon-ko agents ship model-less, the orchestrator has three levers,
-in precedence order:
-
-1. **`task.agentModelOverrides`** in `config.yml` (highest, per-agent-name, no
-   code change to the plugin):
-   ```yaml
-   task:
-     agentModelOverrides:
-       drpe: anthropic/claude-opus-4-5:high
-       middev: anthropic/claude-sonnet-4-5
-       validator: openai/gpt-5.3-codex
-       reqguru: anthropic/claude-sonnet-4-5
-       leaddev: anthropic/claude-opus-4-5
-       docworm: openai/gpt-4.1-mini
-       hr: openai/gpt-4.1-mini
-       wrapper: openai/gpt-4.1-mini
-   ```
-2. **Add a `model:` field** to each agent's `.md` frontmatter in
-   `plugins/agents/agents/*.md` (plugin source) — e.g. `model: pi/task` or a
-   concrete `provider/modelId`.
-3. **Do nothing** — the agent inherits the parent session's active model
-   (current elon-ko behavior for all 8 agents).
-
-**Confidence: High** — real elon-ko files read; resolution chain source-verified.
+**User-global vs plugin-bundled.** omp supports both; **plugin-bundled fits "install once via
+elon-ko, available everywhere" better**: user-scoped plugin install is already "available in all
+projects" (verified), while the plugin lifecycle (upgrade/uninstall/enable/disable,
+`omp-plugins.lock.json`) manages the skill atomically with the rest of the distribution — a
+user-global copy would survive `elon_ko.sh uninstall` and drift from the shipped version.
 
 ---
 
-## Recommendations
+## 5. Recommendation
 
-| Rank | Recommendation | Rationale | Supporting findings |
-|---|---|---|---|
-| 1 | To assign per-agent models **without editing plugin source**, use `task.agentModelOverrides` in `config.yml` (global or project). It is the highest-precedence per-agent lever and requires no code change. | Verified as precedence #1 in `#runSpawn`; keyed by agent name. | Dim 1b, Dim 3 |
-| 2 | To make a model assignment **portable with the agent itself**, add a `model:` frontmatter field to `plugins/agents/agents/*.md`. Prefer `pi/task` (role alias) over hardcoding a concrete id, so the model is configurable via `modelRoles.task` per environment. | Frontmatter `model` is precedence #2; `pi/task` is explicitly special-cased to resolve through the role. | Dim 1a, Dim 3, Dim 6 |
-| 3 | Do **not** expect a per-call `model` on `task(agent=..., ...)` — it does not exist. If truly ad-hoc per-call model selection is needed, use the eval `agent()` bridge (programmatic), or rely on `task.agentModelOverrides` keyed by agent name. | `task` schema has no `model` param; only the eval bridge supplies call-time `modelOverride`. | Dim 4 |
-| 4 | When debugging "why did my subagent run on model X?", check in order: `task.agentModelOverrides[name]` → agent `model:` frontmatter → parent active model (`/model` or `getActiveModelString`) → `modelRoles.default`. Also check `tier.subagent` (default `inherit`) for tier, not model, behavior. | This is the verified resolution chain; auth-fallback to the parent model can also silently change the model if credentials are missing. | Dim 3 |
-| 5 | Treat `.omp-plugin/marketplace.json` `agents[]` as display metadata only. Do not add model info (or a `count` field) there — it is not read for model selection. (Resolves elon-ko IDEA-003.) | Marketplace schema has no model/count field; agents are discovered from `agents/*.md`. | Dim 2 |
+**Option A.** Justification, all evidence-based:
 
----
+1. **It is the repo's existing, proven mechanism** — the 11 live skills ship exactly this way
+   and are resolvable in this session from the installed cache; `.DEVREADME.md:170-177`
+   documents placement as the only registration step.
+2. **Zero new machinery** — no gate, no roster, no installer, no TS changes; one file move, one
+   description-count edit, one mirror, one deletion.
+3. **Satisfies every constraint** — omp-native (no `.claude/` at runtime), user-scoped so it
+   works in any project after install, auto-listed for root sessions and subagents alike, and
+   precedence-protected against name collisions (priority 90 beats foreign 80/70 providers).
+4. **Validator-enforced consistency** — Step E catches the count drift that is this option's
+   only real risk.
+
+Implementation note for SPEC: the frontmatter's "Available to drpe, leaddev, middev, validator,
+docworm. Triggers on: …" is Claude-Code-style dispatch prose; in omp the whole `description`
+drives listing/matching, so it can be kept as-is (harmless, informative) or trimmed — either
+works, no functional difference verified.
+
+## Alternative interpretations
+
+- **"Ship it as a rule (`rules/`) or APPEND_SYSTEM injection"** — considered and rejected: the
+  skill is 12.9 KB of on-demand reference material; `alwaysApply` rules are re-attached every
+  turn (`.DEVREADME.md:85-87`) and would burn context in *every* session regardless of topic —
+  exactly what skills' lazy `skill://` loading exists to avoid.
+- **"Wait — doesn't omp already load `.claude/skills`?"** — yes, at *project* scope only
+  (§1 premise correction). That explains why the skill seems to work in this repo while being
+  uninstallable elsewhere; it does not change the solution.
 
 ## Impact Assessment
 
-- **Verdict: EXPAND** (with one partial CONTRADICT on an assumption).
-- **Affected assumptions in the brief:**
-  - *"a `model:` field likely exists alongside `tools:`/`spawns:`"* — **CONFIRMED.** The `model:` frontmatter field exists exactly as suspected.
-  - *"A per-invocation argument on `task(...)`?"* — **CONTRADICTED.** There is **no** per-call `model` on the `task` tool. The only call-time model override is the programmatic eval `agent()` bridge, which the orchestrator does not use.
-  - The brief implied two possible mechanisms; the research found **three** distinct levers (`model:` frontmatter, `task.agentModelOverrides` settings, and the `pi/task` role alias), plus a defense-in-depth auth-fallback to the parent model.
-- **Explanation:** The feature exists, is fully implemented, and is well-behaved
-  (no hard-fail; clean inheritance chain). The only correction to the brief's
-  mental model is the absence of a `task(...)` call-time `model` argument. This
-  does not block any intended use: per-agent model assignment is achievable via
-  frontmatter and/or `task.agentModelOverrides`, and the fallback (inherit
-  parent active model → `modelRoles.default`) is the correct, expected behavior
-  for model-less agents like the current elon-ko roster.
-- **Recommendation: PROCEED.** No re-interview (GRILL) needed. The mechanism is
-  fully understood and sufficient to assign each of the 8 team members a model
-  (or let them inherit the orchestrator's model). If a future requirement
-  demands **per-call** model selection from the orchestrator's `task()` syntax,
-  that would require a harness-level change (new `task` schema field) and
-  should be raised as a separate enhancement.
-
----
+- **Verdict:** CLEAR
+- **Explanation:** One well-supported distribution path (Option A) verified end-to-end from
+  repo manifests, validator logic, the installer, omp's own docs, and the live installed state.
+  One premise correction: `.claude/` is not read by elon-ko's install, but omp's claude provider
+  does auto-load project `.claude/skills` — the skill currently works only inside clones of this
+  repo. No open questions block SPEC; the only judgment call (keep vs delete `.claude/`) is
+  resolved by the drift-avoidance argument and is trivially reversible via git.
+- **Recommendation:** PROCEED to SPEC with Option A.
 
 ## Sources Consulted
 
-| # | Source | URL / path | Contribution |
-|---|---|---|---|
-| 1 | omp docs — Models | `omp://models.md` | `models.yml`, model roles incl. `task`, model id formats, `findInitialModel` priority, canonical/coalesced resolution |
-| 2 | omp docs — Task Agent Discovery | `omp://task-agent-discovery.md` | `AgentDefinition` shape incl. optional `model`/`thinkingLevel`; discovery roots + first-wins precedence; `effectiveAgent` drives model/thinking overrides |
-| 3 | omp docs — task tool | `omp://tools/task.md` | `task` wire schema (no `model` param); `runSubprocess` creates isolated child settings snapshot; eval `agent()` bridge for ad-hoc model |
-| 4 | omp docs — Marketplace | `omp://marketplace.md` | `marketplace.json` schema; `agents` plugin-entry field is optional metadata; no model/count field |
-| 5 | omp docs — Settings | `omp://settings.md` | settings precedence; `modelRoles` (incl. `task` role); `tier.subagent: inherit`; "`task.*` model overrides" |
-| 6 | omp docs — Config Usage | `omp://config-usage.md` | config roots, `.omp` source priority, settings resolution flow |
-| 7 | omp docs — Environment Variables | `omp://environment-variables.md` | `PI_BLOCKED_AGENT`, no task-model env var (model roles via `modelRoles.*`, not env, except `--model/--smol/--slow/--plan`) |
-| 8 | omp source — `task/executor.ts` | https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/task/executor.ts | `ExecutorOptions.modelOverride`/`parentActiveModelPattern`; `modelPatterns = normalizeModelPatterns(modelOverride ?? agent.model)`; `resolveModelOverrideWithAuthFallback(...)` call; `createSubagentSettings` (inherit parent settings); `createAgentSession({model, modelPattern})` |
-| 9 | omp source — `config/model-resolver.ts` | https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/model-resolver.ts | `resolveAgentModelPatterns` (full fallback chain + `pi/task` special-case); `resolveModelOverride` (empty → undefined); `resolveModelOverrideWithAuthFallback` (auth fallback to parent model); role aliases `pi/<role>` |
-| 10 | omp source — `task/index.ts` | https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/task/index.ts | `TaskTool.#runSpawn`: reads `task.agentModelOverrides[agentName]`, `getActiveModelString()`, calls `resolveAgentModelPatterns({settingsOverride, agentModel, activeModelPattern, fallbackModelPattern})`; confirms no `params.model` |
-| 11 | GitHub issue #1544 | https://github.com/can1357/oh-my-pi/issues/1544 | Maintainer comment corroborating frontmatter `name, description, tools, model` on `.omp/agents/*.md` and plugin `agents/*.md` |
-| 12 | elon-ko agent files | `plugins/agents/agents/{leaddev,middev,drpe,reqguru,validator,docworm,hr,wrapper}.md` | All 8 ship with NO `model:` field (frontmatter = name/description/tools[/spawns] only) — the real fallback-path example |
-| 13 | elon-ko marketplace | `.omp-plugin/marketplace.json` | Plugin `elon-ko-agents` lists `agents[]` (metadata); `source: "./agents"` |
-| 14 | elon-ko IDEAS | `.app/IDEAS.md` (IDEA-003) | Open question on whether `marketplace.json` `agents[]` + a missing `count` is load-bearing — resolved here (metadata only, no count field in schema) |
-
-### Items marked `[UNVERIFIED]`
-
-None. Every load-bearing claim is backed by at least one primary source (omp
-docs or omp source on `main`). The one design-space observation that is an
-inference rather than a direct quote — that `modelRoles.task` is **not**
-auto-applied to model-less agents — is derived from the explicit control flow
-of `resolveAgentModelPatterns` (a model-less agent reaches the
-`activeModelPattern` fallback branch, never the `pi/task` branch), so it is
-treated as verified, not inferred.
+- `.claude/skills/logging-design/SKILL.md` (read in full, 280 lines) — skill content + frontmatter.
+- `.omp-plugin/marketplace.json`; `package.json`; `scripts/validate-plugins.sh` (all 296 lines);
+  `elon_ko.sh` (all 750 lines); `scaffold/PROTO.md:1-143` (roster block :18-31);
+  `scaffold/AGENTS.md:1-90`; `README.md` (all 389 lines); `.DEVREADME.md` (all 320 lines);
+  `CHANGELOG.md:1-143`; `.gitignore`; `.app/IDEAS.md` (IDEA-003 resolution :53).
+- Directory listings: `plugins/agents/{skills,agents}`, `.agents/skills`, `.omp/agents`,
+  `.claude/skills`.
+- Live installed state: `~/.omp/marketplaces.json`, `~/.omp/plugins/installed_plugins.json`,
+  `~/.omp/plugins/omp-plugins.lock.json`, `~/.omp/plugins/package.json`,
+  `~/.omp/elon-ko.install.json`, `~/.omp/plugins/cache/plugins/elon-ko___elon-ko-agents___2.8.0/`,
+  `~/.omp/plugins/cache/marketplaces/elon-ko/`, `~/.omp/agent/`, `~/.agents/skills/` (absence
+  checks for alternate skill sources).
+- `omp://skills.md` (discovery pipeline, providers/precedence, layout, system-prompt exposure,
+  collision handling, `skill://` protocol) — primary mechanism doc.
+- `omp://marketplace.md` (scopes, on-disk layout, plugin content kinds, update/upgrade flow);
+  `omp://skills/authoring-marketplaces.md` (plugin structure convention, install commands);
+  `omp://tools/manage_skill.md` (managed-skills root — ruled out as a channel).
