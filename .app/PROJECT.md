@@ -2,24 +2,27 @@
 
 ## Workflow
 - Path: FULL — IN PROGRESS
-- Phase log: REQUEST (this entry) → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → DONE
-- Prior workflow (wrapper team formalization, v2.8.2) — COMPLETE, see git history ad99d2b/2537aa2.
+- Phase log: REQUEST (add5c09) → GRILL (Q1–Q5 answered, REQ.md pending) → SPEC → DEVELOP ⇄ VALIDATE → DONE
+- Prior workflow (wrapper team formalization, v2.8.2) — COMPLETE.
 
 ## Request (verbatim, condensed)
 > I need you to extend the wrapper functionality to support CHANGELOG file. Before doing any PR, MR or Release — it must update the CHANGELOG file.
-(Full prompt template supplied by user: "Generate CHANGELOG Entry from Git Diff" — Keep a Changelog categories; entry format = `### <YYYY-MM-DD>` + Engineer name/email + Ticket, sections `#### Changed` / `#### Details` / `#### Affected Files`; new entries prepended; never modify existing entries; the prompt itself appended/updated at end of CHANGELOG.md; past tense; no trivial changes; inputs = diff vs main + engineer name + Jira ticket.)
+(Full user template: "Generate CHANGELOG Entry from Git Diff" — KaG categories; `### YYYY-MM-DD` + Engineer/Ticket; `#### Changed`/`#### Details`/`#### Affected Files`; prepend entries; never touch existing entries; prompt appended at file end; past tense; no trivial changes; inputs = diff vs main + engineer + ticket.)
 
-## Known tensions (to resolve in GRILL)
-- Current repo convention: Keep a Changelog versioned sections (`## [Unreleased]` → `## [2.8.2]`), wrapper's release step rewrites Unreleased → version. User template: date-headed entries with Engineer/Ticket metadata, prepended at file top. Coexistence/migration rule needed.
-- Template requires Engineer name + Jira ticket — repo has no Jira; per-release sourcing needed (ask user / default /omit?).
-- Scope: rule lives in wrapper SKILL.md only, or also elon protocol DONE/RELEASE wording; do non-release PRs by other agents (LeadDev/MidDev) get the gate too?
-- "Add this prompt to the end of CHANGELOG.md" — embed full prompt text in the shipped file (also mirror implications).
+## Verified context (reqguru, GRILL round 1 — supersedes REQUEST's "known tensions")
+- No `## [Unreleased]` section and no Unreleased→version rewrite step exists; live convention = `## [vX.Y.Z] - YYYY-MM-DD` sections, KaG subsections, newest first. Wrapper's only changelog hook: step 4 parenthetical "(+ CHANGELOG if the project already maintains one)".
+- Wrapper is the pipeline's ONLY PR/MR/release actor (elon routing + steps 4–8; LeadDev/MidDev commit, never publish). CI auto-publishes `pr-*` pre-releases on every non-main push — wrapper cannot gate those.
+- Constraint: v2.8.2 ask-first go/no-go at DONE must not regress; changelog gate adds NO new consent prompt.
 
 ## Decision log
-- (none yet)
+- [2026-10-20] PA-1 (Q1): hybrid nest — template content verbatim under `## [vX.Y.Z] - date` version header (Engineer/Ticket → #### Changed/Details/Affected Files); KaG declaration + tag↔section linkage preserved; no Unreleased staging.
+- [2026-10-20] PA-2 (Q2): engineer/ticket bundled into existing release go/no-go ask (zero added prompts); fallback defaults engineer=git author, ticket=N/A. Fields always present.
+- [2026-10-20] PA-3 (Q3): wrapper-only scope, skill-prose only — gate binds wrapper's release PR + tag/release; CI pr-* pre-releases exempt (un-gateable); other projects: touch CHANGELOG only if maintained, create on explicit request; no CI enforcement.
+- [2026-10-20] PA-4 (Q4): embed template verbatim at CHANGELOG.md tail (separator + heading), written once at adoption, updated only on template change; maintenance is trivial-change-exempt (never self-triggers).
+- [2026-10-20] PA-5 (Q5): release entries document prevTag..newTag; branch-vs-main only for hypothetical non-release PRs; Affected Files = all non-trivial files grouped by top-level dir/component, no cap.
 
 ## Delegation Log
-- (none yet)
+- ReqGuru — GRILL r1. COMPLETED (premise corrected; 5 branches surfaced; recommendations all accepted).
 
 ## Pending Asks
-- (none yet)
+- (none — PA-1..PA-5 answered synchronously)
