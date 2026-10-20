@@ -1,155 +1,202 @@
-# SPEC: Ship `logging-design` Skill via Plugin B (Option A)
+# Technical Specification — Formalize `wrapper` in the Elon Seat Framing
 
-**Phase:** SPEC · **Status:** Ready for DEVELOP · **Predecessors:** `.app/REQ.md` (user request), `.app/RESEARCH.md` (verified research, Option A approved)
+**Source of truth:** `.app/REQ.md` (all decisions closed: PA-1 9-agent roster sync, PA-2 Wrapper-in-DONE, PA-3 ask-first go/no-go, PA-4 authority ratified as-is). This Spec is implementable as-is; every excerpt below was read from the working tree this session.
 
-All file:line evidence below was re-verified against the working tree on 2026-10-18 (current HEAD, v2.8.0 era). No research finding failed re-verification; notes on two cosmetic discrepancies are in §9.
+**Nature of change:** documentation/markdown wording edits + one mirror resync. Zero TypeScript changes. Zero runtime-behavior changes.
 
 ---
 
 ## 1. Situation
 
-The repo contains a mature reference skill at `.claude/skills/logging-design/` (single `SKILL.md`, 13,230 bytes, 281 lines) that no elon-ko installation path ships. omp's `claude` provider scans project-level `.claude/skills/` by default, so the skill resolves **only when cwd is inside a clone of this repo** — invisible to every other project. Goal: after installing elon-ko (Elon + Core plugins), omp in **any** project lists and dispatches this skill by default, with `.claude/` eliminated as a source of truth.
+The elon-ko gate ships a bundled advisory seat-framing (`src/append-system.default.md`, injected once per session by `src/enforce-orchestrator.ts:89-95,186-201`) that still describes a 6-agent, release-less team, while the real gate `TEAM` allowlist (`src/enforce-orchestrator.ts:61-71`) has 9 spawnable agents incl. `wrapper` since v2.2.0. Separately, the canonical elon skill's DONE phase (`plugins/agents/skills/elon/SKILL.md:211`) auto-spawns Wrapper when a release is indicated; PA-3 requires ask-first user consent. This change syncs the framing (Q1+Q2) and flips the trigger clause (Q3), touching exactly four paths.
 
-**Approved solution (Option A, per RESEARCH.md §4–5):** promote the skill into Plugin B (`elon-ko-agents`) `skills/` tree — the exact mechanism already shipping the 11 live skills. omp discovers plugin skills by placement alone (`<plugin-root>/skills/<name>/SKILL.md`); user-scoped installs are available in all projects and auto-listed in every session prompt (root + subagents). Zero new machinery: one move, one mirror, one deletion, metadata/docs edits.
+## 2. Verified Baseline (evidence, this session)
 
-## 2. Architecture Overview
-
-```
-repo (rokicool/elon-ko)                      installed machine (~/.omp)
-─────────────────────────                    ─────────────────────────────────
-.claude/skills/logging-design/  ── git mv ──▶ gone (deleted)
-        │
-        ▼
-plugins/agents/skills/logging-design/        plugins/cache/plugins/
-        │                                      elon-ko___elon-ko-agents___<ver>/
-        │  marketplace publish                   skills/logging-design/SKILL.md
-        │  (omp plugin marketplace add/update)     │
-        │                                           ▼
-        │                     omp plugin install elon-ko-agents@elon-ko --force
-        │                                           │  (scope: user → all projects)
-        │                                           ▼
-        └─ byte-identical mirror               omp skills provider (priority 90)
-           .agents/skills/logging-design/          │
-           (dev-session visibility,                ▼
-            agents provider, prio 70)        system-prompt listing (root +
-                                              subagents) → read skill://logging-design
-```
-
-Two copies of truth after the change, matching the repo's existing convention for all 12 skills:
-`plugins/agents/skills/<n>/` (distributed) and `.agents/skills/<n>/` (dev-session mirror). `.claude/` ceases to exist.
-
-## 3. File Operations (exact, complete)
-
-Ordered; steps 1–3 are filesystem, 4–11 are edits.
-
-| # | Op | Path | Detail |
+| Path | sha256 (first 8) | Size | State |
 |---|---|---|---|
-| 1 | **Move** | `.claude/skills/logging-design/` → `plugins/agents/skills/logging-design/` | `git mv .claude/skills/logging-design plugins/agents/skills/logging-design`. Content byte-unchanged; history-preserving rename. |
-| 2 | **Delete** | `.claude/` (entire tree) | After step 1, `.claude/` holds only empty dirs (verified: its sole tracked file is the moved SKILL.md). `rmdir .claude/skills .claude` — `rmdir` fails safely if anything unexpected remains. Do NOT `git rm` anything else. |
-| 3 | **Mirror (copy)** | create `.agents/skills/logging-design/SKILL.md` | `mkdir -p .agents/skills/logging-design && cp plugins/agents/skills/logging-design/SKILL.md $_/`. **Copy, not symlink** — the repo's convention is byte-identical copies (validator Step I uses `cmp -s`, `scripts/validate-plugins.sh:276-283`; `.DEVREADME.md:164`: "mirrors every distributed agent + skill byte-identically … this repo uses mirrors", explicitly rejecting the `omp plugin link` alternative). Existing mirror tree confirms: same 11 dirs, same file sizes. |
-| 4 | **Edit (MANDATORY)** | `.omp-plugin/marketplace.json:13` | `"10-agent orchestrator roster + 11 skills."` → `"10-agent orchestrator roster + 12 skills."` `agents[]` and `count: 10` unchanged (no agent added). Enforced by validator Step E (`:219` counts skill dirs dynamically → 12; `:225` requires the description to embed `10-agent` and `12 skills`; CI fails otherwise). |
-| 5 | **Edit** | `README.md:20` | `**10 specialist agents** + **11 skills**` → `**10 specialist agents** + **12 skills**` (agent enumeration line unchanged). |
-| 6 | **Edit** | `.DEVREADME.md:15` | `10 agent definitions + 11 skills` → `10 agent definitions + 12 skills`. |
-| 7 | **Edit** | `.DEVREADME.md:35` | `plugins/agents/skills/*/SKILL.md  # 11 skills (Plugin B, co-located)` → `# 12 skills (Plugin B, co-located)`. |
-| 8 | **Edit** | `.DEVREADME.md` § "Extending: add or change a skill" (~:172) | Keep "The roster ships 11: …" (true — roster entities unchanged); append one sentence, e.g.: "`logging-design` is additionally shipped as a non-roster reference skill — placement and the `.agents/skills/` mirror follow the same rules, but no PROTO.md roster row, agent definition, or `<allowed>`/`<forbidden>` block applies to it." |
-| 9 | **Edit** | `.github/workflows/release.yml:98` | `(9 agents + 10 skills; markdown only)` → `(10 agents + 12 skills; markdown only)`. Pre-existing staleness discovered in re-verification; fixed here because release notes would otherwise ship a doubly-wrong count. Not part of the installer (see Non-Goals). |
-| 10 | **Edit (×3, lockstep)** | `package.json#version`, `.omp-plugin/marketplace.json` `metadata.version` + `plugins[0].version` | `2.8.0` → `2.8.1` (patch: additive content). Lockstep is a repo mandate (`.DEVREADME.md:252-256`). Also gives `omp plugin upgrade` a metadata delta for existing installs (see §6). |
-| 11 | **Edit** | `CHANGELOG.md` (top, after the rename note) | New `## [v2.8.1] - <release-date>` → `### Added` entry: promote `logging-design` skill from `.claude/skills/` into Plugin B (`skill://logging-design`, now 12 skills); `.claude/` removed; note propagation via reinstall/upgrade. Keep-a-Changelog format per existing entries. Date/coordination with Wrapper (release job). Historical entries untouched. |
+| `src/append-system.default.md` | `00b0459a` | 5229 B, 52 lines | stale framing: 6-agent list (lines 9–14), release-less pipeline (line 16) |
+| `scaffold/APPEND_SYSTEM.md` | `0c57dc37` | 4642 B, 43 lines | **stale AND non-identical** — see Drift Note |
+| `plugins/agents/skills/elon/SKILL.md` | `74674d44` | 266 lines | line 211 = DONE phase, auto-spawn trigger |
+| `.agents/skills/elon/SKILL.md` | `74674d44` | 266 lines | byte-identical to plugins copy (pair intact) |
 
-**Files explicitly NOT touched:** `elon_ko.sh` (installer — user-excluded; its "9 agents + 10 skills" strings at `:7,561,564,696,723` remain stale exactly as before), `scaffold/*`, `src/*`, `rules/*`, `plugins/agents/agents/*`, all existing 11 skill dirs, `CHANGELOG.md` historical entries, `.gitignore`.
+- Working tree clean (`git status --porcelain` empty) at spec time.
+- `npm run typecheck` = `tsc --noEmit`; `npm test` = `node --test src/*.test.ts`.
+- No test pins framing or scaffold text (grep over `src/*.test.ts`: zero hits).
+- No non-test code references `scaffold/`; `scaffold/` is NOT in `package.json files:["src","rules"]` — it is a template, not shipped runtime code.
 
-## 4. Discovery & Frontmatter Contract (Interface Contracts)
+> **Drift Note (verified deviation from REQ's premise):** REQ B2 calls the scaffold copy "byte-identical stale". In fact `diff src/append-system.default.md scaffold/APPEND_SYSTEM.md` is non-empty today: scaffold is missing the source's "## Idea/suggestion storage" section (source lines 39–47, 587 bytes). FR-3/AC-2 require post-change byte-identity, so the mirror sync MUST be a wholesale copy, which additionally closes this pre-existing drift. This is in-scope (scaffold is one of the four paths, FR-7 intact) but the scaffold's git diff will show the IDEAS section appearing alongside the wrapper edits. Disclosed here so validation is not surprised; REQ is not edited.
 
-**No frontmatter changes are required.** Verified against both consumers:
+## 3. Architecture Overview
 
-- **omp contract** (`omp://skills.md`, corroborated by the live 11-skill install): plugin skills need `name` + `description` frontmatter (`requireDescription: true` for omp-plugins-family providers) and directory layout `skills/<name>/SKILL.md` (non-recursive, one level). `SKILL.md:1-10` has `name: logging-design` (matches dir name) and a multi-line `description: >`. Placement in `plugins/agents/skills/` completes registration — no manifest entry, no registration file (`.DEVREADME.md:174-177` documents this; the live install proves it).
-- **Validator contract** (`scripts/validate-plugins.sh`, all 296 lines reviewed):
-  - Skill-dir scan `:119-128` — every dir under `plugins/agents/skills/*/` must contain `SKILL.md` → passes.
-  - Step E `:219,225` — dynamic dir count (→ 12) must appear in the marketplace description → satisfied by op 4.
-  - Steps B–D, F–H — roster-driven (parsed from `scaffold/PROTO.md` block); `logging-design` is not a roster entity → never iterated.
-  - Step G `:239-253` — `<allowed>`/`<forbidden>` checked only for **roster** skills → `logging-design` needs neither block.
-  - Step I `:276-283` — byte-identity mirrors enforced only for **roster** skills → the `.agents/` mirror of `logging-design` is convention-only, not validator-enforced. Acceptable: identical to how the repo treats it (stated practice covers "every distributed skill", enforcement is roster-scoped by design).
+```
+                     ┌──────────────────────────────────────────────┐
+   session_start ───▶│ src/enforce-orchestrator.ts (GATE — NO-OP)   │
+                     │  reads src/append-system.default.md          │
+   <cwd>/.omp/APPEND_SYSTEM.md override ── (absent in this repo)    │
+                     └──────────────┬───────────────────────────────┘
+                                    │ injects as advisory message
+                                    ▼
+              src/append-system.default.md ──cp──▶ scaffold/APPEND_SYSTEM.md
+              (EDIT A: roster + DONE bullet)      (mirror, byte-identical)
 
-**Content decision:** `SKILL.md` body and frontmatter move byte-identical. The description's Claude-Code-style dispatch prose ("Available to drpe, leaddev, … Triggers on: …") is retained — verified harmless in omp (whole `description` drives listing/matching; RESEARCH.md §5 implementation note). Zero content edits keep all copies trivially byte-identical and the diff minimal.
+              plugins/agents/skills/elon/SKILL.md:211 ──cp──▶ .agents/skills/elon/SKILL.md:211
+              (EDIT B: ask-first trigger clause)             (mirror, byte-identical)
 
-**Collision behavior:** after promotion the plugin copy (priority 90) would outrank any foreign-provider copy; the repo's own `.claude` copy is deleted and `~/.agents/skills/` (user pack) verifiably lacks `logging-design`, so the bare name resolves cleanly.
-
-## 5. Data Model (marketplace.json delta)
-
-```json
-// plugins[0] — before                          // after
-{                                               {
-  "name": "elon-ko-agents",                       "name": "elon-ko-agents",
-  "description": "10-agent orchestrator           "description": "10-agent orchestrator
-                 roster + 11 skills.",                              roster + 12 skills.",
-  "source": "./agents",                           "source": "./agents",
-  "category": "development",                      "category": "development",
-  "version": "2.8.0",                             "version": "2.8.1",
-  "agents": [ …10 unchanged… ],                   "agents": [ …10 unchanged… ],
-  "count": 10,                                    "count": 10,
-  "homepage": "…"                                 "homepage": "…"
-}                                               }
-// metadata.version: "2.8.0" → "2.8.1";  everything else unchanged
+   GUARD RING (untouched): gate TEAM · mess-transport.ts · marketplace.json ·
+   wrapper defs/skills · skill :149/:246 · PROTO.md · AGENTS.md · README · DEVREADME
 ```
 
-No `skills[]` field exists or is added — runtime discovery is a filesystem scan of the installed plugin tree; `agents[]`/`count` are display metadata only (RESEARCH.md §2, omp docs).
+Two independent edit units (A: framing pair, B: skill pair), each with a mirror relationship inside the unit. No cross-unit dependencies → reviewable and committable separately.
 
-## 6. Update Flow (propagation to installed users)
+## 4. Non-goals / Guard Ring (MUST NOT change)
 
-- **New installs:** unchanged one-liner flow — marketplace clone carries `plugins/agents/skills/logging-design/`; `omp plugin install elon-ko-agents@elon-ko --force` copies the subtree verbatim into the user-scoped cache (`scope: "user"` → all projects). Verified today for the 11 skills; the 12th rides identically.
-- **Existing installs (verified paths):** re-run `elon_ko.sh` (force-reinstalls Plugin B at latest, `elon_ko.sh:680-682`) or `omp plugin marketplace update elon-ko` + `omp plugin install elon-ko-agents@elon-ko --force`. Catalog auto-refresh default is `notify` (24 h).
-- **Version-pin behavior:** Plugin A installs remain tag-pinned and unaffected (no Plugin A changes). The 2.8.1 lockstep bump (op 10) is expected to let `omp plugin upgrade` detect the delta for Plugin B — [INFERENCE: not directly verified; the `--force` paths above are verified and are the acceptance-relevant channel]. Tagging `v2.8.1` at release keeps the tag-pinned flow coherent.
-- **This repo (dev sessions), immediately post-merge:** the `.agents/skills/logging-design/` mirror (omp `agents` provider, project scope) keeps `skill://logging-design` resolvable in-repo even before any reinstall — precisely what the mirror convention exists for.
+Everything in REQ Inventory A: `src/enforce-orchestrator.ts`, `src/mess-transport.ts`, `.omp-plugin/marketplace.json`, `plugins/agents/agents/wrapper.md`, `.omp/agents/wrapper.md`, wrapper skill + `.agents` mirror, elon SKILL.md lines other than 211's trigger clause (esp. `:149`, `:246`), `scaffold/PROTO.md`, `scaffold/AGENTS.md`, `README.md`, `.DEVREADME.md`. Also: no new tests, no `.omp/APPEND_SYSTEM.md` creation, no RELEASE phase or phase-structure change, no budget changes (3-cycle DEVELOP⇄VALIDATE, 2-cycle PURECODE), no edits to `.app/REQ.md`.
 
-## 7. Acceptance Criteria
+## 5. Edit A — `src/append-system.default.md` (+ mirror `scaffold/APPEND_SYSTEM.md`)
 
-| AC | Statement (testable) |
-|---|---|
-| AC-1 | `plugins/agents/skills/logging-design/SKILL.md` exists, 13,230 bytes; `git log --follow` reaches the pre-move history; `git show HEAD~1:.claude/skills/logging-design/SKILL.md` (pre-change ref) and the new path have identical content. |
-| AC-2 | `.claude/` absent: `[ ! -e .claude ]` and `git ls-files .claude` returns nothing. |
-| AC-3 | `cmp -s plugins/agents/skills/logging-design/SKILL.md .agents/skills/logging-design/SKILL.md` → exit 0. |
-| AC-4 | `jq -r '.plugins[0].description' .omp-plugin/marketplace.json` = `10-agent orchestrator roster + 12 skills.`; `.plugins[0].agents | length` = 10; `.plugins[0].count` = 10. |
-| AC-5 | `bash scripts/validate-plugins.sh` exits 0 printing `ALL CHECKS PASSED`, including `plugin 'elon-ko-agents': 12 skill(s)` and `skill 'logging-design' -> …SKILL.md`; zero errors. |
-| AC-6 | Repo-wide count consistency: `grep -rnE '\b11 skills\b' --exclude-dir=node_modules .` matches only CHANGELOG historical entries (`.app/*` protocol artifacts excluded); README.md:20 / .DEVREADME.md:15 / .DEVREADME.md:35 all read 12; release.yml:98 reads `10 agents + 12 skills`. |
-| AC-7 | Version lockstep: `package.json#version` = `marketplace.json .metadata.version` = `.plugins[0].version` = `2.8.1`; CHANGELOG has a `## [v2.8.1]` `### Added` entry mentioning `logging-design`. |
-| AC-8 | (Smoke, post-release or pre-release flow) In a cwd outside any elon-ko clone, after `omp plugin install elon-ko-agents@elon-ko --force` (or pre-release tag equivalent): a fresh omp session lists `logging-design` in its skill list and `read skill://logging-design` returns the skill body. |
-| AC-9 | Blast-radius floor: `git diff --stat HEAD~1..HEAD` touches only the files in §3 — no `elon_ko.sh`, `src/`, `scaffold/`, `rules/`, `plugins/agents/agents/`, or pre-existing skill changes. |
+### 5.1 Team list 6 → 9 (item 2 of "What you do")
 
-AC-8 requires a released/published ref; until then Developer verifies AC-1–7, AC-9, and the pre-release channel (`.github/workflows/prerelease.yml`, `.DEVREADME.md:258+`) may substitute for the published marketplace in smoke testing.
+**Before** (current lines 8–14):
+```markdown
+2. **Delegate** to exactly one team agent per turn unless the work is provably independent and parallel-safe. Every delegation uses `task(agent="<name>", context="skill://<name>", assignment="...")`:
+   - `reqguru` — clarify/refine requirements (GRILL).
+   - `drpe` — research technology, APIs, libraries; answer factual technical questions.
+   - `leaddev` — design specs, implement, review, integrate, fix validation issues. LeadDev further delegates implementation to `middev`.
+   - `validator` — audit an implementation against its spec.
+   - `docworm` — write/update documentation.
+   - `hr` — define and register a new agent role.
+```
 
-## 8. Verification Plan
+**After** (insert `purecode` after `validator`; append `wrapper`, `debugger` after `hr` — gate `TEAM` order `reqguru, drpe, leaddev, validator, purecode, docworm, hr, wrapper, debugger`):
+```markdown
+2. **Delegate** to exactly one team agent per turn unless the work is provably independent and parallel-safe. Every delegation uses `task(agent="<name>", context="skill://<name>", assignment="...")`:
+   - `reqguru` — clarify/refine requirements (GRILL).
+   - `drpe` — research technology, APIs, libraries; answer factual technical questions.
+   - `leaddev` — design specs, implement, review, integrate, fix validation issues. LeadDev further delegates implementation to `middev`.
+   - `validator` — audit an implementation against its spec.
+   - `purecode` — post-validation code-cleanliness review; recommends refactors.
+   - `docworm` — write/update documentation.
+   - `hr` — define and register a new agent role.
+   - `wrapper` — cut and publish releases; conditional DONE step (see item 4).
+   - `debugger` — root-cause CI/runtime failures on demand; read-only report.
+```
 
-**Developer (after implementation, before commit):**
-1. `bash scripts/validate-plugins.sh` → expect `ALL CHECKS PASSED`, exit 0, `12 skill(s)` note (AC-5).
-2. `cmp plugins/agents/skills/logging-design/SKILL.md .agents/skills/logging-design/SKILL.md && echo IDENTICAL` (AC-3).
-3. `test ! -e .claude && test -z "$(git ls-files .claude)" && echo GONE` (AC-2).
-4. `jq -r '.plugins[0].description, .plugins[0].count, (.plugins[0].agents|length), .metadata.version' .omp-plugin/marketplace.json` and `jq -r .version package.json` (AC-4, AC-7).
-5. `grep -rnE '\b11 skills\b' --exclude-dir=node_modules --exclude-dir=.app .` → only CHANGELOG history (AC-6).
-6. `git status --porcelain` → only intended paths; `git diff --stat` matches §3 list (AC-9).
+Fulfills FR-1. The leaddev/drpe/reqguru/validator/docworm/hr glosses are byte-unchanged.
 
-**Validator (independent):**
-1. Re-run 1–6 above from a clean checkout of the branch.
-2. `git log --follow --oneline plugins/agents/skills/logging-design/SKILL.md | head` → history predates the change (AC-1); `git diff HEAD~1 HEAD -- .claude plugins/agents/skills/logging-design` shows a pure rename (R100) plus nothing else inside those paths.
-3. Confirm non-goals by diff: no changes in `elon_ko.sh`, `src/`, `scaffold/`, `rules/`, `plugins/agents/agents/`, existing skills (AC-9).
-4. Optional (if pre-release or released ref available): AC-8 smoke in `/tmp` project cwd.
+### 5.2 Wrapper bullet under item 4 (pipeline line)
 
-**Typecheck:** unaffected (no TS changes); `npm run typecheck` remains green trivially — CI runs it regardless (`.github/workflows/ci.yml`).
+**Before** (current line 16, unchanged first sentence):
+```markdown
+4. **Chain** phases per the workflow protocol in `skill://elon` (FULL: REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → DONE). Enforce the 3-cycle limit on DEVELOP ⇄ VALIDATE.
+```
+**After** (item 4 line byte-unchanged; one sub-bullet appended directly beneath it):
+```markdown
+4. **Chain** phases per the workflow protocol in `skill://elon` (FULL: REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → DONE). Enforce the 3-cycle limit on DEVELOP ⇄ VALIDATE.
+   - Wrapper is a conditional release step **inside DONE, post-PASS** — no new RELEASE phase; DONE stays terminal. If the change is being released (needs a version bump + tag), put a go/no-go ask to the user before spawning Wrapper (no release without consent); otherwise skip Wrapper with a noted reason.
+```
 
-## 9. Re-verification Notes (SPEC-phase diligence)
+Fulfills FR-2: pipeline arrow string untouched and still terminal at DONE; the wrapper notion lives in the sub-bullet; post-PASS positioning matches `skill://elon` and `scaffold/PROTO.md:254-262`. Wording is advisory (describes protocol behavior, asserts no enforcement of its own — FR-6/NFR-3).
 
-- All load-bearing research claims re-verified directly: frontmatter (`SKILL.md:1-10`), marketplace line 13, validator lines 110–296 (incl. Step E `:219,225`, Step G `:239-253`, Step I `:276-283`), mirror convention (`.DEVREADME.md:164` + identical 11-dir listings on both sides), count surfaces (repo-wide grep), installer strings, `.gitignore` (does not ignore `.claude/`; sole tracked file confirmed via `git ls-files`), plugin tree layout (`plugins/agents/{agents,skills}` only).
-- Discrepancy 1 (cosmetic): RESEARCH.md calls the file "280 lines"; it is 281 lines / 13,230 bytes (12.9 KiB ✓). Non-load-bearing — byte identity, not line count, is the invariant.
-- Discrepancy 2 (refinement): research's "verify no other count references" — grep found two *stale* count surfaces beyond the "11 skills" set: `elon_ko.sh` (excluded by user Non-Goal) and `release.yml:98` (included as op 9). Decision flagged below.
+### 5.3 Everything else in the file byte-unchanged
 
-**Open decisions for Elon sign-off (non-blocking; spec takes these positions):**
-1. **release.yml:98 fix included** — stale "9 agents + 10 skills" release-notes boilerplate corrected to "10 agents + 12 skills". Remove op 9 if out of scope.
-2. **Version bump to 2.8.1 + CHANGELOG entry included** as release-gate items (lockstep mandate). If Wrapper prefers to batch with the next feature release, drop ops 10–11 — propagation still works via the verified `--force` reinstall paths.
+Lines 1–7, 15, 17–52 (headings, "What you never do", protocol paragraph, dot-agreement token, IDEAS section, advisory footer) untouched.
 
-## 10. Non-Goals
+## 6. Edit B — `plugins/agents/skills/elon/SKILL.md:211` (+ mirror `.agents/skills/elon/SKILL.md:211`)
 
-- **No new plugin, no Plugin A changes** — no `package.json#omp.extensions`/`files` edits (Option B rejected: slower tag-pinned distribution, breaks the "agents/skills → Plugin B" convention).
-- **No installer changes** — `elon_ko.sh` untouched, including its pre-existing stale count strings.
-- **No agent-roster/gate/extension changes** — no PROTO.md row, no agent `.md`, no `<allowed>`/`<forbidden>` block, no `TEAM`/`ADDRESSABLE` edits; `logging-design` is a reference skill, not a roster entity.
-- **No user-global skill copies** — nothing written to `~/.omp/agent/skills` (Option C rejected: escapes plugin lifecycle, survives uninstall, drifts).
-- **No SKILL.md content rewrite** — byte-identical move only (description prose retained).
-- **No CHANGELOG history edits**, no doc rewrites beyond the enumerated count/clarification lines.
+### 6.1 Trigger-clause rewrite (clause-only, single line)
+
+**Before** — full current line 211:
+```xml
+  <phase name="DONE">Validator returned PASS and PureCode returned code-fine (FULL path). Evaluate whether DocWorm is needed (conditional). Evaluate whether Wrapper is needed: if the change is being released (needs a version bump + tag), spawn Wrapper to cut and publish the release; otherwise skip with a noted reason. (Debugger is on-demand/cross-phase and needs no DONE block.) Present final deliverable.</phase>
+```
+
+**After** — full replacement line 211 (prefix and suffix sentences byte-identical; only the bolded middle clause is new; bold is annotation, not file content):
+```xml
+  <phase name="DONE">Validator returned PASS and PureCode returned code-fine (FULL path). Evaluate whether DocWorm is needed (conditional). **Always consider whether Wrapper is needed: if the change is being released (needs a version bump + tag), first put a pending go/no-go ask to the user (a status=pending entry under ## Pending Asks in .app/PROJECT.md — a trimmed "." reply expresses consent) and spawn Wrapper only if the user consents — never publish a release without explicit consent; if the user declines, or the change is internal-only, skip Wrapper with a noted reason.** (Debugger is on-demand/cross-phase and needs no DONE block.) Present final deliverable.</phase>
+```
+
+Semantics delivered (PA-3 / FR-4): always-consider ✓ · pending ask BEFORE spawn ✓ · no release without consent ✓ · decline/internal-only → skip with noted reason ✓ · dot-agreement mechanics anchored (`.app/PROJECT.md` `## Pending Asks`, `.` token) ✓. No backticks introduced (phase elements in this file use plain text). Phase placement, Debugger note, DocWorm clause, and "Present final deliverable" untouched. No other line of either skill copy changes.
+
+### 6.2 Unchanged guards in the same file (for reviewer orientation)
+
+- `:149` routing-table Wrapper row — byte-unchanged.
+- `:246` agent-registry Wrapper row ("On demand in DONE.") — byte-unchanged.
+
+## 7. Mirror Sync & Byte-Identity Procedure
+
+Mechanism: **edit the source, then `cp` over the mirror** (never parallel-edit a pair; drift is the failure mode this procedure exists to kill).
+
+```bash
+# 1. Edit source files (§5.1, §5.2 → framing; §6.1 → skill)
+# 2. Mirror by wholesale copy:
+cp src/append-system.default.md scaffold/APPEND_SYSTEM.md
+cp plugins/agents/skills/elon/SKILL.md .agents/skills/elon/SKILL.md
+# 3. Verify byte-identity (all three must hold):
+diff scaffold/APPEND_SYSTEM.md src/append-system.default.md      # → no output, exit 0
+diff .agents/skills/elon/SKILL.md plugins/agents/skills/elon/SKILL.md  # → no output, exit 0
+shasum -a 256 src/append-system.default.md scaffold/APPEND_SYSTEM.md plugins/agents/skills/elon/SKILL.md .agents/skills/elon/SKILL.md
+#    → exactly two distinct hashes, each appearing twice (pair-matched)
+```
+
+Note: step 2's framing `cp` intentionally also delivers the IDEAS section (source lines 39–47) to the scaffold, closing the pre-existing drift documented in §2 — this is what makes AC-2's empty diff achievable.
+
+## 8. Interface Contracts (text contracts)
+
+| Contract | Content | Enforced where |
+|---|---|---|
+| Roster enumeration | Framing team list enumerates exactly the 9 gate-`TEAM` agents, no more, no less | FR-1; consistency with `src/enforce-orchestrator.ts:61-71` |
+| Trigger semantics | Wrapper spawn requires a prior user go/no-go pending ask; release never happens without consent; decline/internal-only → skip with noted reason | FR-4; canonical at SKILL.md:211, framed advisorially at framing bullet |
+| Division of truth | Framing names role + DONE position; canonical semantics live in `skill://elon` (framing already defers); framing must not contradict skill/PROTO/gate | FR-2, AC-7 |
+| Advisory envelope | Framing asserts no enforcement of its own; hard-enforcement attribution stays with the gate + frontmatter (existing footer pattern) | FR-6, NFR-3 |
+| Mirror invariants | Two byte-identical pairs post-change (drift rule, `scaffold/PROTO.md:334`) | FR-3, FR-5, NFR-1 |
+| Blast radius | Exactly four paths in the implementation diff | FR-7 |
+
+## 9. Data Models
+
+No structured data. The relevant "model" is file identity:
+
+- Pair 1: `src/append-system.default.md` ≡ `scaffold/APPEND_SYSTEM.md` (single sha256).
+- Pair 2: `plugins/agents/skills/elon/SKILL.md` ≡ `.agents/skills/elon/SKILL.md` (single sha256).
+- Consumed as raw UTF-8 string by `enforce-orchestrator.ts` `readFileSync(...,"utf8")` — no parsing, no line-number coupling; content-only change is safe.
+
+## 10. Build & Delegation Sequencing (DEVELOP phase)
+
+Single MidDev delegation (the four paths share two mirror invariants; splitting invites drift, and each file's change is <20 lines). LeadDev reviews, verifies, commits.
+
+**MidDev assignment shape** (`task(agent="middev", context="skill://middev")`):
+- Target: the four paths; exact before/after excerpts from §5–§6 verbatim.
+- Change: apply §5.1+§5.2 to the framing source; apply §6.1 to the plugins skill; run the two `cp` commands from §7.
+- Acceptance: §7 byte-identity commands green; no other file touched.
+- Non-Goals: guard ring (§4); no rewording beyond the quoted excerpts; no trailing-whitespace or reflow drive-bys.
+
+**LeadDev integration sequence after MidDev returns:**
+1. `git status --porcelain` → only the four paths (+ any Elon-owned `.app/` artifacts, ignored).
+2. `git diff -U0` each path; confirm framing hunks only at items 2/4 and skill hunk only at line 211.
+3. Run the §7 identity checks + full validation matrix (§11).
+4. `npm run typecheck && npm test` (AC-6).
+5. Commit as two logical units:
+   - `[SPEC §5] Sync seat framing to 9-agent roster + Wrapper-in-DONE bullet; resync scaffold mirror`
+   - `[SPEC §6] Ask-first go/no-go for Wrapper at DONE (skill + .agents mirror)`
+6. Report changed files, verification output, commit SHAs to Elon → VALIDATE.
+
+If MidDev returns CLARIFICATION: answer from this Spec; escalate to Elon only if a user decision emerges (none expected — REQ has zero open questions).
+
+## 11. Validation Matrix (AC-1…AC-7 → concrete checks)
+
+Baseline anchor: `BASE=$(git rev-parse HEAD)` recorded before any edit.
+
+| AC | Concrete check | Pass signal |
+|---|---|---|
+| AC-1 | `sed -n '8,17p' src/append-system.default.md` — inspect item 2 (9 agent bullets); `sed -n '19,20p'` — inspect item 4 + wrapper sub-bullet; `grep -n 'REQUEST → GRILL' src/append-system.default.md` | Item 2 lists all 9 names in gate-TEAM order (`reqguru drpe leaddev validator purecode docworm hr wrapper debugger`); wrapper bullet says inside DONE/post-PASS/ask-first; item 4's pipeline string still ends `VALIDATE → DONE)`; no "RELEASE" phase token anywhere |
+| AC-2 | `diff scaffold/APPEND_SYSTEM.md src/append-system.default.md; echo $?` | Empty output, exit 0 (§3 hash pair-match corroborates) |
+| AC-3 | `git diff -U0 -- plugins/agents/skills/elon/SKILL.md` | Exactly one hunk `@@ -211 +211 @@`; new line contains "pending go/no-go ask", "before"/"first" ordering, and "never publish a release without explicit consent"; old auto-spawn string absent; `git diff -- plugins/agents/skills/elon/SKILL.md \| grep -E '^[-+]...' \| grep -cE ':149\|Ship a release'` = 0 (guards intact) |
+| AC-4 | `diff .agents/skills/elon/SKILL.md plugins/agents/skills/elon/SKILL.md; echo $?` | Empty output, exit 0 |
+| AC-5 | **Tripwire:** `git diff --name-only "$BASE" \| grep -v '^\.app/'` → exactly the four paths; negative probe: `git diff --name-only "$BASE" -- src/enforce-orchestrator.ts src/mess-transport.ts .omp-plugin/marketplace.json scaffold/PROTO.md scaffold/AGENTS.md README.md .DEVREADME.md plugins/agents/agents/wrapper.md .omp/agents/wrapper.md` | Tripwire lists exactly: `src/append-system.default.md`, `scaffold/APPEND_SYSTEM.md`, `plugins/agents/skills/elon/SKILL.md`, `.agents/skills/elon/SKILL.md`; negative probe empty; per-commit `git show --name-only --format= <sha>` likewise scoped |
+| AC-6 | `npm run typecheck && npm test` | Both exit 0, output unchanged from baseline (no TS touched) |
+| AC-7 | Cross-read (Validator inspection): framing roster set vs gate `TEAM` (`src/enforce-orchestrator.ts:61-71`); framing bullet + skill:211 vs `scaffold/PROTO.md:254-262` | No contradiction on: roster membership, DONE-terminal position, post-PASS timing, ask-first consent, budget non-consumption |
+
+Additional negative probe (auto-spawn eradication): `grep -rn "spawn Wrapper to cut and publish" plugins/ .agents/ src/` → zero matches.
+
+## 12. Rollback
+
+`git revert` of the two implementation commits restores both mirror pairs to the pre-change state (the scaffold `cp` reverts with Edit A's commit; the pre-existing IDEAS drift re-appears — acceptable, it is the historical state). No data, config, or runtime migration involved.
