@@ -16,7 +16,9 @@ created: 2026-06-28T00:00:00Z
 source: /idea
 title: Hire an additional team agent role
 tags: agents, team, hiring, expansion
-status: parked
+status: promoted
+promoted_to: .app/REQ.md
+promoted_at: 2026-10-20
 
 hire another agent
 ```
@@ -51,4 +53,15 @@ Open questions: (1) is `agents[]` actually read by omp at runtime (load-bearing)
 Resolve before the first real hire under the new HR DEV-BASE procedure (`scaffold/PROTO.md` Agent-to-Phase Map; `hr SKILL.md` §DEV-BASE) — that hire would otherwise be the first test case.
 
 RESOLVED 2026-07-09: (1) agents[] is metadata-only — registration is by filesystem scan of <installPath>/agents/*.md (confirmed in .app/RESEARCH.md). (2) count field added at plugins[0].count=9 as part of the debugger agent hire (commit 3014312). validate-plugins.sh ignores unknown fields (CI-safe). This question is fully answered; no further action needed.
+```
+
+```idea
+id: IDEA-004
+created: 2026-10-20T00:00:00Z
+source: validation-finding
+title: Pre-existing `npm test` failure — ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING in subagent-panel.test.ts
+tags: toolchain, npm-test, pi-tui, node
+status: parked
+
+`npm test` fails in `src/subagent-panel.test.ts`: Node throws `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` because it refuses type-stripping for a `node_modules` file — `node_modules/@oh-my-pi/pi-tui/src/index.ts`. Reproduced identically at BASE `3537710e` in an isolated worktree, so the failure is pre-existing and NOT introduced by the wrapper-framing change (`2dbe63b` + `9aaf96e`); it surfaced as validator finding 2 during DONE validation (which otherwise passed 7/7). Toolchain-level triage needed, separate from the wrapper-framing workflow.
 ```
