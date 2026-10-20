@@ -1,215 +1,119 @@
-# Requirements Document — Hire `debugger` Agent into the elon-ko Distributed Team
-
-- **Source:** Promoted from parked idea **IDEA-002** ("Add debug agent role to the team pipeline").
-- **Status:** **GRILL COMPLETE** — every decision branch is resolved; no open blocker remains. Ready for the GRILL → SPEC gate.
-- **Resolves inline:** **IDEA-003** (marketplace `agents[]` / `count` registration model) — see §RESEARCH Dependency for the one confirmation item handed to DrPe.
-- **Author:** ReqGuru (seeded in REQUEST phase; finalized after GRILL).
-- **Date:** 2026-07-09.
-- **Supersedes:** the REQUEST-phase seed of this same document (recoverable from git history).
-
----
+# Requirements Document — Formalize `wrapper` in the Elon Seat Framing
 
 ## Overview
 
-Hire a dedicated **`debugger`** agent into the elon-ko distributed team (DEV-BASE context). Today the roster fields **8 agents** (`hr, docworm, drpe, leaddev, middev, reqguru, validator, wrapper`) — none owns a debugging *procedure*. This agent fills that gap: a **read-only, diagnose-only** root-cause analyst that takes a failure (CI/CD pipeline failure or a general codebase/runtime bug), reproduces/inspects it, and returns a **root-cause report with `file:line` evidence and a recommended fix**. It does **not** write code — a fixing agent (`leaddev`/`middev`) applies the fix. It is spawned **on demand by Elon** (not a new pipeline phase), runs **solo** (no `spawns`), and ships in **Plugin B** (`elon-ko-agents`).
+`wrapper` has been a fully registered elon-ko team agent since v2.2.0 (gate allowlist, agent definition + mirrors, marketplace roster, skill, elon routing, PROTO/AGENTS/README/DEVREADME rows — all verified below). The one surface that still describes a **6-agent, release-less team** is the **bundled Elon seat framing** injected into every session: `src/append-system.default.md` (shipped via `package.json files:["src","rules"]`, loaded at `src/enforce-orchestrator.ts:89-95`, injected at `:189-201` whenever no `<cwd>/.omp/APPEND_SYSTEM.md` override exists — none does in this repo) and its byte-identical scaffold copy `scaffold/APPEND_SYSTEM.md`. This change syncs that framing to the real 9-agent roster (Q1), adds a wrapper bullet inside DONE — no new RELEASE phase (Q2), and flips the elon skill's DONE-phase Wrapper trigger from auto-spawn to **ask-first go/no-go** (Q3). Wrapper's release authority is ratified as-is (Q4). All decisions closed (PA-1…PA-4, decision log in `.app/PROJECT.md`).
 
-The hire is a **full distributed hire** governed by the HR DEV-BASE procedure: source definition + skill, local mirrors, all mandatory registrations, plus the LeadDev/Wrapper/restart follow-ups.
+## Verified Surface Inventory
 
----
+### A. Already included — no-op guards, MUST NOT be touched
 
-## Confirmed Facts (verified in this repo, 2026-07-09)
+| # | Surface | Verified state |
+|---|---------|----------------|
+| A1 | Gate spawn allowlist `src/enforce-orchestrator.ts:61-71` | `TEAM` contains all 9: `reqguru, drpe, leaddev, validator, purecode, docworm, hr, wrapper, debugger` (`wrapper` since v2.2.0, CHANGELOG.md:148) |
+| A2 | Agent definition + mirror | `plugins/agents/agents/wrapper.md` ≡ `.omp/agents/wrapper.md` (identical: tools `bash, read, write, edit, find, search`, `model: pi/smol`) |
+| A3 | Marketplace roster `.omp-plugin/marketplace.json:17-18` | `agents[]` includes `wrapper`; `count: 10` |
+| A4 | Wrapper skill | `plugins/agents/skills/wrapper/SKILL.md` + `.agents/skills/wrapper/SKILL.md` mirror |
+| A5 | Elon routing `plugins/agents/skills/elon/SKILL.md:149,:246` (+ `.agents/` mirrors) | Routing-table entry "Ship a release …" → Wrapper; agent-registry entry "On demand in DONE" |
+| A6 | `scaffold/PROTO.md:27` roster row (`mess=no`), `:254-262` Phase 6 §Wrapper conditional, `:311` Agent-to-Phase Map | Wrapper documented, DONE-positioned, escalation contract described |
+| A7 | `scaffold/AGENTS.md:37,:46` | Elon's spawn list and Wrapper's Agent-Index row present |
+| A8 | `README.md:20,:233,:264` (+:283) | 10-agent roster text, seat spawn list, `pi/smol` tier map |
+| A9 | `.DEVREADME.md:55,:69,:78` (+:173) | Gate allowlist doc, tool/spawn matrix, roster count |
+| A10 | **By-design exclusions** | `src/mess-transport.ts:48` mess-roster `TEAM` excludes `wrapper` (wrapper's tools lack `mess-send`/`mess-fail`; PROTO.md:27 `mess=no`) — correct, not a gap. No test pins framing text. No `.omp/APPEND_SYSTEM.md` override exists (read: not found), so the bundled default is always injected here. |
 
-Direct codebase evidence — no user input required.
+### B. Actual gap — the entire code change
 
-- **F1. No debug agent exists.** Full-repo search for `gsd-debugger` returns **zero** matches in source/docs; the string appears only in Elon context (`.app/PROJECT.md`) and the assignment brief. Roster = 8 agents.
-- **F2. Two agents already hold the `debug` tool** but own no procedure. `leaddev` and `middev` both list `debug` (+ `bash`, `lsp`, `ast_grep`, `ast_edit`) in enforced frontmatter (`plugins/agents/agents/{leaddev,middev}.md`). `validator` does **not** have `debug`. Harness capability exists; no agent *owns* debugging.
-- **F3. Agent frontmatter shape** (`plugins/agents/agents/<name>.md`): `name`, `description`, `tools` (comma-separated, harness-enforced), optional `spawns`, `model` (`pi/slow` | `pi/task` | `pi/smol`).
-- **F4. Enforced search/glob token names are `search` and `find` — NOT `grep`/`glob`.** **All 8 agent files use `search, find`** (`hr`, `docworm`, `drpe`, `leaddev`, `middev`, `reqguru`, `validator`, `wrapper`); none uses `grep` or `glob`. The gate source confirms the enforced token set: `src/enforce-orchestrator.ts:197` enumerates `find, search, lsp` as the blocked-for-Elon names. → **The assignment brief's `grep, glob` are generic oh-my-pi names; this repo's enforced convention is `search, find`. The frontmatter MUST use `search, find`** or the tools will not resolve.
-- **F5. Model tier map** (`scaffold/models.example.yml:6-8`): `pi/slow` (drpe, leaddev — deep reasoning), `pi/task` (middev, reqguru, validator — doing/auditing), `pi/smol` (docworm, hr, wrapper — lightweight).
-- **F6. marketplace registration surface** (`.omp-plugin/marketplace.json`): `plugins[0].agents` is an array of 8 names; `plugins[0].description` = `"8-agent orchestrator roster + 9 skills."` (embeds **two** counts: agents **and** skills); **no `count` field exists**. Top-level `metadata.description` has **no** count.
-- **F7. Current skill count = 9.** `plugins/agents/skills/` has 9 dirs: `hr, wrapper, elon, docworm, validator, reqguru, drpe, middev, leaddev`. A full distributed hire adds `debugger/SKILL.md` → skills **9 → 10**. **The description string therefore carries BOTH numbers and both must be bumped** (agents 8→9, skills 9→10).
-- **F8. `bash` sub-scoping is procedural, not token-level.** No frontmatter-level allowlist/restriction exists for `bash` in this repo. `validator` lists bare `bash` and constrains it in prose ("run existing tests only"); `wrapper` lists bare `bash` and constrains to `git/gh/glab`. → A diagnose-only `bash` envelope is **defined by the skill/role, enforced by procedure**, mirroring `validator`.
-- **F9. `validate-plugins.sh` does NOT reject unknown JSON fields.** It checks JSON validity via `jq -e .` and reads only `.name`/`.source` per plugin (`scripts/validate-plugins.sh:38-59`). It performs **no JSON-schema validation** against the declared `$schema` URL. → Adding a `count` field is **CI-safe** for this script.
-- **F10. IDEA-003 was already resolved by prior research in this same `.app/`.** `.app/RESEARCH-SCAFFOLD.md` (F7) and `.app/RESEARCH.md` (Dim 2 / item 5) both conclude: `marketplace.json` `agents[]` is **catalog metadata only, NOT load-bearing** — agents register by filesystem scan of `<installPath>/agents/*.md` (`task/discovery.ts:92-94`), and `count` is **not an omp field** (`marketplace/types.ts:65-95`), consumed by nothing. `SCAFFOLD-SPEC.md` encodes "no `count` added" for the *scaffold* effort — but that decision is **scoped to a different workflow** and does not override this hire's D6.
-- **F11. HR DEV-BASE procedure is mandatory and non-conditional** (`plugins/agents/skills/hr/SKILL.md:78-113`): source + local mirrors (byte-identical); registrations = `marketplace.json` agents[] + count, an `scaffold/AGENTS.md` Agent Index row, and an `scaffold/PROTO.md` Agent-to-Phase Map row; plus LeadDev (allowlist wiring) + Wrapper (release) + full omp restart follow-ups.
-- **F12. Elon's enforced spawn allowlist** (`scaffold/AGENTS.md:37`) = `reqguru, drpe, leaddev, validator, docworm, hr, wrapper`. A spawnable agent needs adding here **and** in `src/enforce-orchestrator.ts` `TEAM`.
-- **F13. `mess-transport.ts` TEAM wiring is only required if the agent has `mess-send`/`mess-fail`.** (Per F11 follow-up notes.) Since this agent has **neither** (D-derived), **no `src/mess-transport.ts` change is required.**
+| # | Surface | Verified gap |
+|---|---------|--------------|
+| B1 | `src/append-system.default.md` | §"What you do" item 2 lists only 6 agents (`reqguru, drpe, leaddev, validator, docworm, hr`); item 4 pipeline is `REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → DONE` — no `wrapper`, no `purecode`, no `debugger`, no release notion |
+| B2 | `scaffold/APPEND_SYSTEM.md` | Byte-identical stale copy of B1 |
+| B3 | `plugins/agents/skills/elon/SKILL.md:211` (+ `.agents/skills/elon/SKILL.md:211` mirror) | DONE-phase trigger clause reads "…if the change is being released (needs a version bump + tag), **spawn Wrapper** to cut and publish the release; otherwise skip with a noted reason" — auto-spawn. Q3 requires ask-first (see Delta below). The only in-scope edit to this file. |
 
----
+## Scope
 
-## Resolved Decisions
+**In scope (complete list of edits):**
+1. `src/append-system.default.md` — team list gains `wrapper` + `purecode` + `debugger` (Q1: full 9-agent spawnable roster, matching gate `TEAM`); workflow description gains a **wrapper bullet only** (Q2): Wrapper is a conditional, post-PASS release step inside DONE. No new RELEASE phase; DONE remains terminal; no changes to phase names, ordering, or budgets as described.
+2. `scaffold/APPEND_SYSTEM.md` — updated to remain byte-identical to B1.
+3. `plugins/agents/skills/elon/SKILL.md:211` — trigger clause only: ask-first go/no-go (Delta below). All other content on that line (phase placement, Debugger note, "Present final deliverable") and every other line of the file unchanged.
+4. `.agents/skills/elon/SKILL.md:211` — byte-identical mirror of edit 3 (drift rule, `scaffold/PROTO.md:334`: source + local mirrors are written together, byte-identical).
 
-| ID | Decision | Resolution (locked) |
-|----|----------|---------------------|
-| **D1** | Scope | **BOTH.** CI/CD pipeline failures (test/build/lint/deploy failures surfaced by CI) **and** general codebase/runtime bugs (crashes, logic errors, wrong output, flaky tests). |
-| **D2** | Capability | **DIAGNOSE ONLY.** Read-only root-cause report with `file:line` evidence + recommended fix. Does **not** write code. A fixing agent (`leaddev`/`middev`) applies the fix. No edit/write tools. |
-| **D3** | Model tier | **`pi/task`** (Tier 2 — strong general, like `middev`/`validator`). |
-| **D4** | Name | **`debugger`** (single-word, unique, valid `task(agent=...)` id). |
-| **D5** | Pipeline integration | **On demand by Elon.** NOT a new pipeline phase. No new phase subsection in `PROTO.md`; no `PROTO.md` workflow-gate change. |
-| **D6** | Registration | Add to `marketplace.json` `agents[]` **and** add a dedicated `count` field (per user). Resolves IDEA-003 inline. |
-| **D7** *(derived)* | Tool surface | **`read, bash, search, find, lsp, debug`.** No `edit`/`write`/`ast_edit`/`ast_grep` (diagnose-only). `bash` = diagnostic (run tests, read logs, `gh`/`glab` CI logs, build runs) — `gh`/`glab` access YES (CI scope). No `mess-send`/`mess-fail` (on-demand, returns result directly to Elon). **Note:** assignment brief wrote `grep, glob`; corrected to repo-enforced `search, find` (F4). |
-| **D8** *(derived)* | Spawning | **Solo.** No `spawns` field. Spawned directly by Elon on demand. |
-| **D9** *(derived)* | Invocation trigger | Elon decides when to invoke (pipeline failure, validation failure, user request, any debugging need). No automatic CI-red hook. |
-| **D10** *(derived)* | Failure types in scope | test failures, runtime crashes, CI pipeline failures, flaky tests, logic errors. **Performance regressions = stretch** (may need profiling tools absent from the allowlist). |
-| **D11** *(derived)* | Hire type | **Full distributed hire** — ships in Plugin B, available to all installs. |
+**Out of scope (no-op guards — must remain untouched):** every surface in Inventory A: `src/enforce-orchestrator.ts`, `src/mess-transport.ts`, `.omp-plugin/marketplace.json`, both `wrapper` agent definitions, wrapper skill + mirror, elon SKILL.md `:149` and `:246` (and any line other than `:211`'s trigger clause) + their wording elsewhere, `scaffold/PROTO.md`, `scaffold/AGENTS.md`, `README.md`, `.DEVREADME.md`. Also explicitly out of scope: no new tests pinning framing text, no `.omp/APPEND_SYSTEM.md` creation, no new RELEASE phase or phase-structure change, no change to DEVELOP⇄VALIDATE (3-cycle) or PURECODE (2-cycle) budgets, no edits to Wrapper's own skill/authority (ratified as-is).
 
-**Documented implications / tensions (surfaced, not buried):**
+## Trigger Model (Q2 + Q3, resolved)
 
-- **T1 — D5 vs the mandatory PROTO row.** D5 says "no PROTO.md change," but the HR DEV-BASE procedure (`hr/SKILL.md:6c-c`) mandates appending an **Agent-to-Phase Map row** for *every* distributed agent (adding a *phase subsection* is the only conditional part). **Interpretation locked:** D5 means *no new phase / no phase subsection / no workflow-gate change* — **the registration row is still added**, with its phase column reading "on-demand / cross-phase" (not a phase owner). SPEC and HR must treat "no PROTO.md change" in this narrowed sense.
-- **T2 — `debugger` ≠ external `gsd-debugger`.** The external DevOps workflow references the exact string `gsd-debugger` (F1). D4 chose `debugger`, so **that external reference remains unsatisfied by this hire**. It is **out of scope** here (the workflow is external and may live outside this repo); if/when integration is needed, a name alias or a workflow update is a separate effort. **Flagged for Elon** — not a blocker for this hire.
+- **Position:** Wrapper runs strictly post-PASS, inside DONE, after the conditional DocWorm evaluation. It never runs inside DEVELOP⇄VALIDATE, consumes neither the 3-cycle correctness budget nor the 2-cycle PURECODE budget. Canonical phase structure stands: `plugins/agents/skills/elon/SKILL.md:211` and `scaffold/PROTO.md:254-262` (Phase 6 §Wrapper).
+- **Ask-first go/no-go:** at DONE, Elon **always considers** Wrapper. If the change is being released (needs a version bump + tag), Elon puts a **pending ask to the user** before spawning — no release without explicit consent. If the user declines, or the change is internal-only, Wrapper is skipped with a noted reason.
+- **Division of truth:** the framing (advisory seat text) gains a wrapper bullet naming the role and its DONE position; the ask-first trigger semantics live in the canonical protocol (`skill://elon`, SKILL.md:211), to which the framing already defers ("complete protocol is bundled at skill://elon"). The framing must not contradict the skill.
+- **Ask mechanics:** the go/no-go ask is a pending ask under `.app/PROJECT.md` per the dot-agreement protocol; a trimmed `.` reply expresses consent.
 
----
+## Authority Boundary (Q4 — ratified as-is, from `plugins/agents/skills/wrapper/SKILL.md` steps 4–8, boundaries)
 
-## Exact Tool Allowlist (agent frontmatter)
+**Wrapper may (autonomously):** derive the bump from Conventional Commits (`feat`→minor, `fix`→patch, `!`/`BREAKING CHANGE`→major; uses Elon-supplied type if given); bump the version manifest; create `release/vX.Y.Z`, commit only the bump (+ CHANGELOG if the project maintains one), push to origin; **auto-merge patch/minor PRs itself once CI is green and required approvals are satisfied**; after merge create annotated tag `vX.Y.Z` + platform release with conventional-commit notes; sync local `main` (`checkout main && pull origin main`); return a release-completion report.
 
-```
-read, bash, search, find, lsp, debug
-```
+**Wrapper escalates to Elon (never powers through):** MAJOR-bump merge (opens PR, pauses for human approval — never merges major autonomously); CI failure (→ LeadDev); stale/misleading/missing docs (→ DocWorm — wrapper must not edit docs, including doc-version mismatches it finds in step 3); ambiguous or missing version source/bump type; dirty tree or wrong base at preconditions.
 
-| Tool | Purpose | Justification |
-|------|---------|---------------|
-| `read` | read source, logs, configs, specs | core diagnostic read |
-| `bash` | run tests/builds, read logs, `gh`/`glab` CI logs | reproduce failures (D1, D10); envelope is procedural per F8 |
-| `search` | regex search across files | repo-enforced token (F4); locate failure sites |
-| `find` | glob/locate files by pattern | repo-enforced token (F4); map structure |
-| `lsp` | go-to-def / references / hover | root-cause across call sites |
-| `debug` | attach / step / breakpoints | live process inspection (read-only observation) |
+**Wrapper never:** implements code, writes/fixes docs, validates, designs, spawns subagents, interacts with the user, runs builds/tests/lint (`bash` = `git`/`gh`/`glab` only), force-pushes or rewrites published tags/releases, or guesses a version.
 
-**Explicitly excluded** (diagnose-only, D2): `edit`, `write`, `ast_edit`, `ast_grep`, `task`, `mess-send`, `mess-fail`, `web_search`, `browser`, `ask`, `irc`, `resolve`. Absence of `mess-send`/`mess-fail` means **no `src/mess-transport.ts` change** (F13). Absence of `task` means **no `spawns`** (D8).
+No additional user gate beyond Q3's go/no-go is introduced.
 
-> **Naming caveat (load-bearing):** the frontmatter MUST list `search`/`find`, not `grep`/`glob`. Writing `grep, glob` would name tools omp does not enforce under this repo's tokens, crippling the agent. (F4)
+## Failure Policy (resolved canonically, GRILL round 1)
 
----
+- CI-red during release → Wrapper escalates to Elon with an escalation report → Elon routes to **LeadDev**; the release-triggered code fix **re-enters DEVELOP as a new change** (does not burn the current cycle's budget).
+- Wrapper never fixes code itself and never force-pushes or rewrites published tags/releases.
+- Escalation report shape is fixed by the skill's output contract: what happened, blocking evidence (command output / file:line / remote URL), suggested next agent.
 
-## Agent Definition Sketch (frontmatter — no implementation detail)
+## Functional Requirements
 
-```yaml
----
-name: debugger
-description: Root-cause analyst. Diagnoses CI/CD pipeline failures and codebase/runtime bugs; returns a read-only report with file:line evidence and a recommended fix. Does not write code.
-tools: read, bash, search, find, lsp, debug
-model: pi/task
----
-```
-
-- **No `spawns` field** (solo — D8).
-- The **body** (role framing, skill pointer, output contract) and the **skill file** (`plugins/agents/skills/debugger/SKILL.md` — the diagnose procedure, report format, evidence standard) are **SPEC + HR work, out of scope for this document.** This sketch fixes only the enforced frontmatter.
-
----
-
-## Registration Requirements
-
-### marketplace.json (`.omp-plugin/marketplace.json`)
-1. Append `"debugger"` to `plugins[0].agents` → 9-entry array.
-2. Add a dedicated `count` field to `plugins[0]` (D6). **Value = 9.** (Non-load-bearing per F10 — documentation/metadata only — but added per user decision and consistent with the `hr/SKILL.md:79,110` mandate.)
-3. Bump `plugins[0].description`: `"8-agent orchestrator roster + 9 skills."` → `"9-agent orchestrator roster + 10 skills."` (agents **and** skills both bump — F6, F7).
-
-### Index / phase-map registrations (hr DEV-BASE mandatory)
-4. `scaffold/AGENTS.md` — append a **debugger row** to the Agent Index table (exact column format of rows at `:37-45`); append `debugger` to Elon's **Enforced spawns** cell (`:37`).
-5. `scaffold/PROTO.md` — append a row to the **Agent-to-Phase Map** with phase = "on-demand / cross-phase"; **do NOT** add a phase subsection (D5, T1).
-
-### Code allowlist wiring (LeadDev follow-up, DEVELOP)
-6. `src/enforce-orchestrator.ts` — add `debugger` to the `TEAM` const so Elon can spawn it (F12).
-7. **No** `src/mess-transport.ts` change (F13).
-
-### Source + mirrors (byte-identical, hr DEV-BASE)
-8. SOURCE: `plugins/agents/agents/debugger.md` + `plugins/agents/skills/debugger/SKILL.md`.
-9. LOCAL MIRRORS: `.omp/agents/debugger.md` + `.agents/skills/debugger/SKILL.md` (byte-identical).
-
-### Release / activation (Wrapper + ops)
-10. Version bump + tag/release (Wrapper); **full omp restart** required before `task(agent="debugger")` is recognized.
-
----
-
-## RESEARCH Dependency (DrPe) — the only open item
-
-**Context:** prior research in this `.app/` already answered most of IDEA-003 (F10). The questions below are therefore **confirmations/extensions**, not a from-scratch investigation.
-
-**DrPe must confirm:**
-
-1. **(Confirmation — low effort.)** Re-verify against the **current** omp version that `marketplace.json` `agents[]` remains **metadata-only / non-load-bearing** (prior finding: registration is by filesystem scan of `<installPath>/agents/*.md`, `task/discovery.ts:92-94`). *Expected: still metadata-only.*
-2. **(The genuine open question.)** The marketplace file declares `"$schema": "https://anthropic.com/claude-code/marketplace.schema.json"`. Does **omp at install time** (or any CI step) validate `marketplace.json` against that schema with `additionalProperties:false`, such that a new `count` field would be **rejected**?
-   - Already verified: `scripts/validate-plugins.sh` (the repo CI gate) does **NOT** reject unknown fields (F9).
-   - Prior finding: omp's own `marketplace/types.ts:65-95` has no `count` and does not consume it (F10).
-   - **Residual unknown:** the external Anthropic-hosted `$schema` document's `additionalProperties` policy, and whether omp enforces it at `plugin marketplace add`.
-3. **(Recommendation request.)** If (2) shows any rejection risk, what is the safe shape for the `count` field — top-level, under `metadata`, or under `plugins[0]` — that survives both `validate-plugins.sh` and omp's schema handling?
-
-> **Blocker status:** LOW. Even in the worst case (schema rejects `count`), the functional hire is unaffected — agents register by file presence (F10), and `agents[]` + description bump are the load-bearing human-readable registrations. A `count`-field schema conflict would only block the *cosmetic* D6 addition, resolved by relocating or omitting `count`. **DrPe's answer gates only the `count` field shape, not the hire itself.**
-
----
-
-## Functional Requirements (each falsifiable)
-
-- **FR-1.** A registered distributed agent named `debugger` exists: `plugins/agents/agents/debugger.md` + `plugins/agents/skills/debugger/SKILL.md`, with byte-identical mirrors under `.omp/agents/` and `.agents/skills/`.
-- **FR-2.** The agent is **diagnose-only**: its enforced `tools:` frontmatter contains **no** mutation tools (`edit`, `write`, `ast_edit`, `ast_grep`). (Falsifiable: grep the file.)
-- **FR-3.** The enforced `tools:` frontmatter equals **exactly** `read, bash, search, find, lsp, debug` — set-equal, no more, no less.
-- **FR-4.** `model:` equals `pi/task`.
-- **FR-5.** There is **no `spawns:` field** (solo agent).
-- **FR-6.** The agent's sole deliverable is a **read-only root-cause report** containing: the failure, the root cause, `file:line` evidence, reproduction/observation notes, and a **recommended fix** (applied by another agent). It produces no code edits. (Falsifiable via the skill's output contract + Validator audit.)
-- **FR-7.** The agent is **spawnable by Elon**: present in `src/enforce-orchestrator.ts` `TEAM` and `scaffold/AGENTS.md` enforced-spawns.
-- **FR-8.** Scope covers **both** CI/CD pipeline failures and general codebase/runtime bugs (D1, D10).
-- **FR-9.** `bash` is used only for **diagnostic** commands (run tests/builds, read logs, `gh`/`glab` CI logs); the diagnostic-only envelope is defined in the skill (procedural per F8).
-- **FR-10.** Registration: `debugger` in `marketplace.json` `agents[]`; a `count` field added (value 9); description bumped to `9-agent … 10 skills`; `AGENTS.md` row + `PROTO.md` row added.
-- **FR-11.** The agent ships in **Plugin B** (`elon-ko-agents`), available to all installs (D11).
-- **FR-12.** No new pipeline phase is introduced; invocation is **on demand by Elon** (D5, D9).
+- **FR-1** `src/append-system.default.md`'s delegation/team list enumerates all 9 spawnable agents — `reqguru, drpe, leaddev, validator, purecode, docworm, hr, wrapper, debugger` — consistent with gate `TEAM` (A1). Falsifiable: a list missing any of the 9, or naming a non-spawnable agent, fails.
+- **FR-2** The same file's workflow/pipeline description mentions Wrapper as a conditional release step **inside DONE, post-PASS** (wrapper bullet only). Falsifiable: any new phase named after DONE, any release step placed before/inside VALIDATE, or a pipeline string still ending at a DONE that lacks the wrapper notion, fails.
+- **FR-3** `scaffold/APPEND_SYSTEM.md` is byte-identical to `src/append-system.default.md`. Falsifiable: `diff` non-empty.
+- **FR-4** `plugins/agents/skills/elon/SKILL.md:211`'s trigger clause requires Elon to put a pending go/no-go ask to the user before any Wrapper spawn, and forbids release without consent; everything else on line 211 and every other line of the file is unchanged. Falsifiable: wording still auto-spawning, or a second line changed, fails.
+- **FR-5** `.agents/skills/elon/SKILL.md` receives the identical `:211` edit. Falsifiable: `diff` between the two skill copies non-empty.
+- **FR-6** The framing text remains advisory in its claims (it describes enforcement but asserts none of itself; hard enforcement stays attributed to the gate + agent frontmatter, as the existing framing footer already does). Falsifiable: any sentence claiming the framing itself enforces behavior.
+- **FR-7** No file outside the four in-scope paths changes. Falsifiable: `git diff --name-only` against the pre-change baseline lists anything else.
 
 ## Non-Functional Requirements
 
-- **NFR-1.** Defense-in-depth read-only posture: file-mutation impossible at the tool level (no edit/write tokens), even though the skill already forbids writes.
-- **NFR-2.** Name is a single token, valid as a `task(agent="…")` identifier, unique in the roster, consistent with the terse convention (`hr`, `drpe`, `wrapper`, …).
-- **NFR-3.** No new model or credential dependency — reuses the existing `pi/task` tier.
-- **NFR-4.** Changes pass `bash scripts/validate-plugins.sh` (exit 0) and repo typecheck.
-- **NFR-5.** All count-bearing docs are internally consistent (single source of truth: 9 agents, 10 skills) after the hire.
+- **NFR-1 Mirror integrity:** all byte-identical copy pairs (scaffold↔src framing; `.agents/`↔`plugins/` elon skill) stay byte-identical after the change (drift rule, `scaffold/PROTO.md:334`).
+- **NFR-2 Zero runtime-behavior change:** no TypeScript source changes; `npm run typecheck` and `npm test` pass unchanged; the gate, mess transport, and dot-agreement extensions behave identically.
+- **NFR-3 Advisory-envelope honesty:** the framing's wrapper/pipeline additions must not imply hard guarantees the advisory injection cannot deliver (the framing footer's caveat about advisory re-injection stands as the pattern).
+- **NFR-4 Self-application:** this change's own release (if any) goes through the same Q3 ask-first gate at this workflow's DONE.
 
----
+## Input/Output Contract
 
-## Acceptance Criteria (for the Validator)
+**Inputs:** the three logical files (four paths): `src/append-system.default.md`, `scaffold/APPEND_SYSTEM.md`, `plugins/agents/skills/elon/SKILL.md` + `.agents/skills/elon/SKILL.md`.
 
-- **AC-1.** `plugins/agents/agents/debugger.md` + `plugins/agents/skills/debugger/SKILL.md` exist with required frontmatter (`name`, `description`, `tools`, `model`); no `spawns` key.
-- **AC-2.** Frontmatter `tools:` is set-equal to `{read, bash, search, find, lsp, debug}`; contains none of `{edit, write, ast_edit, ast_grep, task, mess-send, mess-fail}`.
-- **AC-3.** Frontmatter `model:` == `pi/task`.
-- **AC-4.** `.omp/agents/debugger.md` and `.agents/skills/debugger/SKILL.md` are byte-identical to their `plugins/` sources.
-- **AC-5.** `.omp-plugin/marketplace.json`: `debugger` ∈ `plugins[0].agents`; a `count` field is present (= 9); `plugins[0].description` reads `9-agent … 10 skills`.
-- **AC-6.** `src/enforce-orchestrator.ts` `TEAM` includes `debugger`.
-- **AC-7.** `src/mess-transport.ts` is **unchanged** (no mess tools → no wiring) — verify no debugger-related edit was made.
-- **AC-8.** `scaffold/AGENTS.md` Agent Index has a debugger row; Elon's enforced-spawns cell lists `debugger`.
-- **AC-9.** `scaffold/PROTO.md` Agent-to-Phase Map has a debugger row marked on-demand; **no** new phase subsection was added.
-- **AC-10.** Every count-bearing doc (see §Count-bearing docs below) shows **9 agents / 10 skills** (or 9-agent) consistently.
-- **AC-11.** `bash scripts/validate-plugins.sh` exits 0 after all changes.
-- **AC-12.** (Smoke, post-restart) `task(agent="debugger")` is recognized by omp and returns a diagnose-only report on a seeded failure.
+**Outputs:** edited files satisfying FR-1…FR-7; no other artifacts. The framing's team list and DONE description must not contradict `skill://elon` (post-edit), `scaffold/PROTO.md` Phase 6 §Wrapper, or the gate `TEAM`.
 
-### Count-bearing docs to update (8→9 agents, and 9→10 skills where both appear)
-- `.omp-plugin/marketplace.json:13` — description (agents **and** skills) + add `debugger` to `agents[]` + add `count`.
-- `README.md:20` — "8 specialist agents + 9 skills" → 9/10; add `debugger` to the enumerated list.
-- `.DEVREADME.md:15` — "8 agent definitions + 9 skills" → 9/10.
-- `.DEVREADME.md:34` — "8 agent definitions (Plugin B)" → 9.
-- `scaffold/AGENTS.md:8` — "8 agent definitions" → 9 (+ debugger Index row + enforced-spawns).
-- `elon_ko.sh` — 5 occurrences (`:7, :561, :564, :696, :723`) "8 agents + 9 skills" → 9/10.
-- `.github/workflows/release.yml:98` — "(8 agents + 9 skills; markdown only)" → 9/10.
-- `scaffold/PROTO.md` — Agent-to-Phase Map: append debugger row.
-- `CHANGELOG.md` — new entry documenting the debugger hire.
-- *(Optional / prior-workflow artifact)* `.app/SPEC.md:553` — "8 agents + 9 skills" belongs to a different effort; update only if consistency is desired, otherwise leave.
-- *(No change)* `plugins/agents/skills/hr/SKILL.md:110` — its "8-agent → 9-agent" is generic procedure prose (the count mandate); remains illustrative.
+## Error Cases
 
----
+| Case | Expected behavior |
+|------|-------------------|
+| User declines the go/no-go ask | Wrapper not spawned; skip recorded with noted reason |
+| Change is internal-only (no version bump/tag needed) | No ask is strictly required to *skip*; Wrapper skipped with noted reason (an ask may still be made; declining is always honored) |
+| CI red during release | Wrapper escalation report → Elon → LeadDev; fix re-enters DEVELOP as a new change |
+| MAJOR bump reaches merge step | PR opened, merge paused, escalated for human approval via Elon |
+| Docs stale vs. new version | Wrapper escalates (→ DocWorm); never edits docs itself |
+| Version source/bump ambiguous; or dirty tree / wrong base | Wrapper escalates (Elon-decides); never guesses |
+| Any escalation | Exactly one escalation report per the skill's output contract — never free-form narrative, never power-through |
 
-## Out of Scope
+## Acceptance Criteria
 
-- **Skill procedure content / body text** for the agent definition and `debugger/SKILL.md` — HR + SPEC.
-- **Code allowlist wiring mechanics** (`enforce-orchestrator.ts` `TEAM`, absence of `mess-transport.ts` change) — LeadDev, DEVELOP.
-- **Release cut** (version bump, tag, release notes) — Wrapper.
-- **Resolving IDEA-003 as a standalone effort** — folded into this hire (D6) and the §RESEARCH confirmation.
-- **Rewriting the external DevOps workflow** that references `gsd-debugger` — out of scope (T2); `debugger` ≠ `gsd-debugger` is a documented, accepted gap.
-- **Automatic CI-red → spawn hook** — invocation is on demand by Elon (D9); no event-driven automation.
-- **Performance-regression profiling** as a first-class capability — stretch only (D10); profiling tools are absent from the allowlist.
+- **AC-1 (B1):** inspection of `src/append-system.default.md` shows a 9-agent team list incl. `wrapper`, `purecode`, `debugger`, and a wrapper bullet tying release to DONE/post-PASS; no new phase after DONE; pipeline still terminates at DONE.
+- **AC-2 (B2):** `diff scaffold/APPEND_SYSTEM.md src/append-system.default.md` → empty output.
+- **AC-3 (B3):** `plugins/agents/skills/elon/SKILL.md:211` states the ask-first gate (pending ask before spawn; no release without consent); diff vs. baseline shows only that line's trigger clause changed; `:149` and `:246` byte-unchanged.
+- **AC-4 (B3 mirror):** `diff .agents/skills/elon/SKILL.md plugins/agents/skills/elon/SKILL.md` → empty output.
+- **AC-5 (guards):** `git diff --name-only` shows exactly the four in-scope paths; `src/enforce-orchestrator.ts`, `src/mess-transport.ts`, `.omp-plugin/marketplace.json`, wrapper defs/skills, `scaffold/PROTO.md`, `scaffold/AGENTS.md`, `README.md`, `.DEVREADME.md` untouched.
+- **AC-6 (no regression):** `npm run typecheck` exits 0; `npm test` exits 0 (no code touched, so both must pass unchanged).
+- **AC-7 (consistency):** framing's roster and Wrapper description contain nothing contradicting the post-edit `skill://elon` DONE phase, `scaffold/PROTO.md` §Wrapper, or gate `TEAM`.
 
----
+## Q3 Delta Callout (the only behavioral-text change beyond roster sync)
+
+- **Current (verified, `plugins/agents/skills/elon/SKILL.md:211`):** "Evaluate whether Wrapper is needed: if the change is being released (needs a version bump + tag), spawn Wrapper to cut and publish the release; otherwise skip with a noted reason." → auto-spawn-if-released.
+- **Required:** Elon always considers Wrapper at DONE and, when a release is indicated, puts a **pending ask to the user before spawning** — no release without consent. Decline or internal-only → skip with noted reason.
+- **Scope fence:** only this line's trigger clause changes. Phase structure (Wrapper in DONE, post-PASS, no DEVELOP⇄VALIDATE budget consumption) per SKILL.md:211 and `scaffold/PROTO.md:254-262` is untouched. The mirror `.agents/skills/elon/SKILL.md:211` receives the identical edit (NFR-1).
+- **Mechanics note:** the ask is recorded as the most-recent pending ask under `.app/PROJECT.md` `## Pending Asks`; the `.` agreement token applies.
 
 ## Open Questions
 
-None blocking. Two tracked non-blockers:
-
-- **OQ-1 (NICE-TO-HAVE → DrPe):** does the external `$schema` (`additionalProperties`?) or omp install-time validation reject a `count` field? (F9 shows the repo gate does not.) DrPe's answer shapes the `count` field placement only — see §RESEARCH Dependency.
-- **OQ-2 (resolved-by-interpretation):** D5 "no PROTO.md change" reconciled with the mandatory registration row (T1) — narrowed to "no new phase / no phase subsection"; the row is still added. Surfaced for HR/SPEC awareness.
-
-**GRILL is COMPLETE.** Hand off to SPEC.
+None. Grill complete — all branches closed: Q1 (PA-1, full 9-agent roster sync), Q2 (PA-2, Wrapper-in-DONE, no RELEASE phase), Q3 (PA-3, ask-first go/no-go), Q4 (PA-4, authority ratified as-is). Next phase: SPEC (LeadDev).
