@@ -395,3 +395,15 @@ The one-line installer (`elon_ko.sh`) now uninstalls `elon-ko-gate` (the new key
   omp plugin uninstall omp-agent-gate \
     && omp plugin install github:<owner>/omp-agent-template#v1.2.2
   ```
+
+---
+
+## Generate CHANGELOG Entry from Git Diff
+
+"Generate CHANGELOG Entry from Git Diff": Role = precise formal technical writer, no emoji.
+Compare current branch vs `main`. Entry format: `### <YYYY-MM-DD>` → `**Engineer:** <name>
+<email>` → `**Ticket:** <ticket/story>` → `#### Changed` (formal concise bullets, past
+tense, affected files/components named, no trivial changes) → `#### Details` → `####
+Affected Files`. New entries at file beginning; never modify existing entries; add/update
+this prompt at file end. KaG categories: Added/Changed/Deprecated/Removed/Fixed/Security.
+Inputs: diff/changed-files vs main, engineer name, Jira ticket.
