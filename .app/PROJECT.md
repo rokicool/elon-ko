@@ -1,29 +1,32 @@
-# PROJECT.md — Ship `logging-design` skill with elon-ko
+# PROJECT.md — Formalize `wrapper` as an elon-ko team agent
 
 ## Workflow
-- Path: FULL — **COMPLETE** (all phases, all gates, release published, origin synced)
-- Phase log: REQUEST → RESEARCH → Proposal gate (Option A) → SPEC → DEVELOP (a47531e) → VALIDATE (PASS) → PURECODE c1 (needs-alterations) → DEVELOP-fix (8a71dfa) → VALIDATE scoped (PASS) → PURECODE c2 (code-fine) → DONE → RELEASE (v2.8.1 published, AC-8 PASS) → final origin sync
+- Path: FULL — VALIDATE PASS; DONE complete; RELEASE (Wrapper) in flight per PA-5
+- Phase log: REQUEST (cb93cdb) → GRILL (9612d21) → SPEC (3537710) → DEVELOP (2dbe63b, 9aaf96e) → VALIDATE (PASS 7/7, cycle 1/3) → DONE (docs synced, PA-5 agreed) → RELEASE (first live ask-first consent)
+- Origin: IDEA-001 "Hire an additional team agent role" — status=promoted (promoted_to .app/REQ.md, 2026-10-20)
 
-## Request (verbatim, condensed)
-> We have a skill at `.claude/skills/logging-design` in this repo (elon-ko). I like its scale; the problem is the `.claude` folder is not installed or used anywhere by any installation of this project. Do research and suggest a solution for installing this particular skill across the entire elon-ko system. Target of installation is omp (oh-my-pi) — the `.claude` folder does NOT have to be used. After installing Elon and Core, omp in this or any project should start using this skill by default.
+## Request (verbatim)
+> I need you to include wrapper as part of the team.
+
+## Outcome (validated)
+- Seat framing (`src/append-system.default.md` ≡ `scaffold/APPEND_SYSTEM.md`): 9-agent roster in gate-TEAM order (wrapper + purecode + debugger added), Wrapper-in-DONE bullet, no new phase.
+- elon SKILL.md (both byte-identical copies): DONE-phase trigger clause now ask-first — pending go/no-go ask → consent-gated spawn; stale auto-spawn phrasing eradicated (repo-wide grep zero). Anchor discrepancy noted: SPEC/validator cite :211, DocWorm reads :213; content byte-verified by both — cosmetic, unadjudicated.
+- AC-1..AC-7 PASS (validator, SCOPED-FULL, independently reproduced). AC-6 npm-test failure adjudicated pre-existing (identical at BASE, isolated worktree; parked as IDEA-004).
+- Docs: CHANGELOG Unreleased entry (uncommitted in worktree — Elon's git gate is .app/-only; Wrapper folds it into the release commit); README/DEVREADME verified accurate, untouched.
 
 ## Decision log
-- [2026-10-18] PA-1 agreed: **Option A** — move into `plugins/agents/skills/`, count bumps 11→12, `.agents/` mirror, delete `.claude/`.
-- [2026-10-18] SPEC §9 positions accepted: release.yml:98 fix; lockstep 2.8.1 + CHANGELOG.
-- [2026-10-18] DocWorm SKIPPED (doc edits spec-enumerated, twice line-level validated).
-- [2026-10-18] PA-2 agreed: release v2.8.1 now.
-- [2026-10-18] Wrapper deviation accepted: `elon_ko.sh` REF-default lines swept to v2.8.1 (SPEC non-goal covered only stale count strings; REF default moved to keep README:183 truthful).
-- [2026-10-18] User requested final origin sync of all local commits.
-
-## Final state — PUBLISHED + SYNCED
-- origin/main: `a47531e` (skill promotion) → `8a71dfa` (PureCode fixes) → `ae37fb7` (pin sweep) → final [PROTO] artifact commit(s). Tag `v2.8.1` → ae37fb7 (annotated). Release run 39140684805 green; https://github.com/rokicool/elon-ko/releases/tag/v2.8.1
-- AC-1..AC-9 all PASS (AC-8 smoke in non-clone cwd: install 2.8.1 → `omp skill list` shows logging-design; cache SKILL.md 13,230 bytes).
-- Outcome: after elon-ko install/update, omp lists + dispatches `skill://logging-design` in every project (user-scoped Plugin B).
+- [2026-10-20] PA-1: sync full 9-agent roster. PA-2: Wrapper-in-DONE. PA-3: ask-first trigger. PA-4: authority as-is.
+- [2026-10-20] Validator findings (non-blocking): cosmetic SPEC §11↔§5.2 token inconsistency; pre-existing toolchain failure → IDEA-004.
+- [2026-10-20] PA-5 agreed: Release now — Wrapper spawns with consent (first live use of the new trigger).
 
 ## Delegation Log
-- DrPe — research. COMPLETED. | LeadDev — SPEC. COMPLETED. | LeadDev/MidDev — DEVELOP. COMPLETED (a47531e). | Validator — VALIDATE. PASS. | PureCode c1 — needs-alterations. | LeadDev — fix. COMPLETED (8a71dfa). | Validator — scoped. PASS. | PureCode c2 — code-fine. | Wrapper — release v2.8.1 + AC-8 smoke. COMPLETED.
-- [2026-10-18] Wrapper — final origin sync (push remaining [PROTO] commits). Status: in flight.
+- ReqGuru — GRILL. COMPLETED (premise corrected; 2-file gap isolated; Q1–Q4 closed).
+- ReqGuru — REQ.md. COMPLETED (13 sections, 0 open questions).
+- LeadDev — SPEC.md. COMPLETED (202 lines; scaffold drift disclosed + absorbed).
+- LeadDev/MidDev — DEVELOP. COMPLETED (2dbe63b + 9aaf96e).
+- Validator — VALIDATE. PASS (7/7).
+- DocWorm — DONE docs. COMPLETED (IDEAS lifecycle, IDEA-004, CHANGELOG; README/DEVREADME accurate).
+- Wrapper — RELEASE. IN FLIGHT (patch bump incl. CHANGELOG.md, tag, publish, sync origin).
 
 ## Pending Asks
-- [PA-1] 2026-10-18 origin=elon status=agreed | Option A.
-- [PA-2] 2026-10-18 origin=elon status=agreed | Release v2.8.1 now → done.
+- [PA-5] 2026-10-20 origin=elon status=agreed | Release now → Wrapper in flight.

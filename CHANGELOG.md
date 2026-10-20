@@ -9,6 +9,14 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v2.8.2] - 2026-10-20
+
+### Changed
+
+- **Injected seat framing synced with the nine-agent gate roster (wrapper-framing change, `2dbe63b` + `9aaf96e`).** The injected Elon framing (`src/append-system.default.md`) and its byte-identical scaffold mirror (`scaffold/APPEND_SYSTEM.md`) now name the full team — `reqguru`, `drpe`, `leaddev`, `validator`, `purecode`, `docworm`, `hr`, `wrapper`, `debugger` — including the newer `wrapper`, `purecode`, and `debugger` roles. The framing's DONE-phase guidance carries the "always consider Wrapper" bullet: Wrapper is a conditional release step inside DONE (post-PASS), not a new phase. The elon `SKILL.md` DONE phase gains the matching ask-first go/no-go trigger: a release (version bump + tag) requires a pending go/no-go ask recorded in `.app/PROJECT.md`, and Wrapper is spawned only on explicit user consent (a trimmed `.` reply) — never publish a release without consent; declined or internal-only changes skip Wrapper with a noted reason. Scaffold mirror resynced byte-identically; validator PASS 7/7.
+
+- Version bumped to **`2.8.2`** (semver PATCH — docs/protocol framing sync; no breaking changes). `package.json#version`, the `package-lock.json` root version, and both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`) bumped in lockstep to `2.8.2`. Count surfaces verified current and unchanged (10 agents / 12 skills): marketplace description, `README.md`, `.DEVREADME.md`, release-notes boilerplate (`.github/workflows/release.yml`). Installer default pin (`elon_ko.sh` `OMP_AGENT_REF`, now `v2.8.2`) and the `README.md`/`.DEVREADME.md` install-example pins swept to match.
+
 ## [v2.8.1] - 2026-10-18
 
 ### Added
