@@ -9,6 +9,24 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v2.8.3] - 2026-10-20
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Changed
+
+- **Wrapper releases are now gated on a committed CHANGELOG entry (`<changelog_gate>`).** The `wrapper` skill gained a `<changelog_gate>` block, shipped byte-identical in `plugins/agents/skills/wrapper/SKILL.md` and its `.agents/skills/wrapper/SKILL.md` mirror: before opening or merging any PR/MR and before creating any `vX.Y.Z` tag or platform release, wrapper must already have written and committed this CHANGELOG's entry for that exact version — any wrapper release action observable without a prior entry commit is a gate violation. The block fixes the entry layout (the template's date heading folded into the `## [vX.Y.Z] - YYYY-MM-DD` version header, `**Engineer:**`/`**Ticket:**` metadata lines, Keep-a-Changelog category bullets in past tense, `#### Details`, `#### Affected Files` grouped by top-level directory, new entries placed first, existing entries byte-preserved), pins the release-entry baseline to `prevTag..newTag`, sources engineer/ticket metadata from the release go/no-go ask with git-author and `N/A` fallbacks, treats CHANGELOG prompt-maintenance edits as trivial-exempt, and mandates escalation over any vacuous or non-conforming entry. The protocol's step 4 (RELEASE BRANCH) now references the gate so the entry rides the release commit. No tool-policy, CI, agent-frontmatter, or gate-source changes.
+
+#### Details
+
+The user's "Generate CHANGELOG Entry from Git Diff" template — embedded verbatim at this file's tail — previously had no enforcing protocol: wrapper's only changelog hook was step 4's optional "(+ CHANGELOG if the project already maintains one)" parenthetical. The gate folds that template into the `wrapper` skill as a hard duty, making the CHANGELOG entry a precondition of the release path (entry commit precedes PR open, merge, tag, and release in observable history) rather than an afterthought. Engineer/ticket metadata rides the go/no-go ask the DONE phase already requires, so the gate adds zero new consent prompts, and adoption is immediate: this v2.8.3 entry is the gate's first live output.
+
+#### Affected Files
+
+- `.agents/` — `.agents/skills/wrapper/SKILL.md` (byte-identical mirror)
+- `plugins/` — `plugins/agents/skills/wrapper/SKILL.md` (canonical)
+
 ## [v2.8.2] - 2026-10-20
 
 ### Changed
@@ -395,3 +413,15 @@ The one-line installer (`elon_ko.sh`) now uninstalls `elon-ko-gate` (the new key
   omp plugin uninstall omp-agent-gate \
     && omp plugin install github:<owner>/omp-agent-template#v1.2.2
   ```
+
+---
+
+## Generate CHANGELOG Entry from Git Diff
+
+"Generate CHANGELOG Entry from Git Diff": Role = precise formal technical writer, no emoji.
+Compare current branch vs `main`. Entry format: `### <YYYY-MM-DD>` → `**Engineer:** <name>
+<email>` → `**Ticket:** <ticket/story>` → `#### Changed` (formal concise bullets, past
+tense, affected files/components named, no trivial changes) → `#### Details` → `####
+Affected Files`. New entries at file beginning; never modify existing entries; add/update
+this prompt at file end. KaG categories: Added/Changed/Deprecated/Removed/Fixed/Security.
+Inputs: diff/changed-files vs main, engineer name, Jira ticket.

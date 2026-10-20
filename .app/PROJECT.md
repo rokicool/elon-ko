@@ -1,32 +1,26 @@
-# PROJECT.md — Formalize `wrapper` as an elon-ko team agent
+# PROJECT.md — Wrapper CHANGELOG gate (pre-PR/MR/release)
 
 ## Workflow
-- Path: FULL — VALIDATE PASS; DONE complete; RELEASE (Wrapper) in flight per PA-5
-- Phase log: REQUEST (cb93cdb) → GRILL (9612d21) → SPEC (3537710) → DEVELOP (2dbe63b, 9aaf96e) → VALIDATE (PASS 7/7, cycle 1/3) → DONE (docs synced, PA-5 agreed) → RELEASE (first live ask-first consent)
-- Origin: IDEA-001 "Hire an additional team agent role" — status=promoted (promoted_to .app/REQ.md, 2026-10-20)
+- Path: FULL — VALIDATE PASS; DONE complete; RELEASE (Wrapper) in flight per PA-6 — first gate dogfood
+- Phase log: REQUEST (add5c09) → GRILL (b06320a) → SPEC (23e1c63) → DEVELOP (f158004) → VALIDATE (PASS 8/8, cycle 1/3) → DONE (638b9dd) → RELEASE (v2.8.3, gate exercise)
 
-## Request (verbatim)
-> I need you to include wrapper as part of the team.
+## Request (verbatim, condensed)
+> Extend the wrapper functionality to support CHANGELOG file. Before doing any PR, MR or Release — it must update the CHANGELOG file. (Full template in REQ Appendix A; embedded at CHANGELOG tail L398–409.)
 
 ## Outcome (validated)
-- Seat framing (`src/append-system.default.md` ≡ `scaffold/APPEND_SYSTEM.md`): 9-agent roster in gate-TEAM order (wrapper + purecode + debugger added), Wrapper-in-DONE bullet, no new phase.
-- elon SKILL.md (both byte-identical copies): DONE-phase trigger clause now ask-first — pending go/no-go ask → consent-gated spawn; stale auto-spawn phrasing eradicated (repo-wide grep zero). Anchor discrepancy noted: SPEC/validator cite :211, DocWorm reads :213; content byte-verified by both — cosmetic, unadjudicated.
-- AC-1..AC-7 PASS (validator, SCOPED-FULL, independently reproduced). AC-6 npm-test failure adjudicated pre-existing (identical at BASE, isolated worktree; parked as IDEA-004).
-- Docs: CHANGELOG Unreleased entry (uncommitted in worktree — Elon's git gate is .app/-only; Wrapper folds it into the release commit); README/DEVREADME verified accurate, untouched.
+- Wrapper skill (both mirrors `f2fdf9db…`): `<changelog_gate>` L73–106 byte-verbatim; FR-1 ordering, FR-2 hybrid nest, FR-3 metadata, FR-5 tag-to-tag; 5 error cases; ask forbidden; validate-plugins ALL CHECKS PASSED.
+- CHANGELOG.md tail: template verbatim, append-only. Guards held; deviation ruled cosmetic. Docs 4/4 accurate, zero edits.
 
 ## Decision log
-- [2026-10-20] PA-1: sync full 9-agent roster. PA-2: Wrapper-in-DONE. PA-3: ask-first trigger. PA-4: authority as-is.
-- [2026-10-20] Validator findings (non-blocking): cosmetic SPEC §11↔§5.2 token inconsistency; pre-existing toolchain failure → IDEA-004.
-- [2026-10-20] PA-5 agreed: Release now — Wrapper spawns with consent (first live use of the new trigger).
+- [2026-10-20] PA-1..PA-5 agreed (hybrid nest / bundled metadata / wrapper-only / embed verbatim / tag-to-tag).
+- [2026-10-20] Validator: deviation acceptable. DocWorm: no edits.
+- [2026-10-20] PA-6 agreed: Release now; Engineer = git author (default), Ticket = N/A (default).
 
 ## Delegation Log
-- ReqGuru — GRILL. COMPLETED (premise corrected; 2-file gap isolated; Q1–Q4 closed).
-- ReqGuru — REQ.md. COMPLETED (13 sections, 0 open questions).
-- LeadDev — SPEC.md. COMPLETED (202 lines; scaffold drift disclosed + absorbed).
-- LeadDev/MidDev — DEVELOP. COMPLETED (2dbe63b + 9aaf96e).
-- Validator — VALIDATE. PASS (7/7).
-- DocWorm — DONE docs. COMPLETED (IDEAS lifecycle, IDEA-004, CHANGELOG; README/DEVREADME accurate).
-- Wrapper — RELEASE. IN FLIGHT (patch bump incl. CHANGELOG.md, tag, publish, sync origin).
+- ReqGuru — GRILL + REQ.md. COMPLETED ×2. | LeadDev — SPEC. COMPLETED.
+- LeadDev/MidDev — DEVELOP. COMPLETED (f158004). | Validator — VALIDATE. PASS.
+- DocWorm — DONE docs. COMPLETED (4/4 accurate).
+- Wrapper — RELEASE v2.8.3 under new gate. IN FLIGHT (first dogfood entry: v2.8.2..v2.8.3, hybrid nest, Engineer=git author, Ticket=N/A; then branch/PR/tag/publish/sync; NEXT-RELEASE ACs exercised live).
 
 ## Pending Asks
-- [PA-5] 2026-10-20 origin=elon status=agreed | Release now → Wrapper in flight.
+- [PA-6] 2026-10-20 origin=elon status=agreed | Release now → Wrapper in flight with FR-3 defaults.
