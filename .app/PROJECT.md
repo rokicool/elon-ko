@@ -1,28 +1,27 @@
 # PROJECT.md — Wrapper CHANGELOG gate (pre-PR/MR/release)
 
 ## Workflow
-- Path: FULL — IN PROGRESS
-- Phase log: REQUEST (add5c09) → GRILL (Q1–Q5 answered, REQ.md pending) → SPEC → DEVELOP ⇄ VALIDATE → DONE
-- Prior workflow (wrapper team formalization, v2.8.2) — COMPLETE.
+- Path: FULL — VALIDATE PASS; DONE: docs verified, release go/no-go pending (PA-6)
+- Phase log: REQUEST (add5c09) → GRILL (b06320a) → SPEC (23e1c63) → DEVELOP (f158004) → VALIDATE (PASS 8/8, cycle 1/3) → DONE (docs 4/4 accurate, zero edits; PA-6 pending)
 
 ## Request (verbatim, condensed)
-> I need you to extend the wrapper functionality to support CHANGELOG file. Before doing any PR, MR or Release — it must update the CHANGELOG file.
-(Full user template: "Generate CHANGELOG Entry from Git Diff" — KaG categories; `### YYYY-MM-DD` + Engineer/Ticket; `#### Changed`/`#### Details`/`#### Affected Files`; prepend entries; never touch existing entries; prompt appended at file end; past tense; no trivial changes; inputs = diff vs main + engineer + ticket.)
+> Extend the wrapper functionality to support CHANGELOG file. Before doing any PR, MR or Release — it must update the CHANGELOG file. (Full template in REQ Appendix A; embedded at CHANGELOG tail L398–409.)
 
-## Verified context (reqguru, GRILL round 1 — supersedes REQUEST's "known tensions")
-- No `## [Unreleased]` section and no Unreleased→version rewrite step exists; live convention = `## [vX.Y.Z] - YYYY-MM-DD` sections, KaG subsections, newest first. Wrapper's only changelog hook: step 4 parenthetical "(+ CHANGELOG if the project already maintains one)".
-- Wrapper is the pipeline's ONLY PR/MR/release actor (elon routing + steps 4–8; LeadDev/MidDev commit, never publish). CI auto-publishes `pr-*` pre-releases on every non-main push — wrapper cannot gate those.
-- Constraint: v2.8.2 ask-first go/no-go at DONE must not regress; changelog gate adds NO new consent prompt.
+## Outcome (validated)
+- Wrapper skill (both mirrors, `f2fdf9db…`): `<changelog_gate>` L73–106 byte-verbatim, W2 step-4 pointer, W3 input item. FR-1 ordering, FR-2 hybrid nest, FR-3 metadata-via-ask, FR-5 tag-to-tag baseline, 5 error cases. Ask forbidden; step numbering intact; validate-plugins ALL CHECKS PASSED.
+- CHANGELOG.md tail: template verbatim, append-only (hash-proven).
+- Guards held; +1-blank-line deviation adjudicated acceptable.
+- Docs: README/DEVREADME/AGENTS/PROTO 4/4 accurate (DocWorm, no edits — contributing line "Update CHANGELOG.md per release, following Keep a Changelog format" remains true under the gate).
 
 ## Decision log
-- [2026-10-20] PA-1 (Q1): hybrid nest — template content verbatim under `## [vX.Y.Z] - date` version header (Engineer/Ticket → #### Changed/Details/Affected Files); KaG declaration + tag↔section linkage preserved; no Unreleased staging.
-- [2026-10-20] PA-2 (Q2): engineer/ticket bundled into existing release go/no-go ask (zero added prompts); fallback defaults engineer=git author, ticket=N/A. Fields always present.
-- [2026-10-20] PA-3 (Q3): wrapper-only scope, skill-prose only — gate binds wrapper's release PR + tag/release; CI pr-* pre-releases exempt (un-gateable); other projects: touch CHANGELOG only if maintained, create on explicit request; no CI enforcement.
-- [2026-10-20] PA-4 (Q4): embed template verbatim at CHANGELOG.md tail (separator + heading), written once at adoption, updated only on template change; maintenance is trivial-change-exempt (never self-triggers).
-- [2026-10-20] PA-5 (Q5): release entries document prevTag..newTag; branch-vs-main only for hypothetical non-release PRs; Affected Files = all non-trivial files grouped by top-level dir/component, no cap.
+- [2026-10-20] PA-1..PA-5 agreed (hybrid nest / bundled metadata / wrapper-only / embed verbatim / tag-to-tag).
+- [2026-10-20] Validator: deviation acceptable. DocWorm: no doc edits.
+- [2026-10-20] PA-6 asked: release go/no-go + FR-3 metadata fields (engineer/ticket, fallbacks git-author/N-A).
 
 ## Delegation Log
-- ReqGuru — GRILL r1. COMPLETED (premise corrected; 5 branches surfaced; recommendations all accepted).
+- ReqGuru — GRILL + REQ.md. COMPLETED ×2. | LeadDev — SPEC. COMPLETED.
+- LeadDev/MidDev — DEVELOP. COMPLETED (f158004). | Validator — VALIDATE. PASS.
+- DocWorm — DONE docs. COMPLETED (4/4 accurate, zero edits, no commit needed).
 
 ## Pending Asks
-- (none — PA-1..PA-5 answered synchronously)
+- [PA-6] 2026-10-20 origin=elon status=pending | Release go/no-go: spawn Wrapper to cut v2.8.3 under the new gate (first dogfood entry, prevTag v2.8.2..newTag, hybrid-nest format, metadata per answers) — or stop here (changes local on main)?
