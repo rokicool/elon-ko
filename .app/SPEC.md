@@ -1,202 +1,217 @@
-# Technical Specification — Formalize `wrapper` in the Elon Seat Framing
+# SPEC — Wrapper CHANGELOG Gate (pre-PR/MR/release)
 
-**Source of truth:** `.app/REQ.md` (all decisions closed: PA-1 9-agent roster sync, PA-2 Wrapper-in-DONE, PA-3 ask-first go/no-go, PA-4 authority ratified as-is). This Spec is implementable as-is; every excerpt below was read from the working tree this session.
+Status: COMPLETE. Source contract: `.app/REQ.md` (b06320a, 2026-10-20) — every requirement below
+traces to an FR/NFR/AC there. Baseline commit: `b06320a` (HEAD, clean tree). No open questions.
 
-**Nature of change:** documentation/markdown wording edits + one mirror resync. Zero TypeScript changes. Zero runtime-behavior changes.
+Change shape: **3 prose edits to `plugins/agents/skills/wrapper/SKILL.md` + byte-identical mirror,
+plus 1 append-only edit to `CHANGELOG.md`.** No refactors, no renumbering, no tool/frontmatter/CI
+changes. One MidDev task, one commit.
+
+## 1. Verified baseline (read-confirmed 2026-10-20, commit b06320a)
+
+| File | sha256 | Key anchors |
+|---|---|---|
+| `plugins/agents/skills/wrapper/SKILL.md` | `59277d78b1f716349c11fea875a7f4b9cc787a132ad0a60e688aa2567a082c34` | input_contract items L55–57; `</output_contract>` L70; blank L71; `<protocol>` L72; step 4 L81; write/edit tool policy L28–29 already permits CHANGELOG |
+| `.agents/skills/wrapper/SKILL.md` | `59277d78…` (identical — `diff` empty, verified) | identical line numbering (B4) |
+| `plugins/agents/agents/wrapper.md` | `261bf848212ad037fe162998ace5f1a60023ad395480e5564feb2c20b31c6657` | NO-CHANGE surface; `tools: bash, read, write, edit, find, search` L4; no changelog wording anywhere (B5) |
+| `.omp/agents/wrapper.md` | `261bf848…` (identical — `diff` empty, verified) | NO-CHANGE surface |
+| `CHANGELOG.md` | `af99709dc8dc28adf94c8cfde6e9d698eec7d884c669391b1f0adb5a1fe7e38a` | 397 lines, 37 632 bytes, ends `  ``` + \n`; preamble L1–10 (`# Changelog`, KaG/SemVer declaration, Project-renamed note); first version section L12 `## [v2.8.2] - 2026-10-20`; tail L391–397 (v1.2.2 fenced bash block) |
+
+External guard (not in surface, must not regress): the v2.8.2 ask-first go/no-go lives in
+`plugins/agents/skills/elon/SKILL.md` L211 ≡ `.agents/skills/elon/SKILL.md` L211 (DONE phase).
+Both are **untouched** by this change; NFR-1 holds because engineer/ticket ride the existing ask
+(FR-3) and wrapper's `ask` tool remains forbidden (skill L35).
+
+Exactly two wrapper SKILL.md copies exist in the repo (`find` verified); `scripts/validate-plugins.sh`
+Step I already enforces mirror byte-identity via `cmp` (L267–282) — the repo's built-in check covers NFR-2.
+
+## 2. Design
+
+Rationale in one line each:
+- **New `<changelog_gate>` block, not a new protocol step:** steps 0–8 + E are referenced by
+  number in REQ/PROJECT.md/changelog history; inserting or renumbering steps is a refactor. A
+  sibling section next to `<protocol>` + a pointer from step 4 keeps FR-1 load-bearing at the
+  action site with zero renumbering.
+- **Entry rides the step-4 commit** (FR-1): step 4 already precedes steps 6–7, so ordering is
+  enforced by the existing flow — no new ordering machinery.
+- **Step 3 interaction:** step 3 (VERIFY DOCS) already reads CHANGELOG; doc *content* fixes
+  remain DocWorm's domain. Only the version entry itself is wrapper's to write (tool policy L28–29).
+- **Append-only CHANGELOG adoption:** NFR-4 satisfied by construction (pure tail append).
+
+### 2.1 Edit W1 — insert `<changelog_gate>` block (both SKILL.md copies)
+
+Insert between `</output_contract>` (L70, blank L71) and `<protocol>` (L72) — i.e. after L71.
+Full text to insert verbatim (entities `&lt;…&gt;` are intentional; MidDev must NOT "fix" them):
+
+```xml
+<changelog_gate>
+  <duty>
+    Before opening or merging any PR/MR and before creating any <code>vX.Y.Z</code> tag or platform release, wrapper MUST have already written and committed the CHANGELOG entry for that exact version. Entry generation happens at/before step 4 (RELEASE BRANCH) and rides that step's version-bump commit, which already precedes steps 6 (PR/MR + merge) and 7 (tag + release). A wrapper release action observable without a prior changelog-entry commit for that version is a gate violation. If wrapper cannot produce a conforming entry, ESCALATE (Elon-decides) per step E — never skip the gate, never proceed tag/PR-less, never write a vacuous entry.
+  </duty>
+  <scope>
+    The gate binds wrapper's release actions in any project that already maintains a CHANGELOG. CI auto-published <code>pr-*</code> pre-releases are not wrapper actions and are exempt. If the project maintains no CHANGELOG, do not create one — the write tool policy already limits CHANGELOG writes to projects that maintain one. Create one only on explicit request; a CHANGELOG created on explicit request includes the embedded template (see <code>&lt;embedded_prompt&gt;</code>) at its tail from the start.
+  </scope>
+  <entry_format>
+    Each entry is a new version section placed as the FIRST version section in the file — above the current newest <code>## [vX.Y.Z]</code> section, BELOW the standing file preamble (<code># Changelog</code> title, the Keep-a-Changelog/SemVer declaration, and the Project-renamed note). The template's "new entries at file beginning" is realized as exactly this position. Existing entries are never modified: on every prepend, all pre-existing bytes below the insertion point are preserved verbatim. Layout — the template's date heading folded into the version header; only KaG categories with content appear (Added / Changed / Deprecated / Removed / Fixed / Security); <code>#### Details</code> and <code>#### Affected Files</code> appear exactly once per entry as <code>####</code> siblings closing the entry after the category subsections:
+
+    ## [vX.Y.Z] - YYYY-MM-DD
+
+    **Engineer:** &lt;name&gt; &lt;email&gt;
+    **Ticket:** &lt;ticket or N/A&gt;
+
+    ### &lt;KaG category&gt;
+    - &lt;formal, concise, past-tense bullet naming affected files/components; no trivial changes&gt;
+
+    #### Details
+    &lt;what and why; formal register, no emoji&gt;
+
+    #### Affected Files
+    &lt;all non-trivial files grouped by top-level directory/component&gt;
+  </entry_format>
+  <metadata>
+    Engineer name + email and ticket/story come from Elon's delegation when the v2.8.2 release go/no-go ask supplied them — the gate adds no new consent prompt. Fallback when they were not supplied: engineer = git author (name + email) of the release commit; ticket = <code>N/A</code>. Both fields are always present in every entry — never omitted, never left as placeholders.
+  </metadata>
+  <baseline>
+    Release entries (this flow) document the diff/changed-files over <code>prevTag..newTag</code>. If no prior tag exists, ESCALATE (Elon-decides), consistent with step 1 — never invent a baseline. Non-release PRs (other projects / hypothetical in this repo) compare the current branch vs <code>main</code>. Affected Files lists ALL non-trivial changed files, grouped by top-level directory/component — no count cap, no truncation.
+  </baseline>
+  <embedded_prompt>
+    This repo's CHANGELOG.md embeds the full entry-generation template verbatim at its tail, behind a <code>---</code> separator and an identifying heading. The embedded copy is written once at adoption and re-edited only when the template itself changes; maintaining it is trivial-change-exempt — it never self-triggers a changelog entry or bullet, and CHANGELOG.md's own prompt-maintenance edits are excluded from bullets and Affected Files as trivial.
+  </embedded_prompt>
+</changelog_gate>
+```
+
+FR coverage: `duty`=FR-1, `scope`=PA-3/err-3, `entry_format`=FR-2+NFR-4+NFR-5, `metadata`=FR-3+NFR-1,
+`baseline`=FR-5+err-2, `embedded_prompt`=FR-4+NFR-3+AC-6 mechanism.
+
+### 2.2 Edit W2 — step-4 pointer (both SKILL.md copies)
+
+Replace L81 (original numbering) — before:
+
+```
+  <step n="4" severity="MUST" label="RELEASE BRANCH">Create <code>release/vX.Y.Z</code>, commit ONLY the version bump (+ CHANGELOG if the project already maintains one), and push to origin. Do not bundle unrelated changes.</step>
+```
+
+after:
+
+```
+  <step n="4" severity="MUST" label="RELEASE BRANCH">Create <code>release/vX.Y.Z</code>, commit ONLY the version bump (+ the CHANGELOG entry generated per <code>&lt;changelog_gate&gt;</code> if the project already maintains one), and push to origin. Do not bundle unrelated changes.</step>
+```
+
+Only the parenthetical changes; everything else on the line is byte-identical.
+
+### 2.3 Edit W3 — input-contract item (both SKILL.md copies)
+
+Insert one `<item>` after L56 (original numbering), before the `NO specs…` item:
+
+```
+  <item>optionally, engineer name + email and ticket/story from the release go/no-go ask — consumed by <code>&lt;changelog_gate&gt;</code>; absent fields fall back per that section.</item>
+```
+
+This is the only wiring FR-3 needs: the ask is Elon's (elon skill L211, untouched); the item makes
+the relayed fields part of wrapper's declared input. No new prompt anywhere.
+
+### 2.4 Edit C1 — CHANGELOG.md adoption (append-only)
+
+Append after L397 (file currently ends `  ``` + \n`). Exact new lines 398–409:
+
+```
 
 ---
 
-## 1. Situation
+## Generate CHANGELOG Entry from Git Diff
 
-The elon-ko gate ships a bundled advisory seat-framing (`src/append-system.default.md`, injected once per session by `src/enforce-orchestrator.ts:89-95,186-201`) that still describes a 6-agent, release-less team, while the real gate `TEAM` allowlist (`src/enforce-orchestrator.ts:61-71`) has 9 spawnable agents incl. `wrapper` since v2.2.0. Separately, the canonical elon skill's DONE phase (`plugins/agents/skills/elon/SKILL.md:211`) auto-spawns Wrapper when a release is indicated; PA-3 requires ask-first user consent. This change syncs the framing (Q1+Q2) and flips the trigger clause (Q3), touching exactly four paths.
-
-## 2. Verified Baseline (evidence, this session)
-
-| Path | sha256 (first 8) | Size | State |
-|---|---|---|---|
-| `src/append-system.default.md` | `00b0459a` | 5229 B, 52 lines | stale framing: 6-agent list (lines 9–14), release-less pipeline (line 16) |
-| `scaffold/APPEND_SYSTEM.md` | `0c57dc37` | 4642 B, 43 lines | **stale AND non-identical** — see Drift Note |
-| `plugins/agents/skills/elon/SKILL.md` | `74674d44` | 266 lines | line 211 = DONE phase, auto-spawn trigger |
-| `.agents/skills/elon/SKILL.md` | `74674d44` | 266 lines | byte-identical to plugins copy (pair intact) |
-
-- Working tree clean (`git status --porcelain` empty) at spec time.
-- `npm run typecheck` = `tsc --noEmit`; `npm test` = `node --test src/*.test.ts`.
-- No test pins framing or scaffold text (grep over `src/*.test.ts`: zero hits).
-- No non-test code references `scaffold/`; `scaffold/` is NOT in `package.json files:["src","rules"]` — it is a template, not shipped runtime code.
-
-> **Drift Note (verified deviation from REQ's premise):** REQ B2 calls the scaffold copy "byte-identical stale". In fact `diff src/append-system.default.md scaffold/APPEND_SYSTEM.md` is non-empty today: scaffold is missing the source's "## Idea/suggestion storage" section (source lines 39–47, 587 bytes). FR-3/AC-2 require post-change byte-identity, so the mirror sync MUST be a wholesale copy, which additionally closes this pre-existing drift. This is in-scope (scaffold is one of the four paths, FR-7 intact) but the scaffold's git diff will show the IDEAS section appearing alongside the wrapper edits. Disclosed here so validation is not surprised; REQ is not edited.
-
-## 3. Architecture Overview
-
-```
-                     ┌──────────────────────────────────────────────┐
-   session_start ───▶│ src/enforce-orchestrator.ts (GATE — NO-OP)   │
-                     │  reads src/append-system.default.md          │
-   <cwd>/.omp/APPEND_SYSTEM.md override ── (absent in this repo)    │
-                     └──────────────┬───────────────────────────────┘
-                                    │ injects as advisory message
-                                    ▼
-              src/append-system.default.md ──cp──▶ scaffold/APPEND_SYSTEM.md
-              (EDIT A: roster + DONE bullet)      (mirror, byte-identical)
-
-              plugins/agents/skills/elon/SKILL.md:211 ──cp──▶ .agents/skills/elon/SKILL.md:211
-              (EDIT B: ask-first trigger clause)             (mirror, byte-identical)
-
-   GUARD RING (untouched): gate TEAM · mess-transport.ts · marketplace.json ·
-   wrapper defs/skills · skill :149/:246 · PROTO.md · AGENTS.md · README · DEVREADME
+"Generate CHANGELOG Entry from Git Diff": Role = precise formal technical writer, no emoji.
+Compare current branch vs `main`. Entry format: `### <YYYY-MM-DD>` → `**Engineer:** <name>
+<email>` → `**Ticket:** <ticket/story>` → `#### Changed` (formal concise bullets, past
+tense, affected files/components named, no trivial changes) → `#### Details` → `####
+Affected Files`. New entries at file beginning; never modify existing entries; add/update
+this prompt at file end. KaG categories: Added/Changed/Deprecated/Removed/Fixed/Security.
+Inputs: diff/changed-files vs main, engineer name, Jira ticket.
 ```
 
-Two independent edit units (A: framing pair, B: skill pair), each with a mirror relationship inside the unit. No cross-unit dependencies → reviewable and committable separately.
+(Line 398 is blank; lines 403–409 are REQ Appendix A lines 195–201 with the `> ` blockquote
+markers stripped — verbatim including line wrapping; note the template's literal
+"file beginning" wording is preserved here while the hybrid-nest interpretation lives in the
+skill's `<entry_format>`.) Nothing else in the file changes.
 
-## 4. Non-goals / Guard Ring (MUST NOT change)
+### 2.5 Explicit non-changes (guards)
 
-Everything in REQ Inventory A: `src/enforce-orchestrator.ts`, `src/mess-transport.ts`, `.omp-plugin/marketplace.json`, `plugins/agents/agents/wrapper.md`, `.omp/agents/wrapper.md`, wrapper skill + `.agents` mirror, elon SKILL.md lines other than 211's trigger clause (esp. `:149`, `:246`), `scaffold/PROTO.md`, `scaffold/AGENTS.md`, `README.md`, `.DEVREADME.md`. Also: no new tests, no `.omp/APPEND_SYSTEM.md` creation, no RELEASE phase or phase-structure change, no budget changes (3-cycle DEVELOP⇄VALIDATE, 2-cycle PURECODE), no edits to `.app/REQ.md`.
+- `.app/REQ.md` — untouched.
+- `plugins/agents/agents/wrapper.md` + `.omp/agents/wrapper.md` — untouched; post-check sha256
+  = `261bf848…` both; `tools:` frontmatter unchanged (AC-1c/AC-3).
+- elon SKILL.md (both mirrors, L211 go/no-go) — untouched; exactly one ask remains (NFR-1).
+- No CI/workflow, `src/`, `scripts/`, or any `tools:` frontmatter change (NFR-6).
+- DocWorm skill's own changelog step — untouched (Out of Scope).
 
-## 5. Edit A — `src/append-system.default.md` (+ mirror `scaffold/APPEND_SYSTEM.md`)
+## 3. Mirror byte-identity procedure + verification
 
-### 5.1 Team list 6 → 9 (item 2 of "What you do")
+1. Apply W1–W3 **only** to `plugins/agents/skills/wrapper/SKILL.md` (edit tool, one snapshot;
+   original line anchors above; re-read if the snapshot tag goes stale).
+2. Copy: `cp plugins/agents/skills/wrapper/SKILL.md .agents/skills/wrapper/SKILL.md`
+   (edits applied once then copied — structurally immune to drift; both copies were
+   byte-identical pre-edit, verified §1).
+3. Verify:
+   - `diff plugins/agents/skills/wrapper/SKILL.md .agents/skills/wrapper/SKILL.md` → empty;
+   - `shasum -a 256` both copies → identical, and ≠ baseline `59277d78…`;
+   - `bash scripts/validate-plugins.sh` → Step I mirror checks all `ok` (repo's own enforcement).
 
-**Before** (current lines 8–14):
-```markdown
-2. **Delegate** to exactly one team agent per turn unless the work is provably independent and parallel-safe. Every delegation uses `task(agent="<name>", context="skill://<name>", assignment="...")`:
-   - `reqguru` — clarify/refine requirements (GRILL).
-   - `drpe` — research technology, APIs, libraries; answer factual technical questions.
-   - `leaddev` — design specs, implement, review, integrate, fix validation issues. LeadDev further delegates implementation to `middev`.
-   - `validator` — audit an implementation against its spec.
-   - `docworm` — write/update documentation.
-   - `hr` — define and register a new agent role.
-```
+## 4. Sequencing — one MidDev task
 
-**After** (insert `purecode` after `validator`; append `wrapper`, `debugger` after `hr` — gate `TEAM` order `reqguru, drpe, leaddev, validator, purecode, docworm, hr, wrapper, debugger`):
-```markdown
-2. **Delegate** to exactly one team agent per turn unless the work is provably independent and parallel-safe. Every delegation uses `task(agent="<name>", context="skill://<name>", assignment="...")`:
-   - `reqguru` — clarify/refine requirements (GRILL).
-   - `drpe` — research technology, APIs, libraries; answer factual technical questions.
-   - `leaddev` — design specs, implement, review, integrate, fix validation issues. LeadDev further delegates implementation to `middev`.
-   - `validator` — audit an implementation against its spec.
-   - `purecode` — post-validation code-cleanliness review; recommends refactors.
-   - `docworm` — write/update documentation.
-   - `hr` — define and register a new agent role.
-   - `wrapper` — cut and publish releases; conditional DONE step (see item 4).
-   - `debugger` — root-cause CI/runtime failures on demand; read-only report.
-```
+Single task, ordered steps (no parallelism; three small edits + one copy):
+1. Read `plugins/agents/skills/wrapper/SKILL.md` (fresh snapshot).
+2. W3 (insert after L56) → W1 (insert after L71) → W2 (replace L81) — original numbering per §2.
+3. §3 steps 2–3 (copy + mirror verification).
+4. Read `CHANGELOG.md` tail; apply C1 exactly per §2.4; verify per §5 AC-2 checks.
+5. Report: hashes of all 5 files + the four check outputs below. MidDev runs no builds/tests
+   beyond these file-level checks (repo convention: VALIDATE runs the suites).
 
-Fulfills FR-1. The leaddev/drpe/reqguru/validator/docworm/hr glosses are byte-unchanged.
+## 5. AC → check validation matrix
 
-### 5.2 Wrapper bullet under item 4 (pipeline line)
-
-**Before** (current line 16, unchanged first sentence):
-```markdown
-4. **Chain** phases per the workflow protocol in `skill://elon` (FULL: REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → DONE). Enforce the 3-cycle limit on DEVELOP ⇄ VALIDATE.
-```
-**After** (item 4 line byte-unchanged; one sub-bullet appended directly beneath it):
-```markdown
-4. **Chain** phases per the workflow protocol in `skill://elon` (FULL: REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → DONE). Enforce the 3-cycle limit on DEVELOP ⇄ VALIDATE.
-   - Wrapper is a conditional release step **inside DONE, post-PASS** — no new RELEASE phase; DONE stays terminal. If the change is being released (needs a version bump + tag), put a go/no-go ask to the user before spawning Wrapper (no release without consent); otherwise skip Wrapper with a noted reason.
-```
-
-Fulfills FR-2: pipeline arrow string untouched and still terminal at DONE; the wrapper notion lives in the sub-bullet; post-PASS positioning matches `skill://elon` and `scaffold/PROTO.md:254-262`. Wording is advisory (describes protocol behavior, asserts no enforcement of its own — FR-6/NFR-3).
-
-### 5.3 Everything else in the file byte-unchanged
-
-Lines 1–7, 15, 17–52 (headings, "What you never do", protocol paragraph, dot-agreement token, IDEAS section, advisory footer) untouched.
-
-## 6. Edit B — `plugins/agents/skills/elon/SKILL.md:211` (+ mirror `.agents/skills/elon/SKILL.md:211`)
-
-### 6.1 Trigger-clause rewrite (clause-only, single line)
-
-**Before** — full current line 211:
-```xml
-  <phase name="DONE">Validator returned PASS and PureCode returned code-fine (FULL path). Evaluate whether DocWorm is needed (conditional). Evaluate whether Wrapper is needed: if the change is being released (needs a version bump + tag), spawn Wrapper to cut and publish the release; otherwise skip with a noted reason. (Debugger is on-demand/cross-phase and needs no DONE block.) Present final deliverable.</phase>
-```
-
-**After** — full replacement line 211 (prefix and suffix sentences byte-identical; only the bolded middle clause is new; bold is annotation, not file content):
-```xml
-  <phase name="DONE">Validator returned PASS and PureCode returned code-fine (FULL path). Evaluate whether DocWorm is needed (conditional). **Always consider whether Wrapper is needed: if the change is being released (needs a version bump + tag), first put a pending go/no-go ask to the user (a status=pending entry under ## Pending Asks in .app/PROJECT.md — a trimmed "." reply expresses consent) and spawn Wrapper only if the user consents — never publish a release without explicit consent; if the user declines, or the change is internal-only, skip Wrapper with a noted reason.** (Debugger is on-demand/cross-phase and needs no DONE block.) Present final deliverable.</phase>
-```
-
-Semantics delivered (PA-3 / FR-4): always-consider ✓ · pending ask BEFORE spawn ✓ · no release without consent ✓ · decline/internal-only → skip with noted reason ✓ · dot-agreement mechanics anchored (`.app/PROJECT.md` `## Pending Asks`, `.` token) ✓. No backticks introduced (phase elements in this file use plain text). Phase placement, Debugger note, DocWorm clause, and "Present final deliverable" untouched. No other line of either skill copy changes.
-
-### 6.2 Unchanged guards in the same file (for reviewer orientation)
-
-- `:149` routing-table Wrapper row — byte-unchanged.
-- `:246` agent-registry Wrapper row ("On demand in DONE.") — byte-unchanged.
-
-## 7. Mirror Sync & Byte-Identity Procedure
-
-Mechanism: **edit the source, then `cp` over the mirror** (never parallel-edit a pair; drift is the failure mode this procedure exists to kill).
-
-```bash
-# 1. Edit source files (§5.1, §5.2 → framing; §6.1 → skill)
-# 2. Mirror by wholesale copy:
-cp src/append-system.default.md scaffold/APPEND_SYSTEM.md
-cp plugins/agents/skills/elon/SKILL.md .agents/skills/elon/SKILL.md
-# 3. Verify byte-identity (all three must hold):
-diff scaffold/APPEND_SYSTEM.md src/append-system.default.md      # → no output, exit 0
-diff .agents/skills/elon/SKILL.md plugins/agents/skills/elon/SKILL.md  # → no output, exit 0
-shasum -a 256 src/append-system.default.md scaffold/APPEND_SYSTEM.md plugins/agents/skills/elon/SKILL.md .agents/skills/elon/SKILL.md
-#    → exactly two distinct hashes, each appearing twice (pair-matched)
-```
-
-Note: step 2's framing `cp` intentionally also delivers the IDEAS section (source lines 39–47) to the scaffold, closing the pre-existing drift documented in §2 — this is what makes AC-2's empty diff achievable.
-
-## 8. Interface Contracts (text contracts)
-
-| Contract | Content | Enforced where |
+| REQ AC | Check (command → expected signal) | Phase |
 |---|---|---|
-| Roster enumeration | Framing team list enumerates exactly the 9 gate-`TEAM` agents, no more, no less | FR-1; consistency with `src/enforce-orchestrator.ts:61-71` |
-| Trigger semantics | Wrapper spawn requires a prior user go/no-go pending ask; release never happens without consent; decline/internal-only → skip with noted reason | FR-4; canonical at SKILL.md:211, framed advisorially at framing bullet |
-| Division of truth | Framing names role + DONE position; canonical semantics live in `skill://elon` (framing already defers); framing must not contradict skill/PROTO/gate | FR-2, AC-7 |
-| Advisory envelope | Framing asserts no enforcement of its own; hard-enforcement attribution stays with the gate + frontmatter (existing footer pattern) | FR-6, NFR-3 |
-| Mirror invariants | Two byte-identical pairs post-change (drift rule, `scaffold/PROTO.md:334`) | FR-3, FR-5, NFR-1 |
-| Blast radius | Exactly four paths in the implementation diff | FR-7 |
+| AC-1 prose | `grep -c changelog_gate` both SKILL copies → ≥2 (block + step-4 pointer); `grep -c "prevTag..newTag\|git author\|FIRST version section"` both → ≥1 each (FR-1/2/3/5 present) | NOW |
+| AC-1 mirrors | §3.3: `diff` empty; shasum equal; `validate-plugins.sh` Step I `ok` | NOW |
+| AC-1c frontmatter | `shasum` agent defs = `261bf848…` ×2; `git status --porcelain` shows no change to either path | NOW |
+| AC-2a embedded verbatim | `diff <(sed -n '195,201p' .app/REQ.md | sed 's/^> //') <(sed -n '403,409p' CHANGELOG.md)` → empty | NOW |
+| AC-2b entries immutable | `git diff -U0 -- CHANGELOG.md` → single hunk `397a398,…`, zero `-` lines; `head -397 CHANGELOG.md \| shasum -a 256` = sha of `git show HEAD:CHANGELOG.md \| head -397` | NOW |
+| AC-2c next entry format | Next release's section matches §2.1 layout incl. Engineer/Ticket | NEXT-RELEASE |
+| AC-3 agent defs | hash compare per AC-1c row | NOW |
+| AC-4 ordering | At next release: entry commit precedes PR open + tag/release in observable history | NEXT-RELEASE |
+| AC-5 single ask | At next release: one go/no-go ask carrying engineer/ticket; `grep` confirms no new ask-mechanism text in wrapper skill (ask still forbidden, L35) | NOW (mechanism) / NEXT-RELEASE (exercise) |
+| AC-6 no self-trigger | §2.1 `embedded_prompt` trivial-exempt prose present (NOW); next release's entry contains no bullet/Affected-Files line about the embedding (NEXT-RELEASE) | both |
 
-## 9. Data Models
+Validator scope for this DEVELOP cycle = every NOW row. NEXT-RELEASE rows are observational at
+the first gate exercise (the release shipping this feature, per REQ Adoption Path).
 
-No structured data. The relevant "model" is file identity:
+## 6. Error-case coverage (REQ §Error Cases → spec location)
 
-- Pair 1: `src/append-system.default.md` ≡ `scaffold/APPEND_SYSTEM.md` (single sha256).
-- Pair 2: `plugins/agents/skills/elon/SKILL.md` ≡ `.agents/skills/elon/SKILL.md` (single sha256).
-- Consumed as raw UTF-8 string by `enforce-orchestrator.ts` `readFileSync(...,"utf8")` — no parsing, no line-number coupling; content-only change is safe.
+| REQ case | Covered by |
+|---|---|
+| Ask lacks engineer/ticket | §2.1 `metadata` fallbacks; fields always present (FR-3) |
+| No prior tag | §2.1 `baseline` → ESCALATE (aligns step 1) |
+| CHANGELOG absent (other projects) | §2.1 `scope` → only-if-maintained; create on explicit request incl. embedded tail |
+| Entry cannot conform | §2.1 `duty` → ESCALATE, never vacuous/tag-less |
+| Template changes later | §2.1 `embedded_prompt` → update copy, trivial-exempt |
 
-## 10. Build & Delegation Sequencing (DEVELOP phase)
+## 7. Commit plan
 
-Single MidDev delegation (the four paths share two mirror invariants; splitting invites drift, and each file's change is <20 lines). LeadDev reviews, verifies, commits.
+One commit, by LeadDev at integration (after review + NOW-row checks pass), on `main`
+(repo convention — linear history, DEVELOP commits land directly):
 
-**MidDev assignment shape** (`task(agent="middev", context="skill://middev")`):
-- Target: the four paths; exact before/after excerpts from §5–§6 verbatim.
-- Change: apply §5.1+§5.2 to the framing source; apply §6.1 to the plugins skill; run the two `cp` commands from §7.
-- Acceptance: §7 byte-identity commands green; no other file touched.
-- Non-Goals: guard ring (§4); no rewording beyond the quoted excerpts; no trailing-whitespace or reflow drive-bys.
+```
+git add plugins/agents/skills/wrapper/SKILL.md .agents/skills/wrapper/SKILL.md CHANGELOG.md
+git commit -m "[DEVELOP] wrapper CHANGELOG gate: skill prose (both mirrors) + template embedded at CHANGELOG tail"
+```
 
-**LeadDev integration sequence after MidDev returns:**
-1. `git status --porcelain` → only the four paths (+ any Elon-owned `.app/` artifacts, ignored).
-2. `git diff -U0` each path; confirm framing hunks only at items 2/4 and skill hunk only at line 211.
-3. Run the §7 identity checks + full validation matrix (§11).
-4. `npm run typecheck && npm test` (AC-6).
-5. Commit as two logical units:
-   - `[SPEC §5] Sync seat framing to 9-agent roster + Wrapper-in-DONE bullet; resync scaffold mirror`
-   - `[SPEC §6] Ask-first go/no-go for Wrapper at DONE (skill + .agents mirror)`
-6. Report changed files, verification output, commit SHAs to Elon → VALIDATE.
+Excluded from the commit (and asserted unchanged): `.app/REQ.md`, both agent-def mirrors,
+elon skills, `scripts/`, `src/`, `.github/`. Elon then records SPEC/phase artifacts as [PROTO]
+per protocol. The release shipping this change generates the first gate entry (Adoption Path,
+REQ §Surface Inventory) — that release's `prevTag..newTag` diff will contain this commit; per
+§2.1 `embedded_prompt`, the CHANGELOG-tail embedding itself is excluded from that entry's bullets
+and Affected Files as trivial (AC-6), while the gate prose (skill files) is documented normally.
 
-If MidDev returns CLARIFICATION: answer from this Spec; escalate to Elon only if a user decision emerges (none expected — REQ has zero open questions).
+## 8. Non-goals
 
-## 11. Validation Matrix (AC-1…AC-7 → concrete checks)
-
-Baseline anchor: `BASE=$(git rev-parse HEAD)` recorded before any edit.
-
-| AC | Concrete check | Pass signal |
-|---|---|---|
-| AC-1 | `sed -n '8,17p' src/append-system.default.md` — inspect item 2 (9 agent bullets); `sed -n '19,20p'` — inspect item 4 + wrapper sub-bullet; `grep -n 'REQUEST → GRILL' src/append-system.default.md` | Item 2 lists all 9 names in gate-TEAM order (`reqguru drpe leaddev validator purecode docworm hr wrapper debugger`); wrapper bullet says inside DONE/post-PASS/ask-first; item 4's pipeline string still ends `VALIDATE → DONE)`; no "RELEASE" phase token anywhere |
-| AC-2 | `diff scaffold/APPEND_SYSTEM.md src/append-system.default.md; echo $?` | Empty output, exit 0 (§3 hash pair-match corroborates) |
-| AC-3 | `git diff -U0 -- plugins/agents/skills/elon/SKILL.md` | Exactly one hunk `@@ -211 +211 @@`; new line contains "pending go/no-go ask", "before"/"first" ordering, and "never publish a release without explicit consent"; old auto-spawn string absent; `git diff -- plugins/agents/skills/elon/SKILL.md \| grep -E '^[-+]...' \| grep -cE ':149\|Ship a release'` = 0 (guards intact) |
-| AC-4 | `diff .agents/skills/elon/SKILL.md plugins/agents/skills/elon/SKILL.md; echo $?` | Empty output, exit 0 |
-| AC-5 | **Tripwire:** `git diff --name-only "$BASE" \| grep -v '^\.app/'` → exactly the four paths; negative probe: `git diff --name-only "$BASE" -- src/enforce-orchestrator.ts src/mess-transport.ts .omp-plugin/marketplace.json scaffold/PROTO.md scaffold/AGENTS.md README.md .DEVREADME.md plugins/agents/agents/wrapper.md .omp/agents/wrapper.md` | Tripwire lists exactly: `src/append-system.default.md`, `scaffold/APPEND_SYSTEM.md`, `plugins/agents/skills/elon/SKILL.md`, `.agents/skills/elon/SKILL.md`; negative probe empty; per-commit `git show --name-only --format= <sha>` likewise scoped |
-| AC-6 | `npm run typecheck && npm test` | Both exit 0, output unchanged from baseline (no TS touched) |
-| AC-7 | Cross-read (Validator inspection): framing roster set vs gate `TEAM` (`src/enforce-orchestrator.ts:61-71`); framing bullet + skill:211 vs `scaffold/PROTO.md:254-262` | No contradiction on: roster membership, DONE-terminal position, post-PASS timing, ask-first consent, budget non-consumption |
-
-Additional negative probe (auto-spawn eradication): `grep -rn "spawn Wrapper to cut and publish" plugins/ .agents/ src/` → zero matches.
-
-## 12. Rollback
-
-`git revert` of the two implementation commits restores both mirror pairs to the pre-change state (the scaffold `cp` reverts with Edit A's commit; the pre-existing IDEAS drift re-appears — acceptable, it is the historical state). No data, config, or runtime migration involved.
+No implementation in this phase beyond the four edits above; no Unreleased-section staging (Q1
+rejected); no CI enforcement (Q3); no gate-source (`src/enforce-orchestrator.ts`) change; no
+edits outside surfaced paths.
