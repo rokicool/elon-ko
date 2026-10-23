@@ -9,6 +9,12 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [Unreleased]
+
+### Added
+
+- **New `testwriter` agent — TestWriter (agent #11, skill #13, `skill://testwriter`).** The roster's sole author of all automated test code: pedantic, spec-driven test authoring with **exclusive ownership of every automated test file**, supporting both **test-first development** (a RED suite written from the spec before implementation) and post-hoc test authoring — it never modifies product source. Distributed team agent (`pi/task`, mess-capable; tools `read, write, edit, bash, search, find, lsp, mess-send, mess-fail`; `spawns:` none), spawnable directly by Elon. Protocol wiring: an optional **TEST phase** slots between SPEC and DEVELOP for test-first work, and the TRIVIAL short path routes test-only changes to TestWriter. Added to the marketplace `agents[]` and the gate `TEAM` (roster now **11 agents / 13 skill directories** — 12 roster skills plus the `logging-design` non-roster reference skill).
+
 ## [v2.8.3] - 2026-10-20
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>

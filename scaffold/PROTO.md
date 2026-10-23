@@ -27,6 +27,7 @@ hr|pi/smol|elon,leaddev|-|read,write,edit,mess-send,mess-fail|plugins/agents/ski
 wrapper|pi/smol|elon|-|bash,read,write,edit,find,search|plugins/agents/skills/wrapper/SKILL.md|no
 debugger|pi/task|elon|-|read,bash,search,find,lsp,debug|plugins/agents/skills/debugger/SKILL.md|no
 middev|pi/task|leaddev|-|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,mess-send,mess-fail|plugins/agents/skills/middev/SKILL.md|yes
+testwriter|pi/task|elon|-|read,write,edit,bash,search,find,lsp,mess-send,mess-fail|plugins/agents/skills/testwriter/SKILL.md|yes
 elon|-|self|-|read,ask,todo,job,irc,write,bash,task|plugins/agents/skills/elon/SKILL.md|main
 ```
 
@@ -53,7 +54,7 @@ Every request enters at REQUEST. Elon classifies the request and selects one of 
 
 | Signal | Path |
 |--------|------|
-| Bugfix, typo, config tweak, doc-only change, test addition | **TRIVIAL** |
+| Bugfix, typo, config tweak, doc-only change, test addition (test additions route to **TestWriter** on the trivial path) | **TRIVIAL** |
 | Internal refactor with no behavioral change | **TRIVIAL** |
 | New feature, new module, new API surface | **FULL** |
 | Cross-cutting change affecting multiple modules | **FULL** |
@@ -63,7 +64,7 @@ Every request enters at REQUEST. Elon classifies the request and selects one of 
 ```
 REQUEST ─→ classify ─┬─ TRIVIAL ─→ LEADDEV → VALIDATE ─→ DONE
                       │
-                      └─ FULL ─→ GRILL ─→ [RESEARCH] ─→ SPEC ─→ DEVELOP ⇄ VALIDATE ─→ PURECODE ─→ DONE
+                      └─ FULL ─→ GRILL ─→ [RESEARCH] ─→ SPEC ─→ [TEST] ─→ DEVELOP ⇄ VALIDATE ─→ PURECODE ─→ DONE
 ```
 
 ---
@@ -164,9 +165,26 @@ If spawned:
 
 ---
 
+### Phase 4b: TEST (Conditional — Test-First)
+
+Between SPEC and DEVELOP, Elon MAY spawn **TestWriter** with the signed Spec to write the RED suite BEFORE implementation exists. This is optional — used when it improves quality (new features, tricky contracts).
+
+| Actor | Action |
+|-------|--------|
+| Elon | Decides whether test-first applies. Spawns **TestWriter** with the signed Spec (`.app/SPEC.md`) and an explicit TEST-FIRST flag. |
+| TestWriter | Writes the failing (RED) suite from the Spec's acceptance criteria. Sole owner of all test files. Returns the suite plus run evidence. |
+
+**Gate:** the suite fails for the RIGHT reasons — assertion failures against the not-yet-implemented behavior, never syntax/import/collection errors. DEVELOP then proceeds against a suite that proves the contract.
+
+**Skip conditions:** trivial implementation, no testable contract, or the existing suite is sufficient. When the phase is skipped — or after the RED gate — post-hoc testing (coverage tightening, boundary tests) remains available after VALIDATE PASS.
+
+---
+
 ### Phase 5: DEVELOP & VALIDATE (Loop)
 
 Elon MUST NOT write implementation code, fix validation failures, or perform any LeadDev or Validator role. Elon's role is exclusively spawning agents, gatekeeping, and routing results.
+
+**Test-file monopoly:** LeadDev and MidDev MUST NOT write or modify test files — TestWriter owns them exclusively (Phase 4b test-first, post-VALIDATE coverage, T1 test-only).
 
 #### 5a. DEVELOP
 
@@ -278,8 +296,9 @@ For bugfixes, typos, config tweaks, doc-only changes, test additions, and intern
 
 | Actor | Action |
 |-------|--------|
-| Elon | Spawns **LeadDev** with the request, affected files, and explicit note that this is a TRIVIAL path. |
+| Elon | Spawns **LeadDev** with the request, affected files, and explicit note that this is a TRIVIAL path. For TEST-ONLY changes (add/update tests), spawns **TestWriter** instead of LeadDev. |
 | LeadDev | Implements the change directly. For changes under 20 lines, LeadDev MAY write the code directly without delegating to MidDev. For larger changes, delegates to MidDev as usual. |
+| TestWriter | (Test-only changes) implements the change directly — sole author of test files — and returns the suite plus run evidence. |
 | LeadDev | Commits the change. |
 
 ### Phase T2: VALIDATE (Scoped)
@@ -304,6 +323,7 @@ Same as the Full Path Phase 6, with the same conditional DocWorm rules.
 | DrPe | RESEARCH (conditional) | `.app/RESEARCH.md` | Technology landscape survey. Impact assessment. |
 | LeadDev | SPEC, DEVELOP, RESOLVE, T1 | `.app/SPEC.md` | Architecture, spec, implementation delegation, review, integration, commits, validation fixes. |
 | MidDev | DEVELOP (via LeadDev) | — | Implementation — writes code to spec. May return CLARIFICATION requests. |
+| TestWriter | 4b TEST (conditional), post-VALIDATE coverage, T1 test-only | Test suite | Sole author of automated tests — pedantic, spec-driven, RED-first or post-hoc. |
 | Validator | VALIDATE, T2 | — | Compliance auditing — spec-vs-implementation verification. |
 | PureCode | PURECODE (5e, post-VALIDATE) | — | Code purity gate — post-validation cleanliness/verbosity/optimization review; recommends refactors to LeadDev. Read-mostly; never writes code. Max 2-cycle refactor loop (separate budget). |
 | DocWorm | DONE (conditional) | `README.md` | Documentation — creates/updates docs when needed. |

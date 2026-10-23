@@ -95,7 +95,7 @@ jobs:
             omp plugin install github:${{ github.repository }}
             ```
 
-            **Plugin B — `elon-ko-agents`** (10 agents + 12 skills; markdown only)
+            **Plugin B — `elon-ko-agents`** (11 agents + 13 skills; markdown only)
 
             ```bash
             omp plugin marketplace add ${{ github.repository }}
