@@ -9,11 +9,30 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
-## [Unreleased]
+## [2.9.0] - 2026-10-22
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
 
 ### Added
 
 - **New `testwriter` agent — TestWriter (agent #11, skill #13, `skill://testwriter`).** The roster's sole author of all automated test code: pedantic, spec-driven test authoring with **exclusive ownership of every automated test file**, supporting both **test-first development** (a RED suite written from the spec before implementation) and post-hoc test authoring — it never modifies product source. Distributed team agent (`pi/task`, mess-capable; tools `read, write, edit, bash, search, find, lsp, mess-send, mess-fail`; `spawns:` none), spawnable directly by Elon. Protocol wiring: an optional **TEST phase** slots between SPEC and DEVELOP for test-first work, and the TRIVIAL short path routes test-only changes to TestWriter. Added to the marketplace `agents[]` and the gate `TEAM` (roster now **11 agents / 13 skill directories** — 12 roster skills plus the `logging-design` non-roster reference skill).
+
+#### Details
+
+Version 2.9.0 is a semver MINOR release: it adds the roster's eleventh agent, `testwriter` (TestWriter), as an additive feature with no breaking changes. TestWriter is the team's sole author of all automated test code and never modifies product source; it supports test-first development (a RED suite written from the spec before implementation) and post-hoc test authoring. Protocol wiring ships in the same release: an optional TEST phase slots between SPEC and DEVELOP for test-first work, and the TRIVIAL short path routes test-only changes to TestWriter. Count surfaces (marketplace description, `README.md`, `.DEVREADME.md`, release-notes boilerplate in `.github/workflows/release.yml`) were synced to 11 agents / 13 skills. Versions moved in lockstep across `package.json#version`, the `package-lock.json` root version, and both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`); example pins in `README.md`, `.DEVREADME.md`, and `elon_ko.sh` (`OMP_AGENT_REF` default + usage) were swept from `v2.8.3` to `v2.9.0` per the established `[RELEASE]` precedent.
+
+#### Affected Files
+
+- `.agents/` — byte-identical skill mirrors: `.agents/skills/{debugger,docworm,elon,leaddev,middev,purecode,testwriter,validator,wrapper}/SKILL.md`
+- `.app/` — `.app/PROJECT.md` (protocol log)
+- `.github/` — `.github/workflows/release.yml` (release-notes boilerplate count surfaces)
+- `.omp-plugin/` — `.omp-plugin/marketplace.json` (`metadata.version` + `plugins[].version` lockstep)
+- `.omp/` — `.omp/agents/testwriter.md` (runtime agent definition)
+- root — `.DEVREADME.md`, `CHANGELOG.md`, `README.md`, `elon_ko.sh` (installer `OMP_AGENT_REF` default + usage), `package.json`, `package-lock.json`
+- `plugins/` — `plugins/agents/agents/testwriter.md` (canonical agent definition), `plugins/agents/skills/testwriter/SKILL.md` (skill #13, canonical), roster/skill-count sync in `plugins/agents/skills/{debugger,docworm,leaddev,middev,purecode,validator,wrapper}/SKILL.md`, TEST-phase wiring in `plugins/agents/skills/elon/SKILL.md`
+- `scaffold/` — `scaffold/AGENTS.md` (roster row), `scaffold/APPEND_SYSTEM.md` (team list), `scaffold/PROTO.md` (TEST phase + TRIVIAL routing)
+- `src/` — `src/append-system.default.md` (injected team list), `src/enforce-orchestrator.ts` (+ `enforce-orchestrator.test.ts`), `src/mess-transport.ts` (+ `mess-transport.test.ts`)
 
 ## [v2.8.3] - 2026-10-20
 
