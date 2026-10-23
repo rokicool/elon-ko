@@ -17,7 +17,7 @@ Two plugins, installed together:
 | Plugin | What it provides |
 |---|---|
 | **`elon-ko-gate`** | The enforcement **gate** (the root session can only route — direct `edit`/`write`/build are hard-blocked), a Definition-of-Done rule. |
-| **`elon-ko-agents`** | **10 specialist agents** + **12 skills**: `reqguru`, `drpe`, `leaddev`, `middev`, `validator`, `purecode`, `docworm`, `hr`, `wrapper`, `debugger` (plus the `elon` orchestrator protocol). |
+| **`elon-ko-agents`** | **11 specialist agents** + **13 skills**: `reqguru`, `drpe`, `leaddev`, `middev`, `validator`, `purecode`, `docworm`, `hr`, `wrapper`, `debugger`, `testwriter` (plus the `elon` orchestrator protocol). |
 
 oh-my-pi has two disjoint plugin mechanisms — TypeScript extensions vs. agent
 marketplaces — so this repo ships **both from one tree**. You don't deal with
@@ -56,7 +56,7 @@ Pin `elon-ko-gate` to a release tag (Plugin B always tracks latest);
 re-running is idempotent — every step is safe to repeat:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/elon_ko.sh | OMP_AGENT_REF=v2.8.3 bash
+curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/elon_ko.sh | OMP_AGENT_REF=v2.9.0 bash
 ```
 
 See [`elon_ko.sh`](./elon_ko.sh) for exactly what it runs.
@@ -156,7 +156,7 @@ curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/elon_ko.sh | 
 ```bash
 # 1. Plugin A — the gate + rule (installs user-wide; requires bun).
 #    Pin to a release tag. Switching the ref later needs `omp plugin uninstall elon-ko-gate` first.
-omp plugin install github:rokicool/elon-ko#v2.8.3
+omp plugin install github:rokicool/elon-ko#v2.9.0
 # local dev / linking:
 omp plugin link ./elon-ko
 
@@ -180,7 +180,7 @@ install-location choice described above).
 | **`AGENTS.md`** | `<cwd>/AGENTS.md` | **Overwritten on every install.** This is the file omp actually reads: omp auto-loads `<cwd>/AGENTS.md` by walking up from the current directory, so the team's agent registry and enforcement protocol become part of the model context in this project. If the installer cannot fetch it, the install **fails** — it is the one load-bearing scaffold file. |
 | **`PROTO.md`** | `<cwd>/PROTO.md` | **Overwritten on every install.** A reference/protocol document (the full phased workflow). Doc-only — omp does **not** auto-load it; read it on demand. A failed fetch is non-fatal (the installer prints a warning). |
 
-Both are fetched from the repo at the **same ref as Plugin A** (`OMP_AGENT_REF`, default `v2.8.3`), so the deployed guidance always matches the installed gate version.
+Both are fetched from the repo at the **same ref as Plugin A** (`OMP_AGENT_REF`, default `v2.9.0`), so the deployed guidance always matches the installed gate version.
 
 **APPEND_SYSTEM.md — already load-bearing, not copied.** The Elon framing message already ships as a bundled default inside Plugin A (`elon-ko-gate`) and is re-injected every session, so the installer does **not** deploy it. To customize Elon's framing for a project, create **`<cwd>/.omp/APPEND_SYSTEM.md`** — it overrides (replaces) the bundled default in that project.
 
@@ -188,7 +188,7 @@ Both are fetched from the repo at the **same ref as Plugin A** (`OMP_AGENT_REF`,
 
 **Uninstall leaves them in place.** `elon_ko.sh uninstall` (either mode) does **not** remove `<cwd>/AGENTS.md` or `<cwd>/PROTO.md` — they are project files you may have come to rely on. The installer prints a notice telling you to delete them by hand if you want them gone.
 
-> **Release timing.** The `RULES.md`→rule move and the `AGENTS.md` coherence edit ship as of **v2.4.0** — the **stable** default install (`#v2.8.3`) fetches Plugin A *and* the scaffold files from the published `v2.8.3` tag, so the gate carries the `ro-orchestrator-invariant` rule and the deployed `AGENTS.md` no longer references `RULES.md`. Older tagged installs (`#v2.3.1` and earlier) predate these changes and do not carry them.
+> **Release timing.** The `RULES.md`→rule move and the `AGENTS.md` coherence edit ship as of **v2.4.0** — the **stable** default install (`#v2.9.0`) fetches Plugin A *and* the scaffold files from the published `v2.9.0` tag, so the gate carries the `ro-orchestrator-invariant` rule and the deployed `AGENTS.md` no longer references `RULES.md`. Older tagged installs (`#v2.3.1` and earlier) predate these changes and do not carry them.
 
 ## Uninstall
 
@@ -230,7 +230,7 @@ echo '{"enabled": true}' > .omp/elon.json   # gate active in this project only
 When active, your root session is Elon: it may `read`/`ask`/manage todos,
 `job` (inspect/wait on async agent jobs), `irc` (live coordination with parallel
 sibling agents — not a substitute for spawning), spawn **team agents**
-(`reqguru`, `drpe`, `leaddev`, `validator`, `purecode`, `docworm`, `hr`, `wrapper`, `debugger`), write only
+(`reqguru`, `drpe`, `leaddev`, `validator`, `purecode`, `docworm`, `hr`, `wrapper`, `debugger`, `testwriter`), write only
 `.app/PROJECT.md`, and run only `git …`. Everything else (direct `edit`,
 `write`, builds, search, browse, …) is blocked — it must delegate.
 Subagents are never gated by this; they're restricted by their own agent
@@ -260,7 +260,7 @@ The mapping is fixed in the distribution:
 | Role alias | Agents | Intent |
 |---|---|---|
 | `pi/slow` | `drpe`, `leaddev` | Strongest reasoning (research, architecture). |
-| `pi/task` | `middev`, `reqguru`, `validator`, `purecode`, `debugger` | Strong general (implementation, clarification, auditing). |
+| `pi/task` | `middev`, `reqguru`, `validator`, `purecode`, `debugger`, `testwriter` | Strong general (implementation, clarification, auditing). |
 | `pi/smol` | `docworm`, `hr`, `wrapper` | Small / fast (docs, agent defs, release tooling). |
 
 **Works out of the box — no config needed.** The `pi/<role>` aliases resolve
@@ -279,7 +279,7 @@ a `modelRoles` block into config and the aliases resolve to the models you named
 ```yaml
 modelRoles:
   slow: anthropic/claude-opus-4-5:high   # drpe, leaddev
-  task: anthropic/claude-sonnet-4-5      # middev, reqguru, validator, purecode, debugger
+  task: anthropic/claude-sonnet-4-5      # middev, reqguru, validator, purecode, debugger, testwriter
   smol: openai/gpt-4.1-mini              # docworm, hr, wrapper
 ```
 

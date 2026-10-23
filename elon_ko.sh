@@ -4,7 +4,7 @@
 #
 # Ensures oh-my-pi (`omp`) and bun are present, then installs BOTH plugins:
 #   • elon-ko-gate        — Elon orchestrator enforcement gate (needs bun)
-#   • elon-ko-agents   — 9 agents + 10 skills (marketplace)
+#   • elon-ko-agents   — 11 agents + 13 skills (marketplace)
 #
 # ── Stable install (no argument) ─────────────────────────────────────────────
 # Plugin A pinned to the release tag below (override with OMP_AGENT_REF);
@@ -86,7 +86,7 @@ print_usage() { cat >&2 <<'USAGE'
   Flags are position-agnostic and may appear before or after the positional.
 
   Env:
-    OMP_AGENT_REF=<git-ref>     pin Plugin A (elon-ko-gate) to a ref (default v2.8.3)
+    OMP_AGENT_REF=<git-ref>     pin Plugin A (elon-ko-gate) to a ref (default v2.9.0)
     OMP_PRERELEASE_DIR=<dir>    override the pre-release source cache dir
 
   Unknown flags and more than one positional are rejected.
@@ -101,7 +101,7 @@ usage_die() { printf '  ✗ %s\n' "$*" >&2; print_usage; exit 1; }
 # REF, TAG. `-global`/`--global`/`-l` are NOT valid (unknown flag → die, NFR-5).
 INSTALL_MODE=global
 SUB_MODE=stable
-REF="${OMP_AGENT_REF:-v2.8.3}"
+REF="${OMP_AGENT_REF:-v2.9.0}"
 TAG=""
 POSITIONAL=""
 for arg in "$@"; do
@@ -558,10 +558,10 @@ EOF
     • elon-ko-gate      — gate + Definition-of-Done rule
 EOF
   if [ "$MODE" = "pre-release" ]; then
-    printf "    • elon-ko-agents    — 9 agents + 10 skills (pinned to tag '%s')\n" "$TAG"
+    printf "    • elon-ko-agents    — 11 agents + 13 skills (pinned to tag '%s')\n" "$TAG"
     printf "\n  Plugin B was registered as a local marketplace (pre-release tarball) under:\n    %s/prerelease/%s\n" "$OMP_LOCAL_HOME" "$TAG"
   else
-    printf '    • elon-ko-agents    — 9 agents + 10 skills (always latest)\n'
+    printf '    • elon-ko-agents    — 11 agents + 13 skills (always latest)\n'
   fi
   cat <<'EOF'
 
@@ -693,7 +693,7 @@ else
 
   Both plugins are pinned to tag '${TAG}':
     • elon-ko-gate         — gate + Definition-of-Done rule
-    • elon-ko-agents    — 9 agents + 10 skills (from the tag, not latest)
+    • elon-ko-agents    — 11 agents + 13 skills (from the tag, not latest)
 
   Plugin B was registered as a LOCAL marketplace from:
     ${MKT_SOURCE}
@@ -720,7 +720,7 @@ EOF
 
   Plugins:
     • elon-ko-gate         — gate + Definition-of-Done rule
-    • elon-ko-agents    — 9 agents + 10 skills (always latest)
+    • elon-ko-agents    — 11 agents + 13 skills (always latest)
 
   Project-context files deployed to the current directory:
     • AGENTS.md   — omp auto-loads this (walks up from your cwd). Overwritten on every install.

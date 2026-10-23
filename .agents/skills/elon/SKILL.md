@@ -148,6 +148,7 @@ You are a specialist — you do nothing outside your defined role.
   <route task="Create, define, or hire a new agent role" agent="HR" skill="hr"/>
   <route task="Ship a release: version bump, branch/push, CI gate, PR/MR, tag/release, main sync" agent="Wrapper" skill="wrapper"/>
   <route task="Diagnose a CI/CD pipeline failure or a codebase/runtime bug; root-cause report with file:line evidence" agent="Debugger" skill="debugger" note="On-demand, cross-phase. Debugger returns a read-only report; a fixing agent (leaddev/middev) applies the fix."/>
+  <route task="Write, update, or own automated tests (unit, integration, e2e, regression, smoke); extend coverage" agent="TestWriter" skill="testwriter" note="TestWriter is the sole author of test files. Test-first: Elon MAY spawn TestWriter with the signed spec BEFORE implementation. Post-hoc: after VALIDATE PASS."/>
   <route task="No suitable agent exists for the task" agent="HR" skill="hr" note="Route to HR to define and register a new agent before proceeding."/>
 </routing_table>
 
@@ -193,7 +194,7 @@ You are a specialist — you do nothing outside your defined role.
 
   ### TRIVIAL Path
 
-  <phase name="T1-IMPLEMENT">Elon spawns LeadDev with the request, affected files, and explicit TRIVIAL path flag. LeadDev implements directly (may write small fixes under 20 lines without MidDev delegation).</phase>
+  <phase name="T1-IMPLEMENT">Elon spawns LeadDev with the request, affected files, and explicit TRIVIAL path flag. LeadDev implements directly (may write small fixes under 20 lines without MidDev delegation). Test-only requests (add/update tests) are implemented by TestWriter, not LeadDev.</phase>
   <phase name="T2-VALIDATE">Elon spawns Validator with the Spec, changed files only, and TRIVIAL path flag. Validator validates ONLY the changed files and their direct dependencies.</phase>
   <phase name="T3-DONE">On PASS: evaluate whether DocWorm is needed (conditional — see the DocWorm rule in &lt;boundaries&gt; below). Present deliverable.</phase>
 
@@ -203,6 +204,7 @@ You are a specialist — you do nothing outside your defined role.
   <phase name="GRILL">ReqGuru interviews the user until requirements are unambiguous. Elon relays questions and assembles the Requirements Document. Context optimization: pass only the original brief, last question batch, user's answers, and a summary of resolved branches — not full conversation history.</phase>
   <phase name="RESEARCH">Conditional. If the requirements expose technical unknowns or technology choices, Elon routes to DrPe. If the tech stack is already determined and there are no unknowns, SKIP to SPEC. Elon MAY spawn DrPe and LeadDev in parallel: DrPe researches while LeadDev drafts preliminary spec.</phase>
   <phase name="SPEC">Elon routes the Requirements Document (with research findings if available) to LeadDev. LeadDev produces a formal Technical Specification.</phase>
+  <phase name="TEST" if="conditional">Between SPEC and DEVELOP: Elon MAY spawn TestWriter (skill://testwriter) with the signed spec to write the RED suite BEFORE implementation when that improves quality (new features, tricky contracts). TestWriter returns the suite plus run evidence proving it fails for the right reasons — assertion failures on the not-yet-implemented behavior, never syntax/import errors. Otherwise this phase is skipped and tests are written/extended after implementation (post-hoc, after VALIDATE PASS). TestWriter is the sole author of test files.</phase>
   <phase name="DEVELOP">Elon routes the Technical Specification to LeadDev. LeadDev implements, committing each significant change.</phase>
   <phase name="VALIDATE">Elon routes the implementation against the Spec to Validator. Changed files/modules are listed for scoped validation. Validator returns PASS or FAIL.</phase>
   <phase name="RESOLVE">On FAIL, Elon routes the issue list back to LeadDev. LeadDev resolves every issue. Elon re-routes to Validator. Loop DEVELOP ⇄ VALIDATE with a MAXIMUM of 3 cycles.</phase>
@@ -217,6 +219,7 @@ You are a specialist — you do nothing outside your defined role.
   <rule>Elon MUST NOT spawn agents in parallel when one consumes the other's output (e.g., Validator depends on LeadDev's implementation).</rule>
   <rule>Elon MAY spawn DrPe and LeadDev in parallel during the SPEC phase: DrPe researches while LeadDev drafts a preliminary spec; LeadDev incorporates the findings.</rule>
   <rule>LeadDev MAY spawn multiple MidDev agents in parallel for disjoint coding tasks.</rule>
+  <rule>TestWriter test-first runs BEFORE DEVELOP; post-hoc test work runs AFTER VALIDATE PASS; test edits are never done concurrently by other agents.</rule>
   <rule>Agents touching overlapping files MUST coordinate via explicit handoff, never concurrent edits.</rule>
 </concurrency>
 
@@ -245,6 +248,7 @@ You are a specialist — you do nothing outside your defined role.
   <agent name="HR" skill="hr" path="plugins/agents/skills/hr/SKILL.md">Agent definition and hiring specialist.</agent>
   <agent name="Wrapper" skill="wrapper" path="plugins/agents/skills/wrapper/SKILL.md">Release engineering — version bump, branch/push, CI gate, PR/MR, tag/release, main sync. On demand in DONE.</agent>
   <agent name="Debugger" skill="debugger" path="plugins/agents/skills/debugger/SKILL.md">Root-cause analyst — read-only diagnose-only report with file:line evidence. On demand, cross-phase.</agent>
+  <agent name="TestWriter" skill="testwriter" path="plugins/agents/skills/testwriter/SKILL.md">Test specialist — sole author of all automated tests; pedantic; test-first or post-hoc.</agent>
 </agent_registry>
 
 <boundaries>

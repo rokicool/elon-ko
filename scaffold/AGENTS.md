@@ -5,7 +5,7 @@
 This template binds the oh-my-pi session to a gated agent pipeline. Two mechanisms make it **non-ignorable** — the model cannot bypass them by interpreting prompts differently:
 
 1. **The root session IS Elon.** **Plugin A (`elon-ko-gate`)** — an extension-package — binds the interactive session to the orchestrator role: it ships the `enforce-orchestrator` gate (`src/enforce-orchestrator.ts`), two always-apply rules — Definition-of-Done (`rules/ro-definition-of-done.md`) and the Orchestrator Invariant (`rules/ro-orchestrator-invariant.md`), and the bundled Elon framing (`src/append-system.default.md`, re-injected each session as an advisory message and overridable by a project-local `<cwd>/.omp/APPEND_SYSTEM.md`). The gate hard-blocks every tool outside Elon's contract at the root via a `tool_call` handler. Elon routes, gates, and relays; he never implements.
-2. **Team agents are real agent definitions.** Each role is shipped by **Plugin B (`elon-ko-agents`)**, a marketplace entry (`source: ./agents`) whose 10 agent definitions live under `plugins/agents/agents/<name>.md` with `tools:` / `spawns:` frontmatter that oh-my-pi enforces at the harness level. A subagent physically cannot call a tool not in its list, and cannot spawn an agent not in its `spawns` list.
+2. **Team agents are real agent definitions.** Each role is shipped by **Plugin B (`elon-ko-agents`)**, a marketplace entry (`source: ./agents`) whose 11 agent definitions live under `plugins/agents/agents/<name>.md` with `tools:` / `spawns:` frontmatter that oh-my-pi enforces at the harness level. A subagent physically cannot call a tool not in its list, and cannot spawn an agent not in its `spawns` list.
 
 The detailed behavioral protocol for each role lives in its skill at `plugins/agents/skills/<name>/SKILL.md`. The agent definition enforces the **tool boundary**; the skill defines the **procedure**.
 
@@ -34,7 +34,7 @@ Escape hatch: set `OMP_BYPASS_ORCHESTRATOR=1` to disable the root guard (emergen
 
 | Agent | Defined at | Skill (protocol) | Enforced `tools` | Enforced `spawns` | Role |
 |---|---|---|---|---|---|
-| **Elon** | root session (`APPEND_SYSTEM.md` + extension) | `skill://elon` | `read, ask, todo, job, irc`, `write`(.app/PROJECT.md only), `bash`(git only), `task` | `reqguru, drpe, leaddev, validator, purecode, docworm, hr, wrapper, debugger` | Orchestrator — routes, gates, relays. NEVER implements. |
+| **Elon** | root session (`APPEND_SYSTEM.md` + extension) | `skill://elon` | `read, ask, todo, job, irc`, `write`(.app/PROJECT.md only), `bash`(git only), `task` | `reqguru, drpe, leaddev, validator, purecode, docworm, hr, wrapper, debugger, testwriter` | Orchestrator — routes, gates, relays. NEVER implements. |
 | **ReqGuru** | `plugins/agents/agents/reqguru.md` | `skill://reqguru` | `read, write, search, find, mess-send, mess-fail` | — | Requirements analyst — grill-me interviewer. |
 | **DrPe** | `plugins/agents/agents/drpe.md` | `skill://drpe` | `web_search, read, browser, edit, write, mess-send, mess-fail` | — | Super researcher — internet, APIs, deep analysis. |
 | **LeadDev** | `plugins/agents/agents/leaddev.md` | `skill://leaddev` | `read, write, edit, bash, search, find, ast_grep, ast_edit, lsp, debug, task, mess-send, mess-fail` | `middev, hr` | Architect — spec, review, integration. Delegates implementation to MidDev. |
@@ -45,6 +45,7 @@ Escape hatch: set `OMP_BYPASS_ORCHESTRATOR=1` to disable the root guard (emergen
 | **HR** | `plugins/agents/agents/hr.md` | `skill://hr` | `read, write, edit, mess-send, mess-fail` | — | Agent definition & hiring. |
 | **Wrapper** | `plugins/agents/agents/wrapper.md` | `skill://wrapper` | `bash, read, write, edit, find, search` | — | Release engineering — version bump, branch/CI/PR/tag/release, main sync (post-PASS). |
 | **Debugger** | `plugins/agents/agents/debugger.md` | `skill://debugger` | `read, bash, search, find, lsp, debug` | — | Root-cause analyst — diagnoses CI/CD & runtime bugs; read-only report with `file:line` evidence + recommended fix. Spawned on demand; never writes code. |
+| **TestWriter** | `plugins/agents/agents/testwriter.md` | `skill://testwriter` | `read, write, edit, bash, search, find, lsp, mess-send, mess-fail` | — | Test specialist — sole author of automated tests; extremely pedantic. |
 
 `tools` and `spawns` are **enforced** by oh-my-pi (agent-definition frontmatter for subagents; the `enforce-orchestrator` extension for the root). They are not advisory. Downstream agents are headless subagents, so `ask`, `irc`, and `resolve` are unavailable to them regardless.
 

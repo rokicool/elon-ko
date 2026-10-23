@@ -1,29 +1,56 @@
-# PROJECT.md — Wrapper CHANGELOG gate (pre-PR/MR/release)
+# PROJECT — TestWriter Hire + Team-Definition Consistency — COMPLETE
 
-## Workflow
-- Path: FULL — **COMPLETE** (all phases, all gates, v2.8.3 published + synced, gate dogfooded)
-- Phase log: REQUEST (add5c09) → GRILL (b06320a) → SPEC (23e1c63) → DEVELOP (f158004) → VALIDATE (PASS 8/8, cycle 1/3) → DONE (638b9dd, 10d9298) → RELEASE v2.8.3 (PR #23, e1a3afc)
+## Objective (delivered)
+On branch `dev`: (1) verify the elon_ko team definition is consistent end-to-end,
+(2) hire a new specialist **TestWriter** (`testwriter`) — the sole, extremely
+pedantic author of all automated tests — and (3) let Elon organize test-first
+development (tests written before main code when it improves quality).
 
-## Final state — PUBLISHED + SYNCED
-- origin/main = local = tag target `e1a3afc`; tag `v2.8.3` annotated; release https://github.com/rokicool/elon-ko/releases/tag/v2.8.3 (assets + SHA256SUMS); CI green incl. release run 39461896228; pre-feature local range 2537aa2..10d9298 reached origin via the merge; tree clean.
-- Release commit chain: 7c1f731 (changelog entry, FIRST) → 8cf507f (bump) → 9fe7602 (pin sweep) → e1a3afc (merge) → tag. Gate ordering observed: entry precedes branch push/PR/merge/tag/publish in history.
+## Workflow Path: FULL
+| Phase | Status | Artifact / Agent |
+|---|---|---|
+| REQUEST | ✅ | this file (Elon) |
+| Baseline | ✅ PASS | validator `BaselineValidator` — `validate-plugins.sh` ALL CHECKS PASSED (pre-hire, main tree) |
+| Branch | ✅ | wrapper `BranchSetup` (dev existed, clean) + leaddev `FastForwardDev` (dev was 0-unique-commit behind main → `--ff-only` to 3db3b43) |
+| DEVELOP | ✅ 3 parallel, disjoint paths | hr `HireTestWriter` (Plugin B), leaddev `GateTestWriter` (Plugin A), docworm `DocsRosterSweep` (docs) |
+| VALIDATE | ✅ PASS 6/6 | validator `VerifyTestWriterHire` |
+| DONE | ✅ commit 6613d33 | leaddev `CommitHire` + Elon |
 
-## Outcome detail
-- Wrapper skill (both mirrors): `<changelog_gate>` block — changelog entry is a hard precondition of any wrapper PR/MR/tag/release; hybrid-nest format; FR-3 metadata via go/no-go ask (git-author/N-A fallbacks); prevTag..newTag baseline; error-case escalations; trivial-exempt tail maintenance. Template embedded verbatim at CHANGELOG tail.
-- First dogfood entry: CHANGELOG.md:12-28 — `## [v2.8.3] - 2026-10-20`, Engineer: Roman Kiprin <rokicool@gmail.com>, Ticket: N/A, ### Changed / #### Details / #### Affected Files. KaG h3 convention followed per SPEC (wrapper correctly overrode delegation's #### shorthand, evidence B1).
-- NEXT-RELEASE ACs exercised live: AC-2c layout ✓, AC-4 ordering ✓ (entry 11:54:22 < branch 11:55:39 < merge 11:56:59), AC-5 single-ask ✓ (PA-6 only).
-- Docs: README/DEVREADME/AGENTS/PROTO 4/4 accurate (DocWorm, zero edits).
+## Delivered
+- `plugins/agents/agents/testwriter.md` + `plugins/agents/skills/testwriter/SKILL.md`
+  (mirrors `.omp/agents/` + `.agents/skills/` byte-identical). Roster line:
+  `testwriter|pi/task|elon|-|read,write,edit,bash,search,find,lsp,mess-send,mess-fail|plugins/agents/skills/testwriter/SKILL.md|yes`
+- **Test monopoly**: TestWriter is the only agent that creates/modifies/deletes
+  test files (`*.test.*`, `*.spec.*`, `tests/**`, `__tests__/**`, mocks/snapshots/
+  fixtures, test-runner configs). Sticky NEVER-notes added to
+  middev/leaddev/debugger/purecode/wrapper/docworm/validator skills; PROTO Phase 5
+  monopoly line; elon routing_table route. Enforcement layer: prompt-level sticky
+  (skills + PROTO/AGENTS) — the harness enforces tools/spawns, not file paths;
+  no path-level hard block exists in the current mechanism.
+- **Test-first workflow**: PROTO Phase 4b TEST (conditional, between SPEC and
+  DEVELOP — RED suite from signed spec, gate "fails for the right reasons",
+  skip conditions), diagram `SPEC ─→ [TEST] ─→ DEVELOP ⇄ VALIDATE`; T1 test-only
+  requests spawn TestWriter instead of LeadDev; post-VALIDATE coverage mode.
+- **Gate wiring**: `TEAM` += testwriter in `src/enforce-orchestrator.ts` +
+  `src/mess-transport.ts`; framing docs (`src/append-system.default.md`,
+  `scaffold/APPEND_SYSTEM.md`) list testwriter; unit tests updated (pre-hire
+  exception; monopoly starts at hire): 3 new rows, 92/92 pass.
+- **Registries/counts**: marketplace 11 agents / 13 skills; PROTO/AGENTS/devdocs
+  registered; README/.DEVREADME/CHANGELOG swept (historical release entries kept).
 
-## Decision log
-- PA-1..PA-5 (format/metadata/scope/embedding/baseline) + PA-6 (release, defaults) — all agreed 2026-10-20.
-- Validator deviation ruling: +1 blank line cosmetic-acceptable.
+## Verification (validator, independent)
+- `bash scripts/validate-plugins.sh` → ALL CHECKS PASSED (pre-hire baseline, and
+  post-commit re-run on 6613d33).
+- `npm run typecheck` → exit 0. Touched suites → 92/92 (testwriter pattern 3/3).
+- `npm test` full: 148/149 — single pre-existing env failure in untouched
+  `src/subagent-panel.test.ts` (ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING via
+  node_modules pi-tui import; node v26.12.0). Not caused by this change.
 
-## Delegation Log
-- ReqGuru ×2, LeadDev (SPEC), LeadDev/MidDev (DEVELOP f158004), Validator (PASS), DocWorm (docs 4/4), Wrapper (RELEASE v2.8.3 + dogfood) — all COMPLETED.
-
-## Open tails (non-blocking)
-- IDEA-004 (npm-test type-stripping) parked; CI doesn't run npm test.
-- elon_ko.sh count drift ("9 agents + 10 skills" vs 10+12, pre-existing at v2.8.1) — still unclaimed; TRIVIAL DocWorm fix on request.
-
-## Pending Asks
-- (none — PA-1..PA-6 all closed)
+## Notes / follow-ups
+- Commit `6613d33` on `dev` (single commit — roster invariant spans all files;
+  split would break validate-plugins.sh per-commit). Unpushed; `dev` ahead 137 of
+  origin/dev (136 from ff to main + hire). Push is a user decision.
+- omp restart required before `task(agent="testwriter")` resolves (plugin roster
+  loads at startup).
+- T1 test-only changes: TestWriter implements + runs; the commit stays with
+  LeadDev (TestWriter's bash is run-tests/inspect-git only).

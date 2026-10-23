@@ -380,6 +380,15 @@ test("R4.1/R2.2: non-addressable `to` -> rejects, no file written", async () => 
 	});
 });
 
+test("R4.1: testwriter is addressable (new hire) -> delivers in-app", async () => {
+	await withTmpAsync(async (dir) => {
+		const { collab } = stubCollab({ toId: "TestWriter" });
+		const res = await selectAndDeliver(dir, sendInput({ to: "testwriter" }), collab);
+		equal(res.transport, "in-app");
+		equal(res.to, "testwriter");
+	});
+});
+
 test("R4 step1: invalid `from`/`to` (non alnum) -> rejects", async () => {
 	await withTmpAsync(async (dir) => {
 		const { collab } = stubCollab();

@@ -68,6 +68,7 @@ const TEAM = [
   "hr",
   "wrapper",
   "debugger",
+  "testwriter",
 ] as const;
 
 /** Tools the root orchestrator may call unconditionally (static lookup). */

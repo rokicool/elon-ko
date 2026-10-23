@@ -254,6 +254,7 @@ describe("handler task §2.3: ALLOW rows (batch form reads tasks[].agent)", () =
     [{ tasks: [{ agent: "leaddev", task: "x" }, { agent: "docworm", task: "y" }] }, "multiple valid agents"],
     [{ tasks: [{ agent: "DrPe", task: "x" }] }, "agent case-insensitive (DrPe)"],
     [{ tasks: [{ agent: " WRAPPER ", task: "x" }] }, "agent trimmed (WRAPPER)"],
+    [{ tasks: [{ agent: "testwriter", task: "x" }] }, "testwriter is a team agent (new hire)"],
     [{ agent: "hr" }, "top-level agent form — backward compat"],
     [{ tasks: [], agent: "reqguru" }, "empty tasks falls through to top-level form"],
   ];
@@ -271,6 +272,7 @@ describe("handler task §2.3: BLOCK rows (non-team or missing agent)", () => {
     // ALLOWED when tasks[].agent is valid. The BLOCK below proves the inverse.
     [{ tasks: [{ agent: "middev", task: "x" }] }, "team agents", "middev not in orchestrator TEAM (excluded by design)"],
     [{ tasks: [{ agent: "scout", task: "x" }] }, "team agents", "scout is not a registered team agent"],
+    [{ tasks: [{ agent: "intern", task: "x" }] }, "testwriter", "reason enumerates testwriter in the team roster"],
     [{ tasks: [{ agent: "task", task: "x" }] }, "team agents", "default worker 'task' is not a team agent"],
     [{ tasks: [{ task: "no agent field" }] }, "(none)", "task item missing agent ⇒ (none)"],
     [{ tasks: [{ agent: "", task: "x" }] }, "(none)", "task item with empty agent ⇒ (none)"],

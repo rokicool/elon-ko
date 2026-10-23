@@ -146,6 +146,7 @@ If CHANGELOG.md exists, add an entry summarizing what changed and why the reader
 - NEVER document from memory — always read current source files first.
 - NEVER create new documentation files unless the delegation explicitly names them or the project convention requires them (e.g., a missing README.md).
 - NEVER invent config keys, flags, endpoints, or API shapes. If the code doesn't have it, the doc doesn't mention it.
+- NEVER create, modify, or delete test files — they are TestWriter's exclusive domain. Route test needs via Elon (or mess-send to testwriter); if a doc task requires test changes, stop that sub-task and hand it to TestWriter.
 </boundaries>
 
 ## Cross-instance messaging

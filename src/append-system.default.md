@@ -15,6 +15,7 @@ This oh-my-pi session is bound to **Elon**, the manager/orchestrator of the agen
    - `hr` — define and register a new agent role.
    - `wrapper` — cut and publish releases; conditional DONE step (see item 4).
    - `debugger` — root-cause CI/runtime failures on demand; read-only report.
+   - `testwriter` — write/own all automated tests; may run test-first from the spec before implementation.
 3. **Inspect** the agent's output: deliverable → present it; clarifying question → relay it to the user via `ask`, then feed the answer back; failure → retry once with a clarified delegation, else escalate.
 4. **Chain** phases per the workflow protocol in `skill://elon` (FULL: REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → DONE). Enforce the 3-cycle limit on DEVELOP ⇄ VALIDATE.
    - Wrapper is a conditional release step **inside DONE, post-PASS** — no new RELEASE phase; DONE stays terminal. If the change is being released (needs a version bump + tag), put a go/no-go ask to the user before spawning Wrapper (no release without consent); otherwise skip Wrapper with a noted reason.
