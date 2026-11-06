@@ -9,6 +9,30 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v2.9.1] - 2026-11-06
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Changed
+
+- **`purecode` agent moved up a model tier: `pi/task` → `pi/slow`.** The Code Purity Gate now runs on the strongest-reasoning tier (alongside `drpe` and `leaddev`) instead of the strong-general tier (`middev`, `reqguru`, `validator`, `debugger`, `testwriter`). The `model:` field changed in the canonical agent definition and its byte-identical `.omp/agents/` mirror; the README model-mapping table + `modelRoles` example and the `scaffold/PROTO.md` roster row were swept to match. No shipped extension/API code, marketplace registry shape, or roster/skill counts changed (11 agents / 13 skills, unchanged).
+
+- Version bumped to **`2.9.1`** (semver PATCH — single agent-frontmatter model-tier change + docs/pin sync; no breaking changes). `package.json#version`, the `package-lock.json` root version, and both `.omp-plugin/marketplace.json` version fields (`metadata.version` + `plugins[].version`) bumped in lockstep to `2.9.1`. Installer default pin (`elon_ko.sh` `OMP_AGENT_REF`, now `v2.9.1`) and the `README.md`/`.DEVREADME.md` install-example pins swept to match.
+
+#### Details
+
+Version 2.9.1 is a semver PATCH release. The functional delta is a single agent-frontmatter change — `purecode`'s `model:` field moves from `pi/task` to `pi/slow`, giving the post-validation purity gate the strongest-reasoning tier — with every mapping surface (README table/example, scaffold roster row, `.omp/` mirror) swept in the same range so no surface names a stale tier. Commits in this range carry `[TRIVIAL]`/`[PROTO]` prefixes rather than Conventional Commits, so the bump type was derived from the diff content (one model-tier tweak + docs/pin sync; no feature, no breaking change) instead of message prefixes. The same range records the repo's local guardrail opt-out workflow in `.app/`: GRILL requirements (`REQ.md` — all plugin guardrails dormant in this dev repo via the `.omp/elon.json` `enabled:false` marker, mechanism at `optedIn()` in `src/enforce-orchestrator.ts`, accepted feature loss documented) and DONE logs (`PROJECT.md`) — repo-local protocol bookkeeping with zero shipped-plugin changes. Count surfaces (11 agents / 13 skills) verified current and unchanged.
+
+#### Affected Files
+
+- `.app/` — `.app/REQ.md` (local guardrail opt-out: GRILL requirements, resolved decisions, acceptance checks), `.app/PROJECT.md` (GRILL/DONE protocol logs)
+- `.omp/` — `.omp/agents/purecode.md` (model flip, byte-identical mirror)
+- `.omp-plugin/` — `.omp-plugin/marketplace.json` (`metadata.version` + `plugins[].version` lockstep)
+- root — `.DEVREADME.md`, `CHANGELOG.md`, `README.md` (model-mapping table + `modelRoles` example + install-example pins), `elon_ko.sh` (installer `OMP_AGENT_REF` default + usage), `package.json`, `package-lock.json`
+- `plugins/` — `plugins/agents/agents/purecode.md` (canonical agent definition, model flip)
+- `scaffold/` — `scaffold/PROTO.md` (roster row model tier)
+
 ## [2.9.0] - 2026-10-22
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>
