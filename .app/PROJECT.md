@@ -9,13 +9,17 @@
 - Item 3 (flaw audit): ~35 flaws, 5 HIGH (A1, A2, A3, B1, D1) — full report at history://FlawAudit.
 - Commits: `51e1a25` [PROTO] GRILL gate · `ea873c7` [PROTO] DONE gate.
 
-## Workflow 2 — 2026-11-06: purecode agent model → pi/slow — COMPLETE (TRIVIAL path)
+## Workflow 2 — 2026-11-06: purecode model flip + release — COMPLETE (TRIVIAL + RELEASE)
 
-- Request (verbatim): "I need you to use pi/slow for purecode agent"
-- IMPLEMENT: PureModelFlip (leaddev) — commit `5499359` [TRIVIAL], 4 files / 7 lines: both `purecode.md` copies (:5), `scaffold/PROTO.md:24` roster, `README.md:262-263` tier table + `:281-282` modelRoles comments (5th location found by leaddev sweep). Mirror byte-identical; `scripts/validate-plugins.sh` exit 0. Note: validator script does NOT enforce roster model-column vs frontmatter — PROTO update was convention-correctness.
-- VALIDATE: PureModelValidate (validator) — PASS, 6/6 checks (scope, hunks, residual grep zero, mirror identity, drift gate, collateral none, frontmatter integrity). Claim: VERIFIED.
-- DONE: Wrapper SKIPPED — no release requested; commit sits on local `main`, unpushed (repo flow is PR-based from `dev`; push/PR is user's call). DocWorm SKIPPED — README tier table updated inline as part of the change; no separate docs warranted.
-- Effect: purecode spawns now resolve via the `pi/slow` role alias (strongest-reasoning tier, per-user authenticated best). Takes effect on next purecode spawn.
+- Request (verbatim): "I need you to use pi/slow for purecode agent" → commit `5499359` [TRIVIAL]; validator PASS (6/6).
+- Request (verbatim): "commit, push, do release" — explicit consent recorded in chat 2026-11-06.
+- RELEASE: ReleaseShip (wrapper) — **v2.9.1** (PATCH, bump derived from content: agent frontmatter + docs, no API/registry change):
+  - Tag `v2.9.1` → `860d761`; release: https://github.com/rokicool/elon-ko/releases/tag/v2.9.1
+  - CI green pre-tag (run 42264599081) and on release (run 42264788589, tag==package.json assertion passed).
+  - Version lockstep: package.json, package-lock ×2, marketplace.json, installer pin, README/.DEVREADME pins → 2.9.1. CHANGELOG entry per gate format.
+  - Sync: local main == origin/main == v2.9.1 == `860d761`; tree clean; assets `elon-ko-gate-2.9.1.tgz`, `elon-ko-agents-2.9.1.tar.gz`, SHA256SUMS.
+  - Convention notes: release.yml publishes on tag push — wrapper extended body via `gh release edit`; changelog header follows template (`v` prefix), flagging 2.9.0 as the deviation.
+- Commits this workflow: `5499359` [TRIVIAL] · `860d761` [RELEASE] · `8e70c5d` [PROTO].
 
 ## Pending Asks
 
