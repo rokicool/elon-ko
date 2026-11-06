@@ -1,42 +1,21 @@
-# PROJECT: elon-ko plugin maintenance — COMPLETE
+# PROJECT: elon-ko plugin maintenance
 
-- Date: 2026-11-05
 - Seat: Elon (orchestrator)
-- Path: FULL → collapsed to TRIVIAL per user scope answers; all three request items dispositioned
 
-## Request (verbatim)
+## Workflow 1 — 2026-11-05: wait access / guardrail removal / flaw audit — COMPLETE
 
-> I need to do three things
-> - allow Elon to have access to the 'wait' tool
-> - remove plugin guardrails
-> - analyze the workflow and find as many flaws as possible
+- Item 1 (`wait`): MOOT per user (Q5 full removal wins).
+- Item 2 (guardrails): local opt-out `.omp/elon.json` = `{"enabled": false}`; validator PASS; gate proven dormant mid-session.
+- Item 3 (flaw audit): ~35 flaws, 5 HIGH (A1, A2, A3, B1, D1) — full report at history://FlawAudit.
+- Commits: `51e1a25` [PROTO] GRILL gate · `ea873c7` [PROTO] DONE gate.
 
-## Outcome
+## Workflow 2 — 2026-11-06: purecode agent model → pi/slow — COMPLETE (TRIVIAL path)
 
-| Item | Disposition | Evidence |
-|---|---|---|
-| 1 — `wait` access | MOOT — skipped per user (Q5: full removal wins) | PA-1 agreed; REQ.md resolved-decisions table |
-| 2 — remove guardrails | DONE — local opt-out, zero shipped-code change | `.omp/elon.json` = `{"enabled": false}`; validator PASS; live probe: non-git bash executes (gate dormant mid-session) |
-| 3 — workflow flaw analysis | DONE — audit delivered | FlawAudit (leaddev, read-only): 5 groups A–E, ~35 flaws (auditor count 31), 5 HIGH; full text at history://FlawAudit |
-
-## Phase Log
-
-| Phase | Result |
-|---|---|
-| REQUEST | PROJECT.md created |
-| GRILL | GrillScope round-1 guardrail map (G1–G11) + 5 questions; PA-1 answered; GrillScope2 confirmed synthesis, wrote REQ.md (mess-transport dormancy added to accepted losses; AC1 git-tracking caveat) |
-| ANALYZE | FlawAudit report (item 3) — top priorities: B1 (wait-block), A1/A2 (dead-end HR escalation, 4 inconsistent team lists), A3/D6 (ungated advisory injection), A7 (ideas opt-out kills gate), C1–C4 (dot-token semantics), D1 (frontmatter/harness drift), D2/D3 (prose-only per-agent restrictions) |
-| IMPLEMENT | OptOutImpl (leaddev, TRIVIAL T1): AC1 `git ls-files .omp/elon.json` empty → flipped marker to `{"enabled": false}`; no other file touched |
-| VALIDATE | OptOutValidate (validator, TRIVIAL T2): PASS — AC1 empty, JSON exact, tree clean, AC2 DEFERRED by definition |
-| DONE | Wrapper SKIPPED (internal-only, untracked config — nothing to release, no version bump); DocWorm SKIPPED (no public surface changed) |
-
-## Commits
-
-- `51e1a25` [PROTO] GRILL gate: REQ.md + PROJECT.md
-
-## Next session (this repo)
-
-AC2 observables: root tool calls unrestricted (already proven mid-session via probe), `.` passthrough without pending-ask injection, `/idea`+`/ideas` no-op. Note flaw A3: the advisory framing may still inject claiming restrictions (injection lacks an optedIn check) — expected, cosmetic; the enforcement behind it is dormant.
+- Request (verbatim): "I need you to use pi/slow for purecode agent"
+- IMPLEMENT: PureModelFlip (leaddev) — commit `5499359` [TRIVIAL], 4 files / 7 lines: both `purecode.md` copies (:5), `scaffold/PROTO.md:24` roster, `README.md:262-263` tier table + `:281-282` modelRoles comments (5th location found by leaddev sweep). Mirror byte-identical; `scripts/validate-plugins.sh` exit 0. Note: validator script does NOT enforce roster model-column vs frontmatter — PROTO update was convention-correctness.
+- VALIDATE: PureModelValidate (validator) — PASS, 6/6 checks (scope, hunks, residual grep zero, mirror identity, drift gate, collateral none, frontmatter integrity). Claim: VERIFIED.
+- DONE: Wrapper SKIPPED — no release requested; commit sits on local `main`, unpushed (repo flow is PR-based from `dev`; push/PR is user's call). DocWorm SKIPPED — README tier table updated inline as part of the change; no separate docs warranted.
+- Effect: purecode spawns now resolve via the `pi/slow` role alias (strongest-reasoning tier, per-user authenticated best). Takes effect on next purecode spawn.
 
 ## Pending Asks
 
