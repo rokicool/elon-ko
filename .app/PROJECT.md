@@ -1,56 +1,40 @@
-# PROJECT — TestWriter Hire + Team-Definition Consistency — COMPLETE
+# PROJECT: elon-ko plugin maintenance
 
-## Objective (delivered)
-On branch `dev`: (1) verify the elon_ko team definition is consistent end-to-end,
-(2) hire a new specialist **TestWriter** (`testwriter`) — the sole, extremely
-pedantic author of all automated tests — and (3) let Elon organize test-first
-development (tests written before main code when it improves quality).
+- Date: 2026-11-05
+- Seat: Elon (orchestrator)
+- Path: FULL → items collapsed to TRIVIAL (local opt-out, zero code change); item 1 moot; item 3 delivered
 
-## Workflow Path: FULL
-| Phase | Status | Artifact / Agent |
+## Request (verbatim)
+
+> I need to do three things
+> - allow Elon to have access to the 'wait' tool
+> - remove plugin guardrails
+> - analyze the workflow and find as many flaws as possible
+
+## Resolved decisions (PA-1, answered 2026-11-05 via ask form)
+
+| Q | Decision | Consequence |
 |---|---|---|
-| REQUEST | ✅ | this file (Elon) |
-| Baseline | ✅ PASS | validator `BaselineValidator` — `validate-plugins.sh` ALL CHECKS PASSED (pre-hire, main tree) |
-| Branch | ✅ | wrapper `BranchSetup` (dev existed, clean) + leaddev `FastForwardDev` (dev was 0-unique-commit behind main → `--ff-only` to 3db3b43) |
-| DEVELOP | ✅ 3 parallel, disjoint paths | hr `HireTestWriter` (Plugin B), leaddev `GateTestWriter` (Plugin A), docworm `DocsRosterSweep` (docs) |
-| VALIDATE | ✅ PASS 6/6 | validator `VerifyTestWriterHire` |
-| DONE | ✅ commit 6613d33 | leaddev `CommitHire` + Elon |
+| Q1 grant mechanism | per-project config | MOOTED by Q5 — item 1 skipped |
+| Q2 wait semantics | unconditional | MOOTED by Q5 — item 1 skipped |
+| Q3 removal target | **local opt-out only** | zero code change; OMP_BYPASS_ORCHESTRATOR=1 or flip `.omp/elon.json` opt-in marker |
+| Q4 removal scope | tool gating only | subsumed by Q3(a): opt-out disables gate + dot-agreement + ideas (accepted tradeoff) |
+| Q5 sequencing | **full removal wins** | item 1 (`wait` grant) is MOOT — skipped with noted reason |
 
-## Delivered
-- `plugins/agents/agents/testwriter.md` + `plugins/agents/skills/testwriter/SKILL.md`
-  (mirrors `.omp/agents/` + `.agents/skills/` byte-identical). Roster line:
-  `testwriter|pi/task|elon|-|read,write,edit,bash,search,find,lsp,mess-send,mess-fail|plugins/agents/skills/testwriter/SKILL.md|yes`
-- **Test monopoly**: TestWriter is the only agent that creates/modifies/deletes
-  test files (`*.test.*`, `*.spec.*`, `tests/**`, `__tests__/**`, mocks/snapshots/
-  fixtures, test-runner configs). Sticky NEVER-notes added to
-  middev/leaddev/debugger/purecode/wrapper/docworm/validator skills; PROTO Phase 5
-  monopoly line; elon routing_table route. Enforcement layer: prompt-level sticky
-  (skills + PROTO/AGENTS) — the harness enforces tools/spawns, not file paths;
-  no path-level hard block exists in the current mechanism.
-- **Test-first workflow**: PROTO Phase 4b TEST (conditional, between SPEC and
-  DEVELOP — RED suite from signed spec, gate "fails for the right reasons",
-  skip conditions), diagram `SPEC ─→ [TEST] ─→ DEVELOP ⇄ VALIDATE`; T1 test-only
-  requests spawn TestWriter instead of LeadDev; post-VALIDATE coverage mode.
-- **Gate wiring**: `TEAM` += testwriter in `src/enforce-orchestrator.ts` +
-  `src/mess-transport.ts`; framing docs (`src/append-system.default.md`,
-  `scaffold/APPEND_SYSTEM.md`) list testwriter; unit tests updated (pre-hire
-  exception; monopoly starts at hire): 3 new rows, 92/92 pass.
-- **Registries/counts**: marketplace 11 agents / 13 skills; PROTO/AGENTS/devdocs
-  registered; README/.DEVREADME/CHANGELOG swept (historical release entries kept).
+- Accepted consequence: `.`-agreement, `/idea`, `/ideas`, idea reminders, and session framing go dormant in this project.
+- Known interaction with flaw audit: A3 — advisory framing still injects when dormant (no optedIn check on injection), so next session may still show stale restriction text; gate will be dormant regardless. A7 — `.omp/elon.json` edits are all-or-nothing (`enabled === true` strict).
 
-## Verification (validator, independent)
-- `bash scripts/validate-plugins.sh` → ALL CHECKS PASSED (pre-hire baseline, and
-  post-commit re-run on 6613d33).
-- `npm run typecheck` → exit 0. Touched suites → 92/92 (testwriter pattern 3/3).
-- `npm test` full: 148/149 — single pre-existing env failure in untouched
-  `src/subagent-panel.test.ts` (ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING via
-  node_modules pi-tui import; node v26.12.0). Not caused by this change.
+## Phase Status
 
-## Notes / follow-ups
-- Commit `6613d33` on `dev` (single commit — roster invariant spans all files;
-  split would break validate-plugins.sh per-commit). Unpushed; `dev` ahead 137 of
-  origin/dev (136 from ff to main + hire). Push is a user decision.
-- omp restart required before `task(agent="testwriter")` resolves (plugin roster
-  loads at startup).
-- T1 test-only changes: TestWriter implements + runs; the commit stays with
-  LeadDev (TestWriter's bash is run-tests/inspect-git only).
+| Phase | Status |
+|---|---|
+| REQUEST | done |
+| ANALYZE (item 3) | **done** — FlawAudit report delivered; full text at history://FlawAudit. 5 groups (A prose/enforcement contradictions, B concurrency, C protocol holes, D enforcement gaps, E operational), top priorities: B1, A1/A2, A3/D6, A7, C1–C4, D1, D2/D3 |
+| GRILL | round-2 in progress — GrillScope2 (reqguru) confirming synthesis + writing .app/REQ.md |
+| IMPLEMENT | pending — TRIVIAL path (leaddev): local opt-out flip |
+| VALIDATE | pending |
+| DONE | pending |
+
+## Pending Asks
+
+- [PA-1] 2026-11-05T00:00:00Z origin=elon status=agreed | "Approve scope decisions for items 1–2 (Q1 grant, Q2 wait semantics, Q3 removal target, Q4 removal scope, Q5 sequencing)"
