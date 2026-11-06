@@ -259,8 +259,8 @@ The mapping is fixed in the distribution:
 
 | Role alias | Agents | Intent |
 |---|---|---|
-| `pi/slow` | `drpe`, `leaddev` | Strongest reasoning (research, architecture). |
-| `pi/task` | `middev`, `reqguru`, `validator`, `purecode`, `debugger`, `testwriter` | Strong general (implementation, clarification, auditing). |
+| `pi/slow` | `drpe`, `leaddev`, `purecode` | Strongest reasoning (research, architecture). |
+| `pi/task` | `middev`, `reqguru`, `validator`, `debugger`, `testwriter` | Strong general (implementation, clarification, auditing). |
 | `pi/smol` | `docworm`, `hr`, `wrapper` | Small / fast (docs, agent defs, release tooling). |
 
 **Works out of the box — no config needed.** The `pi/<role>` aliases resolve
@@ -278,8 +278,8 @@ a `modelRoles` block into config and the aliases resolve to the models you named
 
 ```yaml
 modelRoles:
-  slow: anthropic/claude-opus-4-5:high   # drpe, leaddev
-  task: anthropic/claude-sonnet-4-5      # middev, reqguru, validator, purecode, debugger, testwriter
+  slow: anthropic/claude-opus-4-5:high   # drpe, leaddev, purecode
+  task: anthropic/claude-sonnet-4-5      # middev, reqguru, validator, debugger, testwriter
   smol: openai/gpt-4.1-mini              # docworm, hr, wrapper
 ```
 

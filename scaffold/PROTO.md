@@ -21,7 +21,7 @@ reqguru|pi/task|elon|-|read,write,search,find,mess-send,mess-fail|plugins/agents
 drpe|pi/slow|elon|-|web_search,read,browser,edit,write,mess-send,mess-fail|plugins/agents/skills/drpe/SKILL.md|yes
 leaddev|pi/slow|elon|middev,hr|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,task,mess-send,mess-fail|plugins/agents/skills/leaddev/SKILL.md|yes
 validator|pi/task|elon|-|read,search,find,lsp,bash,mess-send,mess-fail|plugins/agents/skills/validator/SKILL.md|yes
-purecode|pi/task|elon|-|read,search,find,lsp,ast_grep,bash,mess-send,mess-fail|plugins/agents/skills/purecode/SKILL.md|yes
+purecode|pi/slow|elon|-|read,search,find,lsp,ast_grep,bash,mess-send,mess-fail|plugins/agents/skills/purecode/SKILL.md|yes
 docworm|pi/smol|elon|-|read,write,edit,search,find,mess-send,mess-fail|plugins/agents/skills/docworm/SKILL.md|yes
 hr|pi/smol|elon,leaddev|-|read,write,edit,mess-send,mess-fail|plugins/agents/skills/hr/SKILL.md|yes
 wrapper|pi/smol|elon|-|bash,read,write,edit,find,search|plugins/agents/skills/wrapper/SKILL.md|no

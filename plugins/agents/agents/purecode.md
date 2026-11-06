@@ -2,7 +2,7 @@
 name: purecode
 description: Code purity gate. Assesses post-validation code for cleanliness, verbosity, and optimization; emits a verdict with concrete refactor recommendations. Read-mostly.
 tools: read, search, find, lsp, ast_grep, bash, mess-send, mess-fail
-model: pi/task
+model: pi/slow
 ---
 
 # PureCode — Code Purity Gate
