@@ -2,33 +2,32 @@
 
 ## Overview
 
-Every feature or software request flows through gated phases. Each agent operates strictly within its role, **enforced at the harness level** (see [AGENTS.md](AGENTS.md) §Enforcement layers). Team agents ship from **Plugin B (`elon-ko-agents`)** as definitions under `plugins/agents/agents/<name>.md` with enforced `tools:` / `spawns:` frontmatter; their behavioral protocol lives in their skill at `plugins/agents/skills/<name>/SKILL.md`. When the protocol says "Elon spawns X," it means `task(agent="<name>", context="skill://<name>", assignment="...")` — `agent` enforces the tool boundary, `context` injects the skill protocol, and each agent runs in its own isolated context window. The root session **is** Elon; he is never spawned.
+Every feature or software request flows through gated phases. Each agent operates strictly within its role, declared in its definition. Team agents are defined at `.omp/agents/<name>.md` with `tools:` / `spawns:` frontmatter; their behavioral protocol lives in their skill at `.agents/skills/<name>/SKILL.md`. When the protocol says "Elon spawns X," it means `task(agent="<name>", context="skill://<name>", assignment="...")` — `agent` applies the tool boundary, `context` injects the skill protocol, and each agent runs in its own isolated context window. The root session **is** Elon; he is never spawned.
 
-**Enforcement note:** the root session's tool set is hard-restricted by the `enforce-orchestrator` gate shipped by **Plugin A** (`src/enforce-orchestrator.ts`), and each team agent's tools/spawns are hard-restricted by its Plugin B agent-definition frontmatter (`plugins/agents/agents/<name>.md`). These are runtime blocks the model cannot override. For agent definitions, tool policies, error recovery, and concurrency rules, see [AGENTS.md](AGENTS.md). Escape hatch: `OMP_BYPASS_ORCHESTRATOR=1`.
+**Boundary note:** each team agent's tool boundary is declared in its definition frontmatter (`.omp/agents/<name>.md` `tools:` / `spawns:`). This repo ships definitions and protocol only — no runtime gate machinery; that is the consumer runtime's concern. For agent definitions and tool policies, see each definition and skill.
 
 ---
 
 ## Canonical Agent Roster (single source of truth)
 
-> Every consumer — the gate `TEAM` (`src/enforce-orchestrator.ts`), `mess-transport.ts`
-> `ADDRESSABLE`, `skill://elon` `<agent_registry>`, each agent's `tools:` frontmatter, and
-> each skill's `<allowed>` — MUST agree with the attributes declared here.
-> `scripts/validate-plugins.sh` enforces it; drift is a CI failure.
+> Every consumer — omp's native agent discovery, each agent's `tools:`/`spawns:` frontmatter,
+> `skill://elon` `<agent_registry>`, and each skill's `<allowed>` block — MUST agree with the
+> attributes declared here.
 
 ```elon-ko-roster
 # name | model | spawner(csv) | spawns(csv or -) | tools(csv) | skill | mess(yes/no)
-reqguru|pi/task|elon|-|read,write,search,find,mess-send,mess-fail|plugins/agents/skills/reqguru/SKILL.md|yes
-drpe|pi/slow|elon|-|web_search,read,browser,edit,write,mess-send,mess-fail|plugins/agents/skills/drpe/SKILL.md|yes
-leaddev|pi/slow|elon|middev,hr|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,task,mess-send,mess-fail|plugins/agents/skills/leaddev/SKILL.md|yes
-validator|pi/task|elon|-|read,search,find,lsp,bash,mess-send,mess-fail|plugins/agents/skills/validator/SKILL.md|yes
-purecode|pi/slow|elon|-|read,search,find,lsp,ast_grep,bash,mess-send,mess-fail|plugins/agents/skills/purecode/SKILL.md|yes
-docworm|pi/smol|elon|-|read,write,edit,search,find,mess-send,mess-fail|plugins/agents/skills/docworm/SKILL.md|yes
-hr|pi/smol|elon,leaddev|-|read,write,edit,mess-send,mess-fail|plugins/agents/skills/hr/SKILL.md|yes
-wrapper|pi/smol|elon|-|bash,read,write,edit,find,search|plugins/agents/skills/wrapper/SKILL.md|no
-debugger|pi/task|elon|-|read,bash,search,find,lsp,debug|plugins/agents/skills/debugger/SKILL.md|no
-middev|pi/task|leaddev|-|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,mess-send,mess-fail|plugins/agents/skills/middev/SKILL.md|yes
-testwriter|pi/task|elon|-|read,write,edit,bash,search,find,lsp,mess-send,mess-fail|plugins/agents/skills/testwriter/SKILL.md|yes
-elon|-|self|-|read,ask,todo,job,irc,write,bash,task|plugins/agents/skills/elon/SKILL.md|main
+reqguru|pi/task|elon|-|read,write,search,find,mess-send,mess-fail|.agents/skills/reqguru/SKILL.md|yes
+drpe|pi/slow|elon|-|web_search,read,browser,edit,write,mess-send,mess-fail|.agents/skills/drpe/SKILL.md|yes
+leaddev|pi/slow|elon|middev,hr|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,task,mess-send,mess-fail|.agents/skills/leaddev/SKILL.md|yes
+validator|pi/task|elon|-|read,search,find,lsp,bash,mess-send,mess-fail|.agents/skills/validator/SKILL.md|yes
+purecode|pi/slow|elon|-|read,search,find,lsp,ast_grep,bash,mess-send,mess-fail|.agents/skills/purecode/SKILL.md|yes
+docworm|pi/smol|elon|-|read,write,edit,search,find,mess-send,mess-fail|.agents/skills/docworm/SKILL.md|yes
+hr|pi/smol|elon,leaddev|-|read,write,edit,mess-send,mess-fail|.agents/skills/hr/SKILL.md|yes
+wrapper|pi/smol|elon|-|bash,read,write,edit,find,search|.agents/skills/wrapper/SKILL.md|no
+debugger|pi/task|elon|-|read,bash,search,find,lsp,debug|.agents/skills/debugger/SKILL.md|no
+middev|pi/task|leaddev|-|read,write,edit,bash,search,find,ast_grep,ast_edit,lsp,debug,mess-send,mess-fail|.agents/skills/middev/SKILL.md|yes
+testwriter|pi/task|elon|-|read,write,edit,bash,search,find,mess-send,mess-fail|.agents/skills/testwriter/SKILL.md|yes
+elon|-|self|-|read,ask,todo,job,irc,write,bash,task|.agents/skills/elon/SKILL.md|main
 ```
 
 ---
@@ -335,24 +334,18 @@ Same as the Full Path Phase 6, with the same conditional DocWorm rules.
 
 ## Hiring a Distributed Agent
 
-Extending the DISTRIBUTED team (in this development repo) is a multi-agent flow — not an HR-only act. HR creates the definition + skill and registers the docs; LeadDev wires the code allowlists; Wrapper ships the release.
+Extending the DISTRIBUTED team (in this development repo) is a multi-agent flow — not an HR-only act. HR creates the definition + skill and registers the docs; the roster table above and the Agent-to-Phase Map are updated together.
 
 **Registration surface** — every touchpoint a new distributed agent needs:
 
 | Touchpoint | File | Owner |
 |------------|------|-------|
-| Agent definition | `plugins/agents/agents/<name>.md` | HR |
-| Skill | `plugins/agents/skills/<name>/SKILL.md` | HR |
-| Local mirror (dev session) | `.omp/agents/<name>.md` + `.agents/skills/<name>/SKILL.md` | HR |
-| Marketplace roster | `.omp-plugin/marketplace.json` | HR |
-| Agent Index | `scaffold/AGENTS.md` | HR (mandatory) |
+| Agent definition | `.omp/agents/<name>.md` | HR |
+| Skill | `.agents/skills/<name>/SKILL.md` | HR |
 | Phase Map | `scaffold/PROTO.md` | HR (mandatory) |
-| Root spawn allowlist | `src/enforce-orchestrator.ts` `TEAM` | LeadDev |
-| Messaging roster | `src/mess-transport.ts` `TEAM` | LeadDev (if mess-capable) |
-| Version + release | `package.json` + `marketplace.json` + tag | Wrapper |
 | Runtime registration | omp restart | user |
 
-**Drift rule.** The hire writes the dev source (`plugins/`) AND the local mirror (`.omp/` + `.agents/`) together, byte-identical, so they cannot diverge at hire time; on release the local mirror is re-synced from the released plugin. The fully drift-free alternative is `omp plugin link`, where the dev session reads `plugins/` directly and no mirror is needed.
+**Drift rule.** Each definition and skill has exactly one canonical copy (`.omp/agents/`, `.agents/skills/`); updates are made in place — there is no mirror to keep in sync.
 
 ---
 
@@ -379,4 +372,4 @@ Extending the DISTRIBUTED team (in this development repo) is a multi-agent flow 
 
 ## Harness Precedence
 
-The enforcement mechanisms in [AGENTS.md](AGENTS.md) (the `enforce-orchestrator` extension and agent-definition `tools:` / `spawns:` frontmatter) are harness-level runtime restrictions — a blocked tool throws, and the model cannot override that by reading the system prompt differently. Prompt-level layers (`RULES.md`, `APPEND_SYSTEM.md`, `AGENTS.md`, this file) are advisory and reinforce the enforced invariants.
+Each agent's `tools:` / `spawns:` frontmatter (`.omp/agents/<name>.md`) declares its tool boundary. Prompt-level layers (this file, the skills) are advisory and reinforce the declared boundaries.
