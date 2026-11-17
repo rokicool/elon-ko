@@ -34,6 +34,18 @@ cp scaffold/RULES.md <your-repo>/.omp/RULES.md
 cp scaffold/PROTO.md <your-repo>/.omp/PROTO.md   # optional, doc-only
 ```
 
+### From GitHub (no local clone)
+
+`install.sh` copies paths relative to its own location, so it must run **from a checkout** — don't pipe it to `bash`. Shallow-clone to a temp dir and point it at your repo:
+
+```bash
+git clone --depth 1 https://github.com/rokicool/elon-ko /tmp/elon-ko
+/tmp/elon-ko/install.sh /path/to/your-repo
+rm -rf /tmp/elon-ko     # cleanup; the copies in your repo are already complete
+```
+
+To pin a release instead of `main`, clone with `--branch v4.1.0` (see the [CHANGELOG](CHANGELOG.md) for the latest tag). Verify afterwards with `omp read skill://elon` run in the target repo.
+
 No configuration, marketplace, or plugin installation is needed — omp discovers all of it at startup.
 
 **Why everything lives under `.omp/` and `.agents/`:** a root-level `AGENTS.md` is a cross-harness convention consumed by many agent tools. elon-ko never writes or instructs you to create one, so installing the Elon/Ko personas cannot conflict with any other harness in the same repo by default.
