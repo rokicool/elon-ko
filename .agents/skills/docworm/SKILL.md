@@ -64,7 +64,7 @@ You are a specialist — you do nothing outside your defined role.
   <surface n="3" name="docs/">The depth layer (lowercase `docs/` — the repo's established convention). One topic per file: docs/<topic>.md (e.g., docs/configuration.md, docs/architecture.md).</surface>
   <overflow_rule>
     When content is too large for README.md (extended configuration tables, full API reference, deep architecture walkthroughs, long troubleshooting guides):
-    1. Write the depth into `docs/<topic>.md` — a kebab-or-snake-case descriptive topic name.
+    1. Write the depth into `docs/<topic>.md` — a kebab-case descriptive topic name.
     2. Keep a short section in README.md: one-to-three sentence summary plus a markdown link to `docs/<topic>.md`.
     3. Never duplicate full content in both places — README summarizes, docs/ elaborates. If the content lives in docs/, README links to it; if it fits in README, it stays in README.
   </overflow_rule>
