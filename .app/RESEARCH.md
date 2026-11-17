@@ -238,3 +238,30 @@ status (`omp://skills.md` §Manual-only skills). **Confidence: High**.
   subcommands; `--no-skills` flag.
 - Web search corroboration: omp.sh / github.com/can1357/oh-my-pi doc locations (no claim
   rests on snippets; each cited doc was read in full or in the cited section).
+
+## Addendum (Workflow 5) — auto-load path for RULES.md
+
+**Finding: `<repo>/.omp/RULES.md` IS auto-loaded by omp — as a sticky always-apply rule, not
+a context file.** From `omp://context-files.md` §"Native `.omp` files":
+
+- `~/.omp/agent/RULES.md` (User) — "User-level sticky rule content. Loaded as an always-apply
+  rule, not as a context file."
+- `<nearest-non-empty-ancestor>/.omp/RULES.md` (Project) — "Project sticky content, but only
+  when `RULES.md` exists in the same nearest non-empty `.omp/` directory selected by the
+  walk."
+
+Walk semantics: discovery climbs from cwd toward repo root, stops at the first **non-empty**
+`.omp/`; `RULES.md` and `AGENTS.md` are read only from that directory. Task subagents drop
+context files named `AGENTS.md` but **still get `RULES.md`** — "put anything helpers must
+follow in `RULES.md`."
+
+This **supersedes** the earlier scaffold-research note that "a bare root RULES.md is a dead
+file": that finding covered a *root-level* file; the native `.omp/RULES.md` slot is distinct
+and load-bearing. No provider reads `PROTO.md` under any name — it remains doc-only wherever
+it lives.
+
+- Source: `omp://context-files.md` §Native `.omp` files + §Monorepo example (read 2026-11-17).
+- Confidence: High (verbatim doc table).
+- Consumer-side contract for elon-ko: copy the scaffold rules file to
+  `<client-repo>/.omp/RULES.md` → auto-loaded, sticky, subagent-visible. PROTO.md: optional
+  copy to `<client-repo>/.omp/PROTO.md`, doc-only (namespaced, no cross-harness conflict).
