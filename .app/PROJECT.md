@@ -44,4 +44,4 @@
 
 ## Pending Asks
 
-- [PA-6] 2026-11-17T00:00:00Z origin=elon status=pending | "Release workflow 7 (doc-only)? Options: v4.1.1 PATCH now, or hold and fold into next release."
+- [PA-6] 2026-11-17T00:00:00Z origin=elon status=agreed (v4.1.1) | "Release workflow 7 (doc-only)? Options: v4.1.1 PATCH now, or hold and fold into next release."
