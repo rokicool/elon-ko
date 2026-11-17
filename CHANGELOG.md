@@ -9,6 +9,19 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v4.1.1] - 2026-11-17
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Edited
+
+- **`README.md` — new "From GitHub (no local clone)" install subsection.** For consumers without a local clone: shallow-clone the repo to a temp dir, run `install.sh` against the target repo from there, then clean up the temp clone; a pinned-tag variant (`git clone --branch <tag>`) installs an exact release. Verification step via `omp read skill://elon` after install. Also documents why piping `install.sh` to bash (`curl … | bash`) does not work: the installer's paths are relative to the script's own location, so it must run from inside a real clone. Instruction-only change; no code, layout, or behavior modified.
+
+#### Affected Files
+
+- Edited: `README.md` (+12, install section), `CHANGELOG.md` (this entry)
+
 ## [v4.1.0] - 2026-11-17
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>
