@@ -39,4 +39,4 @@
 
 ## Pending Asks
 
-- [PA-3] 2026-11-17T00:00:00Z origin=elon status=pending | "Release the docworm change as v3.0.1 (content-only PATCH: CHANGELOG entry + tag + notes-only release)?"
+- [PA-3] 2026-11-17T00:00:00Z origin=elon status=agreed (v3.1.0) | "Release the docworm change as v3.0.1 (content-only PATCH: CHANGELOG entry + tag + notes-only release)?"
