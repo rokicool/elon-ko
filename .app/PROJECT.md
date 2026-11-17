@@ -21,18 +21,22 @@
   - Convention notes: release.yml publishes on tag push — wrapper extended body via `gh release edit`; changelog header follows template (`v` prefix), flagging 2.9.0 as the deviation.
 - Commits this workflow: `5499359` [TRIVIAL] · `860d761` [RELEASE] · `8e70c5d` [PROTO].
 
-## Workflow 3 — 2026-11-17: remove plugins & subagent management — COMPLETE (pending release decision)
+## Workflow 3 — 2026-11-17: remove plugins & subagent management — COMPLETE (FULL + RELEASE)
 
 - Request (verbatim): "I would like to remove all plugins and 'subagent' management from this setup. the omp has it much better solution and this is not necessary anymore in this setup. (However, the descriptions and skills of agents are still relevant)"
 - GRILL: ReqGuru 7-question batch; user answers Q1=full · Q2=keep PROTO.md · Q3=verbatim · Q4=mirrors · Q5=strip · Q6=minimal CI · Q7=v3.0.0. REQ gate `07b331e`.
-- RESEARCH (DrPe): omp natively discovers `.omp/agents/*.md` + `.agents/skills/<name>/SKILL.md`, zero config — placing files IS registration. `.app/RESEARCH.md`.
-- SPEC: LeadDev `.app/SPEC.md` (395 lines); flags F1–F5 approved (F4 with +2 sanity lines). Gate `7e84610`.
-- DEVELOP: commits `655cc9e` (48 deletions, 13,889 lines) · `5a89eca` (CI/release) · `0e5346a` (PROTO P1–P7) · `d422ff5` (README) · `13f19ef` (CHANGELOG v3.0.0 + .gitignore). 3 documented meaning-preserving deviations accepted.
-- VALIDATE: **PASS** — all AC1–AC9 re-run independently; kept set byte-identical to v2.9.1; 2 non-blocking notes.
-- PURECODE: **code-fine** — no dead weight; 3 non-blocking notes (CI/release check duplication fine at scale; PROTO elon tool row gate-era names).
-- DocWorm: SKIPPED — README/CHANGELOG authored per spec §6/§9 and validator-verified; no additional doc surface.
-- Not pushed, not tagged — awaits release consent.
+- RESEARCH (DrPe): omp natively discovers `.omp/agents/*.md` + `.agents/skills/<name>/SKILL.md`, zero config. `.app/RESEARCH.md`.
+- SPEC: LeadDev `.app/SPEC.md`; flags F1–F5 approved. Gate `7e84610`.
+- DEVELOP: `655cc9e` · `5a89eca` · `0e5346a` · `d422ff5` · `13f19ef`. VALIDATE: PASS. PURECODE: code-fine. DocWorm skipped (README/CHANGELOG spec-authored).
+- RELEASE: consent via form 2026-11-17. **v3.0.0** → `1064d28`; CI run 44124966927 green; notes-only release; main==origin==tag. DONE gate `805f065`, consent `1064d28`.
+
+## Workflow 4 — 2026-11-17: docworm documentation contract — COMPLETE (pending release decision)
+
+- Request (verbatim): "I need the documentation agent to be very precise and support README.md, CHANGELOG.md, and DOC folder (instead of README folder) whenever there is an additional information that seems to be too big for the README.md to hold. So, in that case - README.md should have references to the DOCS folder documentation."
+- HR: `61b352c` — docworm agent description + SKILL.md documentation_surfaces/overflow_rule; `docs/` lowercase (wrapper SKILL.md:115 precedent). Fixup `e950dc8` ([FIX] kebab-case alignment).
+- Validator2: PASS (advisory fixed by e950dc8). CHANGELOG not yet updated — pending release decision.
+- Not pushed, not tagged.
 
 ## Pending Asks
 
-- [PA-2] 2026-11-17T00:00:00Z origin=elon status=agreed | "Proceed with v3.0.0 release via Wrapper (push main, tag, notes-only GitHub release)?"
+- [PA-3] 2026-11-17T00:00:00Z origin=elon status=pending | "Release the docworm change as v3.0.1 (content-only PATCH: CHANGELOG entry + tag + notes-only release)?"
