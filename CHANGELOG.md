@@ -9,6 +9,20 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v3.1.0] - 2026-11-17
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Added
+
+- **docworm documentation contract** (agent description + `SKILL.md`): docworm now owns a fixed set of **documentation surfaces** in priority order — `README.md`, `CHANGELOG.md`, `docs/` — and writes them in that priority. New **overflow rule**: depth that would overgrow README goes into `docs/<topic>.md`, leaving only a 1–3 sentence summary plus a relative link in README; content is never duplicated between the two. **Precision is promoted from a virtue to an operating requirement** — quantified, checkable claims over vague ones. The **doc target** is extended accordingly (every requested behavior documented on the correct surface), and a **kebab-case filename rule** applies to new `docs/` files.
+- **Naming decision:** the docs directory is `docs/` (lowercase), matching the pre-existing reference in the wrapper `SKILL.md`.
+
+#### Affected Files
+
+- Edited: `.omp/agents/docworm.md` (agent description), `.agents/skills/docworm/SKILL.md`, `CHANGELOG.md` (this entry)
+
 ## [v3.0.0] - 2026-11-17
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>
