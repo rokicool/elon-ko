@@ -32,6 +32,11 @@ for arg in "$@"; do
   esac
 done
 [ "$EXPECT_VALUE" -eq 0 ] || { echo "error: --version requires a value (e.g. --version v4.1.1)" >&2; exit 1; }
+if [ -n "$VERSION" ]; then
+  case "$VERSION" in
+    -*) echo "error: --version needs a tag like v4.1.1, not a flag ($VERSION)" >&2; exit 1 ;;
+  esac
+fi
 
 [ -n "$TARGET" ] || TARGET="$PWD"
 if [ ! -d "$TARGET" ]; then

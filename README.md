@@ -33,7 +33,7 @@ The target path defaults to the current directory; flags (`--no-proto`, `--dry-r
 
 It copies `.omp/agents/*.md` → `<repo>/.omp/agents/`, `.agents/skills/*` → `<repo>/.agents/skills/`, `scaffold/RULES.md` → `<repo>/.omp/RULES.md`, and `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (skip the latter with `--no-proto`). It is idempotent — same-name files are overwritten, your own extra files are never touched — and `--dry-run` prints the actions without writing. `.omp/RULES.md` auto-loads as a **sticky always-apply rule** — carried on every request, survives compaction, and reaches task subagents (they drop `AGENTS.md` context files but keep `RULES.md`). User-wide alternative: copy to `~/.omp/agent/RULES.md`. Verify afterwards with `omp read skill://elon` run in the target repo.
 
-**No-curl alternative:** shallow-clone the tag and copy per the manual fallback below (`git clone --depth 1 --branch v4.1.1 https://github.com/rokicool/elon-ko`).
+**No-curl alternative:** `git clone --depth 1 --branch v4.1.1 https://github.com/rokicool/elon-ko`, then copy from the clone: `.omp/agents/*.md` → `<repo>/.omp/agents/`, `.agents/skills/*` → `<repo>/.agents/skills/`, `scaffold/RULES.md` → `<repo>/.omp/RULES.md`, `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (optional).
 
 No configuration, marketplace, or plugin installation is needed — omp discovers all of it at startup.
 
