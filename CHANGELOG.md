@@ -9,6 +9,20 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v4.1.0] - 2026-11-17
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Added
+
+- **`install.sh` — a local-copy installer at the repo root.** Bash + coreutils only; no network, no marketplace, no version pinning (the v3.0.0 design — the repo is a pure content library, and the script just copies it). Usage: `./install.sh [target-repo] [--no-proto] [--dry-run]` (target defaults to cwd). Copies `.omp/agents/*.md`, `.agents/skills/*`, `scaffold/RULES.md` → `<target>/.omp/RULES.md`, and `scaffold/PROTO.md` → `<target>/.omp/PROTO.md` (`--no-proto` skips the doc-only protocol). Idempotent: overwrites same-name files only, never deletes consumer extras; `--dry-run` prints actions without writing. Refuses to run inside the elon-ko repo itself, and warns before overwriting an existing `<target>/.omp/RULES.md`. Post-install output prints the `omp read skill://elon` verification line and notes that `.omp/RULES.md` auto-loads as a sticky, subagent-visible rule. `README.md` install section rewritten: the script is the primary path, manual `cp` commands kept as a short fallback; intro and What's-here table updated.
+
+#### Affected Files
+
+- Added: `install.sh` (executable)
+- Edited: `README.md` (intro, What's-here, install section), `CHANGELOG.md` (this entry)
+
 ## [v4.0.0] - 2026-11-17
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>

@@ -1,6 +1,6 @@
 # elon-ko
 
-A **pure content library** of agent definitions, skills, and protocol references for [oh-my-pi](https://omp.sh) (`omp`): 11 specialist agent definitions, 13 skills, a persona-protocol sticky rule (`scaffold/RULES.md`), and a phased development protocol reference (`scaffold/PROTO.md`). The repo ships no plugins, no installer, and no enforcement machinery; see the [CHANGELOG](CHANGELOG.md) for details and migration steps.
+A **pure content library** of agent definitions, skills, and protocol references for [oh-my-pi](https://omp.sh) (`omp`): 11 specialist agent definitions, 13 skills, a persona-protocol sticky rule (`scaffold/RULES.md`), and a phased development protocol reference (`scaffold/PROTO.md`). The repo ships no plugins and no enforcement machinery — installation is a pure local copy via `install.sh`; see the [CHANGELOG](CHANGELOG.md) for details and migration steps.
 
 ## What's here
 
@@ -13,15 +13,26 @@ A **pure content library** of agent definitions, skills, and protocol references
 | `CHANGELOG.md` | Release history |
 | `LICENSE` | MIT |
 | `.github/workflows/` | Content-sanity CI + notes-only release |
+| `install.sh` | Local copy installer (bash + coreutils; no network, no pinning) |
 
 ## Installing the personas
 
-Copy the content into your repo — omp's native discovery does the rest.
+Run the installer (bash + coreutils only; pure local copy, no network):
 
-- **Agents:** Copy the files from `.omp/agents/` into `<your-repo>/.omp/agents/` (this repo only) or `~/.omp/agent/agents/` (every repo).
-- **Skills:** Copy the directories from `.agents/skills/` into `<your-repo>/.agents/skills/` or `~/.agents/skills/`.
-- **Rules:** Copy `scaffold/RULES.md` to `<your-repo>/.omp/RULES.md`. omp auto-loads it as a **sticky always-apply rule** — carried on every request, survives compaction, and reaches task subagents (they drop `AGENTS.md` context files but keep `RULES.md`). User-wide alternative: `~/.omp/agent/RULES.md`.
-- **Protocol reference (optional):** Copy `scaffold/PROTO.md` to `<your-repo>/.omp/PROTO.md` (doc-only; no provider auto-loads it).
+```bash
+./install.sh /path/to/your-repo     # defaults to the current directory
+```
+
+It copies `.omp/agents/*.md` → `<repo>/.omp/agents/`, `.agents/skills/*` → `<repo>/.agents/skills/`, `scaffold/RULES.md` → `<repo>/.omp/RULES.md`, and `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (skip the latter with `--no-proto`). It is idempotent — same-name files are overwritten, your own extra files are never touched — and `--dry-run` prints the actions without writing. `.omp/RULES.md` auto-loads as a **sticky always-apply rule** — carried on every request, survives compaction, and reaches task subagents (they drop `AGENTS.md` context files but keep `RULES.md`). User-wide alternative: copy to `~/.omp/agent/RULES.md`.
+
+**Manual fallback** (what the script does):
+
+```bash
+cp .omp/agents/*.md  <your-repo>/.omp/agents/    # or ~/.omp/agent/agents/ for every repo
+cp -R .agents/skills/* <your-repo>/.agents/skills/   # or ~/.agents/skills/
+cp scaffold/RULES.md <your-repo>/.omp/RULES.md
+cp scaffold/PROTO.md <your-repo>/.omp/PROTO.md   # optional, doc-only
+```
 
 No configuration, marketplace, or plugin installation is needed — omp discovers all of it at startup.
 
