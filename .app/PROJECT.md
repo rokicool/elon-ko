@@ -32,16 +32,23 @@
 
 ## Workflow 6 — 2026-11-17: installer check + install.sh — COMPLETE (TRIVIAL + RELEASE)
 
-- No installer existed; instructions audited correct. User chose CREATE. LeadDev `ace7a0c` [TRIVIAL]: install.sh + README + CHANGELOG v4.1.0. Validator4 PASS (full behavioral suite).
+- No installer existed; user chose CREATE. LeadDev `ace7a0c` [TRIVIAL]: install.sh + README + CHANGELOG v4.1.0. Validator4 PASS.
 - RELEASE (consent): **v4.1.0** → `b0d6ba8`; CI 44138228625 green; notes-only; exec bit preserved.
 
-## Workflow 7 — 2026-11-17: GitHub-direct install docs — COMPLETE (TRIVIAL; pending release decision)
+## Workflow 7 — 2026-11-17: GitHub-direct install docs — COMPLETE (TRIVIAL + RELEASE)
 
-- Request (verbatim): "I need you to update the README.md with info how to install the Elon_Ko team directly from github"
-- DocWorm `a19b59f`: README +12 — "From GitHub (no local clone)" subsection (clone-to-temp + install.sh, pinned-tag variant, cleanup, omp read verification, why-not-pipe rationale). CHANGELOG: no entry (house precedent — rides next version entry).
-- Validator5: **PASS** — command shapes verified against install.sh (SRC-relative paths L7/48/55/73/78, usage L4, self-refusal L26-33, verify line L93); pinned tag valid; no overclaims; precedent claim holds.
+- DocWorm `a19b59f`: README "From GitHub" clone-to-temp subsection. Validator5 PASS.
+- RELEASE (consent): **v4.1.1** → `2ff4331`; CI 44159696242 green; notes-only.
+
+## Workflow 8 — 2026-11-17: install.sh GitHub fetch — COMPLETE (pending release decision)
+
+- Request (verbatim): "I need the installation script to get distribution files directly from github"
+- User design answers: source=latest release tag via API with --version override; GitHub-only (local mode removed).
+- LeadDev `ac22971`: install.sh rewritten (pipe-safe curl|bash, API latest-resolution, codeload tarball, ELON_KO_REPO/ELON_KO_ARCHIVE test overrides, self-refusal reworked to target-checkout detection) + README one-liner primary + CHANGELOG v4.2.0.
+- Validator6: FAIL (dangling README no-curl reference — manual fallback deleted by same commit) → cycle 1 → `41d20d0` [FIX] (self-contained no-curl path + --version flag-injection guard) → scoped re-audit **PASS**.
+- Real-network endpoints (api.github.com, codeload) remain [INFERENCE]; all post-fetch mechanics verified against git-archive mock.
 - Not pushed, not tagged.
 
 ## Pending Asks
 
-- [PA-6] 2026-11-17T00:00:00Z origin=elon status=agreed (v4.1.1) | "Release workflow 7 (doc-only)? Options: v4.1.1 PATCH now, or hold and fold into next release."
+- [PA-7] 2026-11-17T00:00:00Z origin=elon status=pending | "Release workflow 8 as v4.2.0 (push main, tag, notes-only release)?"
