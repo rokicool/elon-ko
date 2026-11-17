@@ -1,280 +1,240 @@
-# Research Report: Distributing the `logging-design` Skill Across the elon-ko System
+# Research Report — Workflow 3: omp-Native Agent & Skill Discovery (NFR2 / E2)
 
 ## Scope
 
-Researched how the skill at `.claude/skills/logging-design/` (currently orphaned from any
-installation path) can be shipped so that **after installing elon-ko, omp starts using it by
-default in any project**. Constraints: target is omp (not Claude Code); `.claude/` must not be
-required at runtime; no per-project copying.
+Verified how oh-my-pi (omp) natively discovers **task agents** and **skills** in a consumer
+repo (not this repo), to close REQ.md flag **NFR2** ("consumption relies on omp's native
+agent/skill discovery of `.omp/agents/` + `.agents/skills/` … must be confirmed in RESEARCH")
+and error case **E2** ("if omp does not natively read these paths in consumer repos, FR8
+instructions would be wrong"). Questions covered: exact paths and precedence, frontmatter
+contract (`name`/`description`/`tools`/`spawns`/`model`), config/registration steps required,
+`skill://` resolution for local skills, and transition behavior while the old plugin is still
+installed. Closes with recommended README copy-instruction wording.
 
-Sources: direct reads of every load-bearing file in this repo (skill, manifests, installer,
-validator, scaffold docs, changelog); the omp harness's bundled documentation (`omp://skills.md`,
-`omp://marketplace.md`, `omp://skills/authoring-marketplaces.md`, `omp://tools/manage_skill.md`);
-and the **live installed state on this machine** (`~/.omp/marketplaces.json`,
-`~/.omp/plugins/installed_plugins.json`, `~/.omp/plugins/omp-plugins.lock.json`, the plugin cache
-trees, and the current session's own skill listing). No shell access; all verification is by
-reading primary sources.
-
----
-
-## 1. Skill inventory
-
-**Contents.** `.claude/skills/` contains exactly one skill directory (`logging-design/`), which
-contains exactly one file: `SKILL.md` (12.9 KB, 280 lines). No bundled scripts/references.
-
-**Frontmatter** (`.claude/skills/logging-design/SKILL.md:1-10`):
-
-- `name: logging-design`
-- `description: >` — *"Methodology for designing and implementing structured logging support in
-  any project. Use when working on logging, log entries, logger design, or structured logging —
-  covers canonical line format, type taxonomy, secret redaction, timestamps, correlation IDs, PII
-  handling, never-throws semantics, and clarity principles. Available to drpe, leaddev, middev,
-  validator, docworm. Triggers on: logging, log, log entry, logger, structured logging."*
-
-The body is language-agnostic reference material: canonical log-line format, ERR/WRN/MSG/VRB
-taxonomy, secret-redaction denylist, PII handling, never-throws rule, review checklist. It is a
-**reference skill** (read on demand), not an agent protocol.
-
-**It is unreferenced by any packaging/install path.** Evidence (exhaustive over every file that
-governs packaging, install, and validation):
-
-| Consumer | Evidence | `logging-design` / `.claude` referenced? |
-|---|---|---|
-| Marketplace catalog | `.omp-plugin/marketplace.json:13` — "10-agent orchestrator roster + **11 skills**"; no `skills[]` field exists | No |
-| Plugin A npm packaging | `package.json:7-11` — `files: ["src", "rules", …]` | No |
-| Structural validator | `scripts/validate-plugins.sh:119-128` (scans only `plugins/agents/skills/*/`), `:219` (counts only `plugins/agents/skills`) | No |
-| One-line installer | `elon_ko.sh:220-261` (`deploy_scaffold` writes only `AGENTS.md`, `PROTO.md`, `.omp/config.example.yml`); no other file-deployment code in all 750 lines | No |
-| Docs | `README.md:20` and `.DEVREADME.md:172-173` enumerate the 11 shipped skills — `logging-design` absent | No |
-| Changelog | `CHANGELOG.md:12-143` (v2.2.0–v2.8.0, the era the file dates from, ~2 months ago) | No |
-| Gitignore | `.gitignore:1-6` does **not** ignore `.claude/` — so it *is* committed and present in the marketplace clone | (context) |
-
-**One premise correction (important nuance).** The user's statement "the `.claude` folder is not
-installed or used anywhere" is true of *elon-ko's installation*, but **omp itself does read it
-when cwd is inside this repo**: omp's `claude` skill provider loads project-level
-`.claude/skills/` by default (`omp://skills.md`, §Source toggles: "Foreign user-level providers
-are opt-in through `enabledProviders`; their **project roots still load by default**"). Proof by
-elimination on this machine: the current session's system-prompt skill list **does** contain
-`logging-design`, while every other possible source was checked and lacks it — the installed
-plugin cache (11 skills, no `logging-design`), `~/.agents/skills/` (the user's 45-skill pack —
-no `logging-design`), `~/.omp/agent/` (no `skills/`, no `managed-skills/`, no `skills.lock.json`),
-and the repo (no `.omp/skills/`, no `.github/skills/`). The one-line description shown in the
-prompt list ("Use for logging, logger design, or structured logging work only.") differs
-textually from the frontmatter — [INFERENCE] omp condenses descriptions for the prompt listing
-(there is a `skill-descriptions.db` under `~/.omp/agent/`); the *source* is confirmed regardless.
-
-So today the skill works **only in clones of elon-ko itself** and only by omp's courtesy scan of
-a foreign layout — invisible to every other project, which is exactly the user's complaint.
+Sources: the locally installed omp's bundled harness docs (read via `omp://` internal URLs —
+`task-agent-discovery.md`, `skills.md`, `config-usage.md`, `context-files.md`, `settings.md`,
+`cli-reference.md`), cross-checked against the public upstream docs at
+`github.com/can1357/oh-my-pi` (fetched 2026-11-17; the public `docs/task-agent-discovery.md`
+matches the installed copy verbatim on every claim cited below). No web-claim below rests on
+a search snippet alone.
 
 ---
 
-## 2. Installation map — how elon-ko ships today
+## Findings
 
-Two plugins from one tree (`README.md:15-24`, `.DEVREADME.md:10-19`):
+### Dimension 1: Agent discovery — `.omp/agents/*.md` is native, no registration
 
-| Plugin | Mechanism | Manifest | Payload |
+- **Finding: omp reads project agents from `.omp/agents/*.md` and user agents from
+  `~/.omp/agent/agents/*.md` natively.** Verbatim: "OMP discovers user agents from
+  `~/.omp/agent/agents/*.md` and project agents from `.omp/agents/*.md`."
+  (`omp://task-agent-discovery.md` §Role-backed custom agents; identical text at
+  https://github.com/can1357/oh-my-pi/blob/main/docs/task-agent-discovery.md).
+  Note the user-scope path is `~/.omp/agent/` (singular), not `~/.omp/`.
+  **Confidence: High** (installed docs + public docs, verbatim match).
+
+- **Finding: precedence is project > user > extension packages > Claude plugins > bundled,
+  first-wins by exact name.** Discovery order (`§Filesystem and plugin discovery`):
+  1. nearest project `.omp/agents` from `findAllNearestProjectConfigDirs("agents", cwd)`
+     (first `.omp` hit walking up from cwd only), 2. user `~/.omp/agent/agents`,
+  3. `<extension-root>/agents` of enabled extension packages (the OLD elon-ko-agents plugin
+  route), 4. Claude marketplace plugin roots, 5. bundled agents. Dedup: "first-wins dedup by
+  exact `agent.name` … Project `.omp` overrides user `.omp`. … Non-bundled agents override
+  bundled agents with the same name." Name matching is case-sensitive; files load in
+  lexicographic filename order within a directory. **Confidence: High**.
+
+- **Finding: the frontmatter contract is exactly the repo's — `name` + `description` required,
+  `tools`/`spawns`/`model` optional.** `§Agent definition shape`: required `name`,
+  `description` (the markdown body becomes `systemPrompt`); optional `tools` (CSV or array;
+  omitted/YAML-null = default built-in toolset; `tools: []` = no built-ins), `spawns`
+  (`*`, CSV, or array; legacy fallback: missing `spawns` + `tools` containing `task` ⇒ `*`),
+  `model` (one selector, CSV, or array — prioritized list, tried in order after role-alias
+  expansion), plus `thinking-level`, `output`, `blocking`, `structured`, `autoloadSkills`,
+  `read-summarize`, `prewalk`, `advisor`. Reserved names: `main`, `sub` (none of the 11
+  elon-ko agents use them). One invalid file logs a warning and is skipped — it does not
+  abort discovery of the other files. **Confidence: High**.
+
+- **Finding: no config or registration step exists — only opt-outs.** Placing the `.md` file
+  in the directory IS the registration. Agent files added mid-session resolve without
+  restart: "Task/eval preflight reloads the current global, project, and explicit overlay
+  settings before rediscovering agents" (`§Role-backed custom agents`). Opt-outs:
+  `task.disabledAgents`, parent spawn policy, `--no-extensions`. Optional (not required):
+  `model:` role aliases like `@smol` resolve through `modelRoles` in
+  `~/.omp/agent/config.yml` or `<repo>/.omp/config.yml`. **Confidence: High**.
+
+- **Finding: cross-harness agent roots are intentionally NOT read.** "Direct cross-harness
+  roots such as `.claude/agents`, `.codex/agents`, and `.gemini/agents` are intentionally
+  skipped — their frontmatter schema is not the OMP task-agent contract." `.omp/agents` is
+  the only filesystem agent path omp consumes. **Confidence: High**.
+
+### Dimension 2: Skill discovery — `.agents/skills/<name>/SKILL.md` is on by default
+
+- **Finding: the `agents` provider discovers `.agent[s]/skills` at priority 70.** Registered
+  skill providers (`omp://skills.md` §Built-in skill providers): `native` (100, `.omp`),
+  `skillshare` (95), `omp-plugins` (90, installed plugins), `claude` (80), `agent-plugins`
+  (75), then priority-70 group including **`agents`** (`.agent[s]/skills`), `codex`,
+  `claude-plugins`; then `opencode` (55), `github` (30), `omp-managed` (5). Layout is
+  strictly one level: `<skills-root>/<skill-name>/SKILL.md`, **non-recursive** —
+  `.agents/skills/<name>/SKILL.md` matches exactly; nested `skills/<group>/<name>/` would
+  NOT be found. **Confidence: High**.
+
+- **Finding: `.agents` loads by default at BOTH project and user scope — no
+  `enabledProviders` entry, no config.** Three independent statements:
+  1. `omp://context-files.md`: "Foreign **user-level** sources (`claude`, `codex`, `gemini`,
+     `opencode`, `github` …) are opt-in through `enabledProviders`; their project-level files
+     remain enabled by default. **Native and `.agent` / `.agents` user sources are enabled by
+     default.**"
+  2. `omp://settings.md` §Provider and source disabling: "Project roots remain enabled.
+     Native OMP and `.agents` roots—including native marketplace plugins—are not foreign and
+     do not require an entry."
+  3. `omp://skills.md`: the `agents` provider "has its own `enableAgentsUser`/
+     `enableAgentsProject` toggles — disabling Claude/Codex/Pi does **not** turn it off."
+  User-scope root: `~/.agents/skills/` (provider user bases `~/.agent/` and `~/.agents/`,
+  `context-files.md` provider table). Project-scope root: `<repo>/.agents/skills/`.
+  **Confidence: High** (three corroborating doc sections).
+
+- **Finding: `description` is not required by the `agents` provider.** "the
+  claude/codex/agents/opencode/claude-plugins providers can load skills without description"
+  (`omp://skills.md` §SKILL.md frontmatter; `requireDescription: true` applies to native
+  `.omp`, omp-plugins, github, and custom dirs). All 13 elon-ko skills carry `name` +
+  `description`, so they satisfy even the stricter providers. **Confidence: High**.
+
+- **Finding: collision behavior — identical copies collapse silently; differing copies get
+  namespaced.** "drops a later same-named skill silently when its body is identical and its
+  parsed frontmatter is deeply equal to a loaded one (the same skill installed twice …)";
+  differing same-name skills: higher-precedence skill keeps the bare name, others become
+  `<namespace>/<name>` (`omp://skills.md` §Collision and duplicate handling).
+  **Transition consequence (E1/E2-relevant):** while the old `elon-ko-agents` plugin is still
+  installed AND a consumer has copied the byte-identical `.agents/skills/` tree, the
+  omp-plugins copy (90) holds the bare names and the identical `.agents` copies (70) collapse
+  without warnings; after `omp plugin uninstall elon-ko-agents`, the `.agents` copies serve
+  the same bare names — `skill://<name>` resolution is uninterrupted. **Confidence: High**
+  for the collapse rule (documented); the transition sequencing is direct application.
+
+- **Minor nuance (flagged, low impact):** whether the `agents` provider walks ANCESTOR
+  directories for project skills (the way its context files do, and the way native
+  `.omp/skills` does: "`<ancestor>/.omp/skills` for each ancestor from the current working
+  directory up to the repo root/home boundary", `omp://config-usage.md` §Native provider) is
+  not explicitly documented for skills under `.agents/skills`. Copying at the repo root
+  works regardless. **Confidence: Medium** (absence of explicit doc statement).
+
+### Dimension 3: `skill://` resolution for local skills
+
+- **Finding: `skill://<name>` resolves a locally discovered skill to its SKILL.md;
+  `skill://<name>/<relative-path>` resolves inside the skill directory.** Exact-name match;
+  guards reject absolute paths, `..` traversal, and any resolution escaping the skill's
+  baseDir; directories return listings (`omp://skills.md` §`skill://` URL behavior,
+  implemented in `src/internal-urls/skill-protocol.ts`). **Confidence: High**.
+
+- **Finding: skills added after session start still resolve.** "a name no loaded skill owns
+  rediscovers the main session's skills before failing, so a skill created or installed
+  after the session started resolves (and joins the session's skill list and system prompt);
+  such misses start at most one rediscovery every 2 seconds" (subagents' inherited lists gain
+  no new skills). Hidden skills (`hide: true` / `skills.manualSkills`) stay reachable via
+  `skill://` and `/skill:<name>`. **Confidence: High**.
+
+- **Finding: system-prompt listing is automatic.** Discovered skills' name + description go
+  into the system prompt whenever a `readsSkillUris` tool is active (`read` is the
+  compatibility fallback); task subagents receive the session's skill list via normal session
+  creation. Content loads on demand — no eager context cost. **Confidence: High**.
+
+- **Finding (NFR3 dogfood continuity):** today this repo's sessions resolve `skill://…`
+  through the installed plugin cache
+  (`~/.omp/plugins/cache/plugins/elon-ko___elon-ko-agents___2.9.0/skills/<name>/SKILL.md`,
+  omp-plugins provider). Post-v3, after uninstalling the plugin, the same names resolve from
+  the repo's `.agents/skills/<name>/SKILL.md` via the `agents` provider — byte-identical
+  content (REQ AC2 parity), so no path break in `skill://` addressing. The agent roster
+  shifts likewise: `<plugin-root>/agents` → project `.omp/agents/`. **Confidence: High**
+  (mechanism documented; parity is REQ AC2's to enforce).
+
+### Dimension 4: Config / registration requirements (direct answer)
+
+**None required for either path in a consumer repo.** Drop files into place and start omp:
+
+| Content | Project scope (one repo) | User scope (all repos) | Config needed |
 |---|---|---|---|
-| **A: `elon-ko-gate`** | extension-package (npm-style) | `package.json:21-29` (`omp.extensions`) | TS extensions + `rules/` |
-| **B: `elon-ko-agents`** | marketplace | `.omp-plugin/marketplace.json` (`pluginRoot: "./plugins"`, source `"./agents"`) | 10 agent defs + 11 skills, pure markdown |
+| Agents | `<repo>/.omp/agents/*.md` | `~/.omp/agent/agents/*.md` | none (opt: `modelRoles` for `model:` aliases) |
+| Skills | `<repo>/.agents/skills/<name>/SKILL.md` | `~/.agents/skills/<name>/SKILL.md` | none |
 
-**Install flow** (`elon_ko.sh`, verified against live state):
-
-1. `omp plugin marketplace remove/add rokicool/elon-ko` + `update` — `elon_ko.sh:651-665`
-   → registry `~/.omp/marketplaces.json:12-19`, clone at
-   `~/.omp/plugins/cache/marketplaces/elon-ko/` (full repo clone, including `.claude/` — but
-   nothing reads it there).
-2. `omp plugin install github:rokicool/elon-ko#v2.8.0 --force` (Plugin A, tag-pinned) —
-   `elon_ko.sh:674-677` → `~/.omp/plugins/package.json:4-6` + `omp-plugins.lock.json:8-12`.
-3. `omp plugin install elon-ko-agents@elon-ko --force` (Plugin B, tracks latest) —
-   `elon_ko.sh:680-682` → `~/.omp/plugins/installed_plugins.json:4-12`: **`scope: "user"`**,
-   `installPath: ~/.omp/plugins/cache/plugins/elon-ko___elon-ko-agents___2.8.0`.
-   The installed tree contains **only** `agents/*.md` (10) + `skills/<name>/SKILL.md` (11) —
-   the `plugins/agents` subtree copied verbatim (verified by directory listing). `.claude/` does
-   not make it into the installed plugin.
-4. `deploy_scaffold` writes `AGENTS.md` + `PROTO.md` (+ optional `config.example.yml`) into
-   `<cwd>` — `elon_ko.sh:220-261`. This is the only file-copying the installer ever does.
-
-**Key distribution facts:** marketplace `agents[]`/`count` are display metadata only — runtime
-discovery is a filesystem scan of the installed plugin tree (resolved previously in IDEA-003,
-`.app/IDEAS.md:53`; reconfirmed by `omp://marketplace.md` §Plugin entry fields: "Agent metadata;
-preserved but **not consumed**"). User scope = "available in all projects"
-(`omp://marketplace.md` §Scopes). Update path: catalog refresh (`marketplace.autoUpdate`,
-default `notify`, 24 h) + `omp plugin upgrade` / re-running `elon_ko.sh` (force-reinstalls
-Plugin B at latest).
+Only opt-outs exist: `disabledProviders: [agents]` or `[native]`, `skills.enabled: false` /
+`--no-skills`, `skills.ignoredSkills`, `task.disabledAgents`. Verification commands: `omp read
+skill://<name>` from the shell ("Show what the read tool will return for a path, URL, or
+internal URI", `omp://cli-reference.md` subcommand table); in-session `/agents` hub / Agent
+Hub (`Alt+A`) lists agents; `omp skill list --json` reports discovered skills with `hide`
+status (`omp://skills.md` §Manual-only skills). **Confidence: High**.
 
 ---
 
-## 3. Omp skill-loading mechanism (verified)
+## Recommendations (README copy-instructions wording, for FR8)
 
-How a skill becomes callable via `skill://<name>` by default in any project
-(`omp://skills.md`, corroborated by live state):
-
-1. **Layout convention.** Skills are discovered as **one level under a `skills/` root**:
-   `<root>/skills/<skill-name>/SKILL.md` (non-recursive). A marketplace plugin directory "ships
-   its content in conventional locations … `skills/<name>/SKILL.md` ← skills"
-   (`omp://skills/authoring-marketplaces.md` §Plugin structure). **No registration beyond
-   placing the directory** — confirmed independently by `.DEVREADME.md:172-177` ("loaded by
-   omp's skills provider from the plugin's `skills/` tree and resolved as `skill://<name>`. No
-   registration beyond placing the directory is needed") and by the live install (no
-   per-skill manifest entries anywhere; the 11 skills resolve purely from the tree).
-2. **Frontmatter contract.** `name` + `description` required for omp plugin skills
-   (`omp://skills.md` §SKILL.md frontmatter: `requireDescription: true` for omp-plugins-family
-   providers). `logging-design` already satisfies this; `name` matches the directory name.
-3. **User-scoped install → every project.** "user (default) — available in all projects"
-   (`omp://marketplace.md` §Scopes) — verified live: `installed_plugins.json` shows
-   `scope: "user"`, and the elon-ko skills are listed in this session from the plugin cache.
-4. **System-prompt auto-listing.** At startup omp discovers all skills and puts
-   *name + description* metadata into the system prompt whenever a `readsSkillUris` tool is
-   active (`read` is the compatibility fallback) — i.e., effectively every session
-   (`omp://skills.md` §System prompt exposure). **Subagents get the same list**: "Task tool
-   subagents receive the session's discovered/provided skills list via normal session creation."
-   Content loads on demand via `read skill://<name>` (or `/skill:<name>`).
-5. **Precedence/collisions.** Provider priority: native `.omp` (100) > skillshare (95) >
-   omp-plugins/installed plugins (90) > claude (80) > agents (70) > … On a same-name collision
-   the higher-precedence skill keeps the bare name; identical bodies collapse silently,
-   differing bodies get namespaced (`omp://skills.md` §Collision handling). A plugin-bundled
-   `logging-design` therefore wins the bare name over any project `.claude/` copy.
-6. **Not gated.** Skill discovery is session-level, unrelated to the orchestrator opt-in
-   (`.omp/elon.json`) — a shipped skill is listed in every omp session on the machine, gated or
-   not. That matches the goal "omp in this or any project should start using this skill by
-   default."
-
-**"Used by default" therefore means**: auto-listed with its description in every session's
-system prompt (root and subagents), where description-based triggering makes agents read
-`skill://logging-design` when a task concerns logging — the same dispatch omp already applies to
-the 11 existing skills (observed live: `logging-design` is being dispatched on in this very
-session from the `.claude` copy). No stronger "always loaded" mechanism is needed or idiomatic
-(`alwaysApply` exists as frontmatter metadata but "globs and alwaysApply are metadata here, not
-automatic skill-invocation controls").
-
----
-
-## 4. Solution options
-
-### Option A — Promote into Plugin B's skills tree (repo convention; recommended)
-
-**Changes:**
-1. Move `.claude/skills/logging-design/SKILL.md` → `plugins/agents/skills/logging-design/SKILL.md`.
-2. `.omp-plugin/marketplace.json:13`: description "…+ 11 skills." → "…+ **12** skills." —
-   **mandatory**: `validate-plugins.sh:219,225` counts skill dirs dynamically and requires the
-   description to embed the exact count; CI fails otherwise.
-3. Mirror byte-identically into `.agents/skills/logging-design/SKILL.md` (dev-session mirror
-   convention, `.DEVREADME.md:164`; validator Step I `:276-283` enforces mirrors only for
-   roster skills, but consistency is the repo's stated practice).
-4. Delete `.claude/skills/` (git history preserves it). Keeping it creates a divergent duplicate
-   in this repo only — omp would collapse identical copies but warn/drift once they differ.
-5. Release: CHANGELOG entry + lockstep version bumps per `.DEVREADME.md:250-256` (Wrapper's
-   job, out of research scope).
-
-**What is *not* needed** (verified against `validate-plugins.sh` Steps B–I, all roster-driven
-from `scaffold/PROTO.md:18-31`): no agent `.md`, no roster line, no `<allowed>`/`<forbidden>`
-block (Step G `:239-253` only checks skills of roster agents), no gate/mess `TEAM` change, no
-installer change.
-
-**Blast radius:** Plugin B tree + its one-line catalog description. Nothing else.
-
-**Distribution:** rides the existing marketplace flow — catalog `notify`/update → `omp plugin
-upgrade elon-ko-agents@elon-ko`, or re-running the one-liner (force-reinstalls latest,
-`elon_ko.sh:680-682`). Pre-release pinning works unchanged (tag tarball flow).
-
-**Downsides:** existing installs see it only after update/upgrade/reinstall (standard for every
-skill this repo has ever shipped, e.g. the `purecode` hire, `CHANGELOG.md:16`); the
-count-in-description invariant is brittle (validator catches drift — by design); the installer's
-own summary strings say "10 skills" already (`elon_ko.sh:7,561,564,696,723` — pre-existing
-staleness, optional cleanup opportunity).
-
-### Option B — Ship as a Plugin A (extension-package) bundled skill
-
-Add `skills/logging-design/SKILL.md` at the repo root next to `package.json`, and add `"skills"`
-to `package.json#files` (`:7-11`). The `omp-plugins` provider loads "skills/ bundled next to
-extension packages … or installed plugins under `~/.omp/plugins/node_modules`"
-(`omp://skills.md` §providers, priority 90).
-
-- **Blast radius:** Plugin A manifest + npm packaging; Plugin A would ship markdown content for
-  the first time.
-- **Downsides:** breaks the repo's explicit convention (`.DEVREADME.md:288-289`: "agents/skills
-  → Plugin B"); **slower distribution** — Plugin A installs are pinned to an exact release tag
-  (`elon_ko.sh:403,676`), so users get the skill only by reinstalling a *new* tag, vs Plugin B
-  tracking latest; requires `files` sync discipline. Dominated by Option A on every axis.
-
-### Option C — Installer copies it to omp's user-global skills root (native provider)
-
-`elon_ko.sh` would `mkdir -p ~/.omp/agent/skills && cp -r …` (global mode) with a LOCAL-mode
-equivalent under the relocated home; omp's `native` provider (priority 100) lists it everywhere,
-even with plugins disabled.
-
-- **Blast radius:** largest — new installer machinery in both modes, plus uninstall
-  (`elon_ko.sh:310-360`) must learn to remove it, and updates diverge from the marketplace
-  lifecycle (a plugin upgrade would no longer refresh the copied skill).
-- **Downsides:** invents a third content channel the repo has never used; the skill escapes
-  plugin enable/disable/uninstall semantics entirely. Contrary to "prefer existing repo
-  conventions." Listed for completeness because the user asked about user-global vs
-  plugin-bundled.
-
-**User-global vs plugin-bundled.** omp supports both; **plugin-bundled fits "install once via
-elon-ko, available everywhere" better**: user-scoped plugin install is already "available in all
-projects" (verified), while the plugin lifecycle (upgrade/uninstall/enable/disable,
-`omp-plugins.lock.json`) manages the skill atomically with the rest of the distribution — a
-user-global copy would survive `elon_ko.sh uninstall` and drift from the shipped version.
-
----
-
-## 5. Recommendation
-
-**Option A.** Justification, all evidence-based:
-
-1. **It is the repo's existing, proven mechanism** — the 11 live skills ship exactly this way
-   and are resolvable in this session from the installed cache; `.DEVREADME.md:170-177`
-   documents placement as the only registration step.
-2. **Zero new machinery** — no gate, no roster, no installer, no TS changes; one file move, one
-   description-count edit, one mirror, one deletion.
-3. **Satisfies every constraint** — omp-native (no `.claude/` at runtime), user-scoped so it
-   works in any project after install, auto-listed for root sessions and subagents alike, and
-   precedence-protected against name collisions (priority 90 beats foreign 80/70 providers).
-4. **Validator-enforced consistency** — Step E catches the count drift that is this option's
-   only real risk.
-
-Implementation note for SPEC: the frontmatter's "Available to drpe, leaddev, middev, validator,
-docworm. Triggers on: …" is Claude-Code-style dispatch prose; in omp the whole `description`
-drives listing/matching, so it can be kept as-is (harmless, informative) or trimmed — either
-works, no functional difference verified.
-
-## Alternative interpretations
-
-- **"Ship it as a rule (`rules/`) or APPEND_SYSTEM injection"** — considered and rejected: the
-  skill is 12.9 KB of on-demand reference material; `alwaysApply` rules are re-attached every
-  turn (`.DEVREADME.md:85-87`) and would burn context in *every* session regardless of topic —
-  exactly what skills' lazy `skill://` loading exists to avoid.
-- **"Wait — doesn't omp already load `.claude/skills`?"** — yes, at *project* scope only
-  (§1 premise correction). That explains why the skill seems to work in this repo while being
-  uninstallable elsewhere; it does not change the solution.
+1. **Word the copy instructions exactly around the two canonical path pairs, project scope
+   first.** Suggested copy:
+   - *Agents:* "Copy the files from `.omp/agents/` into `<your-repo>/.omp/agents/` (this repo
+     only) or `~/.omp/agent/agents/` (every repo)."
+   - *Skills:* "Copy the directories from `.agents/skills/` into `<your-repo>/.agents/skills/`
+     or `~/.agents/skills/`."
+   - "No configuration, marketplace, or plugin installation is needed — omp discovers both
+     locations automatically at startup."
+   Rationale: Findings 1.1, 2.2, 4. The paths are verbatim omp contract paths; note the
+   asymmetric user-scope dirs (`~/.omp/agent/agents/` vs `~/.agents/skills/`) — a README that
+   hand-waves "copy to `~/.omp/`" would send users to a wrong path omp never reads.
+2. **Add a one-line verification step.** "Run `omp read skill://elon` in the target repo (or
+   open the `/agents` hub in a session) to confirm discovery." Rationale: Finding 4 — gives
+   consumers a falsifiable check tied to documented commands.
+3. **State the layout constraints in one sentence.** "Keep each skill exactly one level under
+   `skills/` (`.agents/skills/<name>/SKILL.md`); deeper nesting is not discovered, and agent
+   names must be unique (project overrides user; first match wins)." Rationale: Findings 2.1,
+   1.2.
+4. **In the migration section, sequence copy-before-uninstall as the safe path.** "Copy the
+   directories first, then run `omp plugin uninstall elon-ko-gate elon-ko-agents` — identical
+   copies are collapsed silently, so skills stay continuously available under the same
+   `skill://` names." Rationale: Finding 2.4 — turns E1's "old plugins persist locally" from a
+   footgun into a no-op transition.
+5. **Do not advertise `.omp/skills/` as the copy target.** It also works (native provider,
+   priority 100, requires `description` — all 13 pass), but the repo ships the `.agents/skills/`
+   layout; two advertised targets double the support surface for zero benefit. Rationale:
+   Findings 2.1, 2.3 (Boring-design: one canonical instruction).
 
 ## Impact Assessment
 
-- **Verdict:** CLEAR
-- **Explanation:** One well-supported distribution path (Option A) verified end-to-end from
-  repo manifests, validator logic, the installer, omp's own docs, and the live installed state.
-  One premise correction: `.claude/` is not read by elon-ko's install, but omp's claude provider
-  does auto-load project `.claude/skills` — the skill currently works only inside clones of this
-  repo. No open questions block SPEC; the only judgment call (keep vs delete `.claude/`) is
-  resolved by the drift-avoidance argument and is trivially reversible via git.
-- **Recommendation:** PROCEED to SPEC with Option A.
+- **Verdict: CLEAR**
+- **Affected Requirements:** NFR2 and E2 are **resolved affirmatively** — omp natively
+  discovers `.omp/agents/*.md` (project, nearest `.omp` walking up) and
+  `.agents/skills/<name>/SKILL.md` (agents provider, on by default at both scopes), with the
+  exact frontmatter contract the repo already uses. FR8's "copy-based consumption
+  instructions (what a consumer copies where, per omp native discovery — verified in
+  RESEARCH)" now has its verified basis; the E2 fallback (documenting copy targets per omp
+  docs) is not needed as a fallback — it IS the happy path. FR11's frontmatter checks
+  (`name`/`description`/`tools`) align with omp's contract (name+description required; tools
+  optional but present in all 11 files). No requirement is contradicted or materially
+  expanded.
+- **Explanation:** All load-bearing claims are corroborated by the installed omp's own docs
+  plus the public upstream repo (verbatim match on the agent-discovery doc). The only
+  Medium-confidence nuance (ancestor walk-up for `.agents` project skills) does not affect
+  the README instructions, which target the repo root.
+- **Recommendation: PROCEED to SPEC.** Feed Recommendations 1–5 into the README (FR8) and
+  migration (FR8/FR10) wording.
 
 ## Sources Consulted
 
-- `.claude/skills/logging-design/SKILL.md` (read in full, 280 lines) — skill content + frontmatter.
-- `.omp-plugin/marketplace.json`; `package.json`; `scripts/validate-plugins.sh` (all 296 lines);
-  `elon_ko.sh` (all 750 lines); `scaffold/PROTO.md:1-143` (roster block :18-31);
-  `scaffold/AGENTS.md:1-90`; `README.md` (all 389 lines); `.DEVREADME.md` (all 320 lines);
-  `CHANGELOG.md:1-143`; `.gitignore`; `.app/IDEAS.md` (IDEA-003 resolution :53).
-- Directory listings: `plugins/agents/{skills,agents}`, `.agents/skills`, `.omp/agents`,
-  `.claude/skills`.
-- Live installed state: `~/.omp/marketplaces.json`, `~/.omp/plugins/installed_plugins.json`,
-  `~/.omp/plugins/omp-plugins.lock.json`, `~/.omp/plugins/package.json`,
-  `~/.omp/elon-ko.install.json`, `~/.omp/plugins/cache/plugins/elon-ko___elon-ko-agents___2.8.0/`,
-  `~/.omp/plugins/cache/marketplaces/elon-ko/`, `~/.omp/agent/`, `~/.agents/skills/` (absence
-  checks for alternate skill sources).
-- `omp://skills.md` (discovery pipeline, providers/precedence, layout, system-prompt exposure,
-  collision handling, `skill://` protocol) — primary mechanism doc.
-- `omp://marketplace.md` (scopes, on-disk layout, plugin content kinds, update/upgrade flow);
-  `omp://skills/authoring-marketplaces.md` (plugin structure convention, install commands);
-  `omp://tools/manage_skill.md` (managed-skills root — ruled out as a channel).
+- `omp://task-agent-discovery.md` (installed omp harness docs) — agent definition shape,
+  frontmatter contract, discovery roots and precedence, merge/collision rules, invalid-file
+  behavior, mid-session re-discovery, cross-harness root exclusion. Public mirror verified
+  identical: https://github.com/can1357/oh-my-pi/blob/main/docs/task-agent-discovery.md
+  (fetched 2026-11-17).
+- `omp://skills.md` — skill provider registry and priorities, `.agent[s]/skills` provider,
+  one-level layout, frontmatter requirements per provider, source toggles, collision/dedup
+  rules, `skill://` protocol, rediscovery-on-miss, system-prompt exposure, manualSkills.
+  Public: https://github.com/can1357/oh-my-pi/blob/main/docs/skills.md ; rendered site
+  https://omp.sh/docs/skills
+- `omp://config-usage.md` — canonical roots (`.omp` first), user agent dir, native provider
+  scope-specific loading (`<ancestor>/.omp/skills` walk, `~/.omp/agent/skills`), provider
+  priority table, capability dedup keys.
+- `omp://context-files.md` — provider table incl. `agents` (`.agent/`, `.agents/`, user bases
+  `~/.agent/` + `~/.agents/`), "Native and `.agent` / `.agents` user sources are enabled by
+  default".
+- `omp://settings.md` — "Native OMP and `.agents` roots … are not foreign and do not require
+  an entry"; opt-out switches; `skills.*` group.
+- `omp://cli-reference.md` — `omp read` (internal-URI verification), `omp agents`, `omp skill`
+  subcommands; `--no-skills` flag.
+- Web search corroboration: omp.sh / github.com/can1357/oh-my-pi doc locations (no claim
+  rests on snippets; each cited doc was read in full or in the cited section).
