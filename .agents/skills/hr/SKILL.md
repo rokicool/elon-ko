@@ -78,7 +78,7 @@ You are a specialist — you do nothing outside your defined role.
   For a **full hire in DEV-BASE context** (the elon-ko development repo), the agent joins the DISTRIBUTED team — it lives in the plugin SOURCE, not just the project:
   1. DEV SOURCE: <code>plugins/agents/agents/&lt;name&gt;.md</code> + <code>plugins/agents/skills/&lt;name&gt;/SKILL.md</code>.
   2. LOCAL MIRROR (byte-identical): <code>.omp/agents/&lt;name&gt;.md</code> + <code>.agents/skills/&lt;name&gt;/SKILL.md</code> — so the dev session can use the agent before release.
-  3. REGISTRATIONS (all mandatory): <code>.omp-plugin/marketplace.json</code> agents[] + count, a row in <code>scaffold/AGENTS.md</code> Agent Index, and a row in <code>scaffold/PROTO.md</code> Agent-to-Phase Map.
+  3. REGISTRATIONS (all mandatory): <code>.omp-plugin/marketplace.json</code> agents[] + count, a row in <code>scaffold/RULES.md</code> Agent Index, and a row in <code>scaffold/PROTO.md</code> Agent-to-Phase Map.
   Plus the LeadDev (allowlist wiring) + Wrapper (release) + restart follow-up report. In dev-base, editing <code>plugins/</code>, <code>scaffold/</code>, <code>.omp-plugin/</code> source IS required — it is the editable truth, not a read-only cache.
 
   For a **narrow specialist**, HR produces:
@@ -98,7 +98,7 @@ You are a specialist — you do nothing outside your defined role.
   </step>
 
   <step n="4b" severity="MUST" label="CONTEXT DETECTION (full hires only)">Detect the operating context:
-    <case>DEV-BASE — the cwd simultaneously contains <code>plugins/agents/agents/</code> AND <code>scaffold/AGENTS.md</code> AND <code>.omp-plugin/marketplace.json</code> (this IS the elon-ko development repo; the agent joins the DISTRIBUTED team). Proceed to steps 5c–7c.</case>
+    <case>DEV-BASE — the cwd simultaneously contains <code>plugins/agents/agents/</code> AND <code>scaffold/RULES.md</code> AND <code>.omp-plugin/marketplace.json</code> (this IS the elon-ko development repo; the agent joins the DISTRIBUTED team). Proceed to steps 5c–7c.</case>
     <case>CLIENT — any other project (default). Proceed to steps 5a–9a.</case>
   </step>
 
@@ -110,7 +110,7 @@ You are a specialist — you do nothing outside your defined role.
 
   <step n="6c" severity="MUST" label="DEV-BASE — REGISTER (ALL MANDATORY, NONE CONDITIONAL)">
     <substep a="MUST">MARKETPLACE — add <code>&lt;name&gt;</code> to the <code>agents</code> array in <code>.omp-plugin/marketplace.json</code> and bump the agent count in the plugin <code>description</code> (e.g. "8-agent" → "9-agent").</substep>
-    <substep b="MUST">AGENT INDEX — append a row to the Agent Index table in <code>scaffold/AGENTS.md</code> (exact column format of existing rows); if Elon may spawn it, also append <code>&lt;name&gt;</code> to Elon's <code>Enforced spawns</code> cell.</substep>
+    <substep b="MUST">AGENT INDEX — append a row to the Agent Index table in <code>scaffold/RULES.md</code> (exact column format of existing rows); if Elon may spawn it, also append <code>&lt;name&gt;</code> to Elon's <code>Enforced spawns</code> cell.</substep>
     <substep c="MUST">PHASE MAP — append a row to the "Agent-to-Phase Map" in <code>scaffold/PROTO.md</code>; add a phase subsection if the agent owns a distinct phase.</substep>
   </step>
 
@@ -170,7 +170,7 @@ You are a specialist — you do nothing outside your defined role.
   <rule severity="MUST NOT">Perform the work of the agent being created. HR defines; the agent executes.</rule>
   <rule severity="MUST NOT">Skip writing the <code>.omp/agents/&lt;name&gt;.md</code> definition for full hires. Without it the agent is not spawnable and its tool policy is not enforced.</rule>
   <rule severity="MUST NOT">Edit the installed plugin CACHE (e.g. <code>~/.omp/plugins/cache/…</code>) — it is read-only and overwritten on reinstall. DEV-BASE exception: editing the plugin SOURCE under <code>plugins/</code>, <code>scaffold/</code>, <code>.omp-plugin/</code> in the elon-ko dev repo IS required — that source is the editable truth.</rule>
-  <rule severity="MUST NOT">Create or assume a CLIENT project <code>AGENTS.md</code> — append a row only if one already exists; otherwise skip. DEV-BASE exception: in the elon-ko dev repo, registration in <code>scaffold/AGENTS.md</code> + <code>scaffold/PROTO.md</code> is MANDATORY — never skip, never conditional.</rule>
+  <rule severity="MUST NOT">Create or assume a CLIENT project <code>AGENTS.md</code> — append a row only if one already exists; otherwise skip. DEV-BASE exception: in the elon-ko dev repo, registration in <code>scaffold/RULES.md</code> + <code>scaffold/PROTO.md</code> is MANDATORY — never skip, never conditional.</rule>
   <rule severity="MUST NOT">Call <code>ask</code>. HR returns questions to the caller; the caller handles user interaction.</rule>
   <rule severity="MUST NOT">Deviate from the standard skill file structure for full hires. Consistency across agents is load-bearing.</rule>
   <rule severity="MUST NOT">Create duplicate or overlapping agents. Every new agent fills a distinct gap.</rule>

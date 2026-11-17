@@ -9,6 +9,40 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v4.0.0] - 2026-11-17
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Breaking — omp-native install layout: the persona protocol becomes an auto-loaded `.omp/RULES.md` sticky rule
+
+**New `scaffold/RULES.md` — the Elon/Ko persona protocol as a sticky-rule source.** The agent registry & protocol content (lineage: the v2.x `scaffold/AGENTS.md`, deleted in v3.0.0, adapted to the pure-content-library reality) now ships as a compact always-apply contract: roster, invocation shape, and hard rules. Consumers copy it to `<repo>/.omp/RULES.md`, where omp's native provider **auto-loads it as a sticky always-apply rule** — carried on every request, survives compaction, and **reaches task subagents** (subagents drop `AGENTS.md` context files but keep `RULES.md`). User-wide alternative: `~/.omp/agent/RULES.md`. Previously the protocol was optional prose a consumer had to wire up themselves; it is now load-bearing by a single file copy.
+
+**No root `AGENTS.md` — ever.** A root-level `AGENTS.md` is a cross-harness convention consumed by many agent harnesses; elon-ko never writes one and no longer documents any root-level placement. Everything installs under omp-namespaced paths (`.omp/RULES.md`, `.omp/agents/`, `.agents/skills/`), so installing the Elon/Ko personas cannot conflict with any other harness in the same repo by default — the stated goal of this release.
+
+**`scaffold/PROTO.md` retained as the doc-only phase protocol.** No omp provider auto-loads a file named `PROTO.md` under any path, so a dev-repo `.omp/` placement buys nothing; the documented consumer copy is optional, to `<repo>/.omp/PROTO.md` (namespaced, doc-only). `scaffold/PROTO.md` gains a header pointer to `RULES.md`.
+
+**README rewritten install section** ("Installing the personas"): adds the rules copy step (with the sticky/subagent-visible behavior), the optional PROTO copy, and the cross-harness conflict rationale. Migration section updated (rules copy is now part of step 1; step 4 explains that deleting a legacy root `AGENTS.md` removes the very conflict this layout eliminates).
+
+**Path-literal sweep (hr only):** `.omp/agents/hr.md` and `.agents/skills/hr/SKILL.md` dev-base references `scaffold/AGENTS.md` → `scaffold/RULES.md` (path strings only; `scaffold/PROTO.md` references unchanged). All other agent/skill files untouched.
+
+### Why MAJOR
+
+Breaking for consumers: "installed" now includes a new required step (the `.omp/RULES.md` copy) and the persona protocol becomes load-bearing sticky content instead of optional prose; README install instructions change shape. Layout/packaging breaks take MAJOR per this repo's own precedent (v3.0.0).
+
+### Migration
+
+1. Copy `scaffold/RULES.md` → `<your-repo>/.omp/RULES.md` (or `~/.omp/agent/RULES.md` for every repo). This is the load-bearing step.
+2. Optionally copy `scaffold/PROTO.md` → `<your-repo>/.omp/PROTO.md` (doc-only).
+3. Delete any legacy root `<cwd>/AGENTS.md` / `<cwd>/PROTO.md` previously scaffolded into consuming projects.
+4. Update any scripts that referenced `scaffold/AGENTS.md` (deleted v3.0.0) — the successor is `scaffold/RULES.md`.
+
+### Files
+
+- Added: `scaffold/RULES.md`
+- Edited: `README.md` (intro, What's-here, install section, migration), `scaffold/PROTO.md` (registry pointer), `.omp/agents/hr.md`, `.agents/skills/hr/SKILL.md` (path literals), `CHANGELOG.md` (this entry)
+- Unchanged: `.omp/agents/` frontmatter, `.agents/skills/` (other than hr), CI workflows (verified: no references to scaffold/AGENTS/PROTO)
+
 ## [v3.1.0] - 2026-11-17
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>

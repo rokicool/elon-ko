@@ -6,6 +6,8 @@ Every feature or software request flows through gated phases. Each agent operate
 
 **Boundary note:** each team agent's tool boundary is declared in its definition frontmatter (`.omp/agents/<name>.md` `tools:` / `spawns:`). This repo ships definitions and protocol only — no runtime gate machinery; that is the consumer runtime's concern. For agent definitions and tool policies, see each definition and skill.
 
+**Registry:** the persona roster's installable sticky-rule form lives in [RULES.md](RULES.md) — consumers copy it to `<repo>/.omp/RULES.md`, where omp auto-loads it.
+
 ---
 
 ## Canonical Agent Roster (single source of truth)
