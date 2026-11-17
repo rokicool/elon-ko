@@ -1,6 +1,6 @@
 # elon-ko
 
-A **pure content library** of agent definitions, skills, and protocol references for [oh-my-pi](https://omp.sh) (`omp`): 11 specialist agent definitions, 13 skills, a persona-protocol sticky rule (`scaffold/RULES.md`), and a phased development protocol reference (`scaffold/PROTO.md`). As of **v3.0.0** the repo ships no plugins, no installer, and no enforcement machinery — a breaking change; see the [CHANGELOG](CHANGELOG.md) for details and migration steps.
+A **pure content library** of agent definitions, skills, and protocol references for [oh-my-pi](https://omp.sh) (`omp`): 11 specialist agent definitions, 13 skills, a persona-protocol sticky rule (`scaffold/RULES.md`), and a phased development protocol reference (`scaffold/PROTO.md`). The repo ships no plugins, no installer, and no enforcement machinery; see the [CHANGELOG](CHANGELOG.md) for details and migration steps.
 
 ## What's here
 

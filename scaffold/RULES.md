@@ -12,11 +12,11 @@ and cannot conflict with any other harness by default.
 For the full phased workflow protocol, see [PROTO.md](PROTO.md) (doc-only reference; copy
 alongside as `<your-repo>/.omp/PROTO.md` if you want it in-repo).
 
-## Roster
+## Agent Index
 
 | Agent | Model | Spawned by | Spawns | Role |
 |---|---|---|---|---|
-| **Elon** (root session, never spawned) | — | self | all below | Orchestrator — routes, gates, relays. NEVER implements. |
+| **Elon** (root session, never spawned) | — | self | Enforced spawns: reqguru, drpe, leaddev, validator, purecode, docworm, hr, wrapper, debugger, testwriter | Orchestrator — routes, gates, relays. NEVER implements. |
 | `reqguru` | `pi/task` | elon | — | Requirements analyst — grill-me interviewer. |
 | `drpe` | `pi/slow` | elon | — | Super researcher — internet, APIs, deep analysis. |
 | `leaddev` | `pi/slow` | elon | `middev, hr` | Architect — spec, review, integration; delegates implementation. |
@@ -32,6 +32,9 @@ alongside as `<your-repo>/.omp/PROTO.md` if you want it in-repo).
 Plus two skills with no agent definition: `skill://elon` (orchestrator protocol) and
 `skill://logging-design`. Model aliases resolve via omp's built-in model-role chain
 (`pi/slow` → strongest reasoning, `pi/task` → general, `pi/smol` → cheapest).
+
+Drift guard: this table MUST match the canonical `elon-ko-roster` block in
+[PROTO.md](PROTO.md) — update both together (HR does, at hire time).
 
 ## Invocation contract
 
