@@ -21,6 +21,12 @@
   - Convention notes: release.yml publishes on tag push — wrapper extended body via `gh release edit`; changelog header follows template (`v` prefix), flagging 2.9.0 as the deviation.
 - Commits this workflow: `5499359` [TRIVIAL] · `860d761` [RELEASE] · `8e70c5d` [PROTO].
 
+## Workflow 3 — 2026-11-17: remove plugins & subagent management — ACTIVE (FULL)
+
+- Request (verbatim): "I would like to remove all plugins and 'subagent' management from this setup. the omp has it much better solution and this is not necessary anymore in this setup. (However, the descriptions and skills of agents are still relevant)"
+- Phase: GRILL (ReqGuru).
+- Prior releases: v2.9.1 latest.
+
 ## Pending Asks
 
-- [PA-1] 2026-11-05T00:00:00Z origin=elon status=agreed | "Approve scope decisions for items 1–2 (Q1 grant, Q2 wait semantics, Q3 removal target, Q4 removal scope, Q5 sequencing)"
+(none)
