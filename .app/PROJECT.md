@@ -52,3 +52,9 @@
 ## Pending Asks
 
 - [PA-7] 2026-11-17T00:00:00Z origin=elon status=agreed | "Release workflow 8 as v4.2.0 (push main, tag, notes-only release)?"
+
+## Addendum — Workflow 8 follow-up (BASH_SOURCE warning): RESOLVED, no defect
+
+- Wrapper6's pre-tag pipe warning came from the OLD script: verification ran BEFORE main was pushed, so raw main served v4.1.1 (whose line 6 = unguarded ${BASH_SOURCE[0]}).
+- HEAD verified: zero BASH_SOURCE refs since `ac22971`; piped form stderr-clean (mocked + live).
+- Wrapper6 live re-verification: v4.2.0 tag URL fully verified end-to-end (no warning, latest-resolution → v4.2.0, full plan). main raw URL = CDN cache lag only; push correct. No fix, no release needed.
