@@ -1,116 +1,51 @@
-# Release — build versioned oh-my-pi plugin artifacts and publish a GitHub
-# Release. Triggered by a `v*` tag.
-#
-# omp consumes plugins directly from git: `omp plugin install github:owner/repo#<tag>`.
-# The tag is therefore the distribution pin. This workflow additionally attaches
-# two consumable archives so each plugin is also installable offline / locally:
-#
-#   elon-ko-gate-<ver>.tgz          Plugin A, npm-packed (respects package.json#files)
-#   elon-ko-agents-<ver>.tar.gz  Plugin B, self-contained marketplace tree
-#                                     (`.omp-plugin/` catalog + `plugins/`), consumable
-#                                     via `omp plugin marketplace add <extracted>`
-#
-# Both are gated through the same typecheck + structural validation as CI before
-# the release is cut, and the tag is asserted to match package.json#version.
+# Notes-only release: source of truth is the git tag + CHANGELOG; NO artifacts
+# (no .tgz/.tar.gz/SHA256SUMS) by design.
+# The sanity steps exist so a tag can never publish from a broken content tree (approved spec flag F4).
 name: Release
-
 on:
   push:
-    tags:
-      - 'v*'
-
+    tags: ['v*']
 permissions:
   contents: write
-
 jobs:
   release:
-    name: Build artifacts & publish release
+    name: Sanity-check content & publish release notes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          cache: npm
-
-      - name: Install deps
-        run: npm ci
-
-      # Gate: never cut a release from a broken tree.
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Validate plugin structure
-        run: bash scripts/validate-plugins.sh
-
-      - name: Read version
-        id: ver
-        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
-
-      # Fail loud if the tag doesn't match the manifest version — prevents
-      # shipping a release whose pin disagrees with the shipped metadata.
-      - name: Assert tag matches package.json#version
+      - name: Agent definitions frontmatter (.omp/agents)
         run: |
-          expected="v${{ steps.ver.outputs.version }}"
-          echo "tag=${GITHUB_REF_NAME}  manifest=${expected}"
-          [ "${GITHUB_REF_NAME}" = "${expected}" ] || {
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match manifest version ${expected}"
-            exit 1
-          }
-
-      # Plugin A — npm pack honours package.json#files (src/, rules/).
-      - name: Build Plugin A artifact (elon-ko-gate)
-        run: npm pack
-
-      # Plugin B — the marketplace root is the repo root; ship the catalog
-      # alongside the plugins tree so `omp plugin marketplace add <dir>` works.
-      - name: Build Plugin B artifact (elon-ko-agents)
+          set -euo pipefail
+          fail=0
+          for f in .omp/agents/*.md; do
+            head -1 "$f" | grep -qx -- '---' || { echo "::error file=$f::missing opening '---' fence"; fail=1; continue; }
+            fm="$(sed -n '2,/^---$/p' "$f")"
+            for key in name description tools; do
+              printf '%s\n' "$fm" | grep -qE "^${key}:" || { echo "::error file=$f::missing frontmatter key '${key}:'"; fail=1; }
+            done
+          done
+          [ "$fail" -eq 0 ] && echo "OK: all .omp/agents/*.md carry name/description/tools"
+      - name: Skills frontmatter (.agents/skills)
         run: |
-          tar -czf "elon-ko-agents-${{ steps.ver.outputs.version }}.tar.gz" \
-              .omp-plugin plugins
-
-      - name: Compute checksums
-        run: |
-          sha256sum \
-            "elon-ko-gate-${{ steps.ver.outputs.version }}.tgz" \
-            "elon-ko-agents-${{ steps.ver.outputs.version }}.tar.gz" \
-            > SHA256SUMS
-          cat SHA256SUMS
-
-      - name: Create GitHub Release
+          set -euo pipefail
+          fail=0
+          for d in .agents/skills/*/; do
+            f="${d}SKILL.md"
+            [ -f "$f" ] || { echo "::error file=$d::missing SKILL.md"; fail=1; continue; }
+            head -1 "$f" | grep -qx -- '---' || { echo "::error file=$f::missing opening '---' fence"; fail=1; continue; }
+            fm="$(sed -n '2,/^---$/p' "$f")"
+            for key in name description; do
+              printf '%s\n' "$fm" | grep -qE "^${key}:" || { echo "::error file=$f::missing frontmatter key '${key}:'"; fail=1; }
+            done
+          done
+          [ "$fail" -eq 0 ] && echo "OK: all .agents/skills/*/SKILL.md carry name/description"
+      - name: Create GitHub Release (notes only)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           generate_release_notes: true
           body: |
-            ## Install with oh-my-pi (`omp`)
-
-            **Plugin A — `elon-ko-gate`** (enforcement gate; requires [bun](https://bun.sh))
-
-            ```bash
-            # tag-pinned (this release)
-            omp plugin install github:${{ github.repository }}#${{ github.ref_name }}
-            # default branch
-            omp plugin install github:${{ github.repository }}
-            ```
-
-            **Plugin B — `elon-ko-agents`** (11 agents + 13 skills; markdown only)
-
-            ```bash
-            omp plugin marketplace add ${{ github.repository }}
-            omp plugin install elon-ko-agents@elon-ko
-            ```
-
-            ## Artifacts
-
-            | File | Plugin | Install locally |
-            |---|---|---|
-            | `elon-ko-gate-${{ steps.ver.outputs.version }}.tgz` | A (extension-package) | `omp plugin install ./elon-ko-gate-${{ steps.ver.outputs.version }}.tgz` |
-            | `elon-ko-agents-${{ steps.ver.outputs.version }}.tar.gz` | B (marketplace) | extract, then `omp plugin marketplace add ./<dir>` |
-
-            See `SHA256SUMS` for checksums.
-          files: |
-            elon-ko-gate-${{ steps.ver.outputs.version }}.tgz
-            elon-ko-agents-${{ steps.ver.outputs.version }}.tar.gz
-            SHA256SUMS
+            elon-ko ${{ github.ref_name }} — pure content library: 11 agent definitions
+            (`.omp/agents/`) + 13 skills (`.agents/skills/`) for oh-my-pi. See README.md for
+            copy-based consumption and migration from v2.x plugins.
