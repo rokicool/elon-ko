@@ -43,4 +43,4 @@
 
 ## Pending Asks
 
-- [PA-5] 2026-11-17T00:00:00Z origin=elon status=pending | "Release workflow 6 as v4.1.0 (push main, tag, notes-only release)?"
+- [PA-5] 2026-11-17T00:00:00Z origin=elon status=agreed | "Release workflow 6 as v4.1.0 (push main, tag, notes-only release)?"
