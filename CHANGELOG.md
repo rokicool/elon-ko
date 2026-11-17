@@ -9,6 +9,19 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v4.2.0] - 2026-11-17
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Changed
+
+- **`install.sh` — reworked from local-checkout copy to a GitHub-fetching installer.** The local-checkout mode was removed; the script now always downloads its distribution files from GitHub and is safe to pipe: `curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/install.sh | bash -s -- <target>`. Version resolution defaults to the latest stable release tag via `api.github.com/repos/rokicool/elon-ko/releases/latest`; `--version vX.Y.Z` pins an exact tag. Downloads use the codeload source tarball for the tag (no API rate limits on the download itself); if the latest-resolution API call fails (e.g. unauthenticated rate limit), the installer exits with a clear error suggesting `--version`. Install contract unchanged otherwise: 11 agents, 13 skills, `RULES.md`/`PROTO.md` → `<target>/.omp/`, `--no-proto`, idempotent, consumer extras preserved, `--dry-run` writes nothing to the target (it still fetches read-only so the plan lists real files). Kept bash + coreutils + curl only; flags stay order-independent; quoted paths and `set -euo pipefail` retained. Self-refusal check reworked to detect an elon-ko checkout at the *target* (the old source-side check is moot now that source is a temp dir). Added `ELON_KO_REPO` / `ELON_KO_ARCHIVE` env overrides for testing the fetch against a local tarball.
+
+#### Affected Files
+
+- Edited: `install.sh` (rewritten fetch logic, `--version` flag, env overrides), `README.md` (install section: curl|bash one-liner, `--version` variant, rate-limit note, no-curl alternative), `CHANGELOG.md` (this entry)
+
 ## [v4.1.1] - 2026-11-17
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>

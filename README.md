@@ -13,38 +13,27 @@ A **pure content library** of agent definitions, skills, and protocol references
 | `CHANGELOG.md` | Release history |
 | `LICENSE` | MIT |
 | `.github/workflows/` | Content-sanity CI + notes-only release |
-| `install.sh` | Local copy installer (bash + coreutils; no network, no pinning) |
+| `install.sh` | Installer — fetches a release from GitHub (bash + coreutils + curl) |
 
 ## Installing the personas
 
-Run the installer (bash + coreutils only; pure local copy, no network):
+Run the installer (bash + coreutils + curl; it downloads the release itself — no clone needed):
 
 ```bash
-./install.sh /path/to/your-repo     # defaults to the current directory
+curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/install.sh | bash -s -- /path/to/your-repo
 ```
 
-It copies `.omp/agents/*.md` → `<repo>/.omp/agents/`, `.agents/skills/*` → `<repo>/.agents/skills/`, `scaffold/RULES.md` → `<repo>/.omp/RULES.md`, and `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (skip the latter with `--no-proto`). It is idempotent — same-name files are overwritten, your own extra files are never touched — and `--dry-run` prints the actions without writing. `.omp/RULES.md` auto-loads as a **sticky always-apply rule** — carried on every request, survives compaction, and reaches task subagents (they drop `AGENTS.md` context files but keep `RULES.md`). User-wide alternative: copy to `~/.omp/agent/RULES.md`.
-
-**Manual fallback** (what the script does):
+It resolves the **latest stable release** via the GitHub API (`/releases/latest`) and unpacks that tag's source tarball (codeload — no API rate limits on the download itself). If the API call fails (e.g. unauthenticated rate limit), the installer exits with a clear error; pin an exact tag instead:
 
 ```bash
-cp .omp/agents/*.md  <your-repo>/.omp/agents/    # or ~/.omp/agent/agents/ for every repo
-cp -R .agents/skills/* <your-repo>/.agents/skills/   # or ~/.agents/skills/
-cp scaffold/RULES.md <your-repo>/.omp/RULES.md
-cp scaffold/PROTO.md <your-repo>/.omp/PROTO.md   # optional, doc-only
+curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/install.sh | bash -s -- /path/to/your-repo --version v4.1.1
 ```
 
-### From GitHub (no local clone)
+The target path defaults to the current directory; flags (`--no-proto`, `--dry-run`, `--version`) work in any order. `--dry-run` still fetches (read-only) so the plan lists real files, but writes nothing.
 
-`install.sh` copies paths relative to its own location, so it must run **from a checkout** — don't pipe it to `bash`. Shallow-clone to a temp dir and point it at your repo:
+It copies `.omp/agents/*.md` → `<repo>/.omp/agents/`, `.agents/skills/*` → `<repo>/.agents/skills/`, `scaffold/RULES.md` → `<repo>/.omp/RULES.md`, and `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (skip the latter with `--no-proto`). It is idempotent — same-name files are overwritten, your own extra files are never touched — and `--dry-run` prints the actions without writing. `.omp/RULES.md` auto-loads as a **sticky always-apply rule** — carried on every request, survives compaction, and reaches task subagents (they drop `AGENTS.md` context files but keep `RULES.md`). User-wide alternative: copy to `~/.omp/agent/RULES.md`. Verify afterwards with `omp read skill://elon` run in the target repo.
 
-```bash
-git clone --depth 1 https://github.com/rokicool/elon-ko /tmp/elon-ko
-/tmp/elon-ko/install.sh /path/to/your-repo
-rm -rf /tmp/elon-ko     # cleanup; the copies in your repo are already complete
-```
-
-To pin a release instead of `main`, clone with `--branch v4.1.0` (see the [CHANGELOG](CHANGELOG.md) for the latest tag). Verify afterwards with `omp read skill://elon` run in the target repo.
+**No-curl alternative:** shallow-clone the tag and copy per the manual fallback below (`git clone --depth 1 --branch v4.1.1 https://github.com/rokicool/elon-ko`).
 
 No configuration, marketplace, or plugin installation is needed — omp discovers all of it at startup.
 
