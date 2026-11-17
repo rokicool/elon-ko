@@ -9,6 +9,38 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v3.0.0] - 2026-11-17
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Removed
+
+- **Breaking: the repo is now a pure content library — all plugin and tooling machinery is deleted.** Plugin A `elon-ko-gate` entirely (the 5 TypeScript extensions `enforce-orchestrator`, `mess-transport`, `dot-agreement`, `subagent-panel`, `idea-storage`; `rules/`; the TypeScript/npm/bun toolchain incl. `package.json`, `package-lock.json`, `tsconfig.json`, and all `omp.extensions` registration); Plugin B packaging (`plugins/` tree, `.omp-plugin/marketplace.json`); the `elon_ko.sh` installer; release artifacts (`.tgz`/`.tar.gz`/SHA256SUMS) and the `prerelease.yml` workflow; `scripts/validate-plugins.sh`; `.DEVREADME.md`; and `scaffold/AGENTS.md`, `scaffold/APPEND_SYSTEM.md`, `scaffold/models.example.yml`. The 11 agent definitions (`.omp/agents/`) and 13 skills (`.agents/skills/`) survive byte-identical as the canonical content, consumed natively by omp's built-in discovery.
+
+### Breaking
+
+- v2.x consumers lose (omp's own native facilities are the replacement going forward): the root-session enforcement gate, the `.` agreement token, `/idea`/`/ideas` + idea reminders, cross-instance `mess-send`/`mess-fail` messaging, the subagent observability panel, and APPEND_SYSTEM framing re-injection.
+
+### Migration (v2.x → v3.0.0)
+
+1. Copy the v3 content first: `.omp/agents/` and `.agents/skills/` into your repo (see README §Using). Identical copies collapse silently — `skill://` names stay available throughout.
+2. `omp plugin uninstall elon-ko-gate elon-ko-agents`
+3. `omp plugin marketplace remove elon-ko`
+4. Delete previously scaffolded files (`AGENTS.md`, `PROTO.md`, `.omp/config.example.yml`, `.omp/elon.json`) and install residue (`./.elon-ko`, `~/.omp-prerelease`).
+5. Verify: `omp read skill://elon`.
+
+### Changed
+
+- CI reduced to a single frontmatter-sanity workflow (no node/bun, no omp plugin smoke tests). Releases are notes-only GitHub releases — no binary artifacts. Version identity is the git tag + this CHANGELOG; no version-bearing manifest files remain.
+
+#### Affected Files
+
+- Deleted: `package.json`, `package-lock.json`, `tsconfig.json`, `src/`, `rules/`, `plugins/`, `.omp-plugin/`, `scaffold/{AGENTS,APPEND_SYSTEM,models.example}.md`, `elon_ko.sh`, `scripts/validate-plugins.sh`, `.github/workflows/prerelease.yml`, `.DEVREADME.md`
+- Rewritten: `README.md`, `.github/workflows/{ci,release}.yml`, `.gitignore`
+- Edited: `CHANGELOG.md` (this entry), `scaffold/PROTO.md` (reference fixes only)
+- Kept verbatim: `.omp/agents/` (11), `.agents/skills/` (13), `LICENSE`
+
 ## [v2.9.1] - 2026-11-06
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>
