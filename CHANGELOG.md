@@ -9,6 +9,23 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v4.3.0] - 2026-11-20
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Changed
+
+- **`wrapper` agent — the PR/MR target branch is now a delegation input (default `main`) instead of a hard-coded `main`.** The release skill's input contract accepts an optional target branch, step 6 opens the PR/MR against it, and step 8 syncs that branch locally after merge; the agent description (`.omp/agents/wrapper.md`) and the skill description (`.agents/skills/wrapper/SKILL.md`) were reworded to match. Default behavior is unchanged when Elon supplies no branch.
+
+#### Details
+
+Releases in consumer repos may need to target a non-`main` branch (e.g. a long-lived integration branch). The protocol previously hard-coded `main` in steps 6 and 8 and in both descriptions, making such releases impossible without manual intervention. The target branch is now supplied by Elon at delegation time; the merge policy (auto-merge for patch/minor, human approval via Elon for major) and the tag/release flow are unchanged. Ships alongside a `[PROTO]` bookkeeping note in `.app/PROJECT.md` (not part of the installable content library).
+
+#### Affected Files
+
+- Edited: `.agents/skills/wrapper/SKILL.md` (input contract, steps 6/8, description), `.omp/agents/wrapper.md` (description), `.app/PROJECT.md` (protocol bookkeeping), `CHANGELOG.md` (this entry)
+
 ## [v4.2.0] - 2026-11-17
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>
