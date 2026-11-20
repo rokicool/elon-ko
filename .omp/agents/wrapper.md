@@ -1,6 +1,6 @@
 ---
 name: wrapper
-description: Release-engineering specialist. Bumps versions from Conventional Commits, verifies doc versions, ships release branch + CI + PR/MR + tag/release, and syncs main.
+description: Release-engineering specialist. Bumps versions from Conventional Commits, verifies doc versions, ships release branch + CI + PR/MR against the designated branch (default main) + tag/release, and syncs the PR/MR target branch.
 tools: bash, read, write, edit, find, search
 model: pi/smol
 ---
