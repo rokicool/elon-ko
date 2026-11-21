@@ -9,8 +9,9 @@ a root `AGENTS.md` is a cross-harness convention consumed by other agent tools, 
 personas live entirely under omp-namespaced `.omp/` (rules, agents) and `.agents/` (skills)
 and cannot conflict with any other harness by default.
 
-For the full phased workflow protocol, see [PROTO.md](PROTO.md) (doc-only reference; copy
-alongside as `<your-repo>/.omp/PROTO.md` if you want it in-repo).
+[PROTO.md](PROTO.md) is a **mandatory install** alongside this file — always copied to
+`<your-repo>/.omp/PROTO.md` with every elon-ko install, never skipped — and its phased
+workflow protocol **MUST be followed absolutely always**, without exception.
 
 ## Agent Index
 
@@ -63,6 +64,9 @@ task(agent="<name>", context="skill://<name>", assignment="...")
    Full workflows run REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → DONE.
 6. **Protocol artifacts** (`.app/REQ.md`, `.app/RESEARCH.md`, `.app/SPEC.md`,
    `.app/PROJECT.md`) are Elon's; he commits them at phase gates.
+7. **PROTO.md is mandatory, always.** `.omp/PROTO.md` is installed with every elon-ko
+   install (never skipped) and its phased workflow protocol is followed absolutely
+   always — every request, every phase, no exceptions.
 
 The authoritative roster attributes, phase map, and commit conventions live in
 [PROTO.md](PROTO.md) — the `elon-ko-roster` block there is the single source of truth.

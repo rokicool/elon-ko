@@ -9,7 +9,7 @@ A **pure content library** of agent definitions, skills, and protocol references
 | `.omp/agents/` | 11 agent definitions: `reqguru`, `drpe`, `leaddev`, `middev`, `validator`, `purecode`, `docworm`, `hr`, `wrapper`, `debugger`, `testwriter` |
 | `.agents/skills/` | 13 skills — the 11 agents' skills plus `elon` and `logging-design`, which have no agent definition |
 | `scaffold/RULES.md` | The persona protocol as a sticky-rule source — copy to `<repo>/.omp/RULES.md` (auto-loaded by omp) |
-| `scaffold/PROTO.md` | The phased development protocol (doc-only reference; optionally copy to `<repo>/.omp/PROTO.md`) |
+| `scaffold/PROTO.md` | The phased development protocol (always installed to `<repo>/.omp/PROTO.md`) |
 | `CHANGELOG.md` | Release history |
 | `LICENSE` | MIT |
 | `.github/workflows/` | Content-sanity CI + notes-only release |
@@ -29,11 +29,11 @@ It resolves the **latest stable release** via the GitHub API (`/releases/latest`
 curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/install.sh | bash -s -- /path/to/your-repo --version v4.1.1
 ```
 
-The target path defaults to the current directory; flags (`--no-proto`, `--dry-run`, `--version`) work in any order. `--dry-run` still fetches (read-only) so the plan lists real files, but writes nothing.
+The target path defaults to the current directory; flags (`--dry-run`, `--version`) work in any order. `--dry-run` still fetches (read-only) so the plan lists real files, but writes nothing.
 
-It copies `.omp/agents/*.md` → `<repo>/.omp/agents/`, `.agents/skills/*` → `<repo>/.agents/skills/`, `scaffold/RULES.md` → `<repo>/.omp/RULES.md`, and `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (skip the latter with `--no-proto`). It is idempotent — same-name files are overwritten, your own extra files are never touched — and `--dry-run` prints the actions without writing. `.omp/RULES.md` auto-loads as a **sticky always-apply rule** — carried on every request, survives compaction, and reaches task subagents (they drop `AGENTS.md` context files but keep `RULES.md`). User-wide alternative: copy to `~/.omp/agent/RULES.md`. Verify afterwards with `omp read skill://elon` run in the target repo.
+It copies `.omp/agents/*.md` → `<repo>/.omp/agents/`, `.agents/skills/*` → `<repo>/.agents/skills/`, `scaffold/RULES.md` → `<repo>/.omp/RULES.md`, and `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (always installed — mandatory). It is idempotent — same-name files are overwritten, your own extra files are never touched — and `--dry-run` prints the actions without writing. `.omp/RULES.md` auto-loads as a **sticky always-apply rule** — carried on every request, survives compaction, and reaches task subagents (they drop `AGENTS.md` context files but keep `RULES.md`). User-wide alternative: copy to `~/.omp/agent/RULES.md`. Verify afterwards with `omp read skill://elon` run in the target repo.
 
-**No-curl alternative:** `git clone --depth 1 --branch v4.1.1 https://github.com/rokicool/elon-ko`, then copy from the clone: `.omp/agents/*.md` → `<repo>/.omp/agents/`, `.agents/skills/*` → `<repo>/.agents/skills/`, `scaffold/RULES.md` → `<repo>/.omp/RULES.md`, `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (optional).
+**No-curl alternative:** `git clone --depth 1 --branch v4.1.1 https://github.com/rokicool/elon-ko`, then copy from the clone: `.omp/agents/*.md` → `<repo>/.omp/agents/`, `.agents/skills/*` → `<repo>/.agents/skills/`, `scaffold/RULES.md` → `<repo>/.omp/RULES.md`, `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (mandatory).
 
 No configuration, marketplace, or plugin installation is needed — omp discovers all of it at startup.
 

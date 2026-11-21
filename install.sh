@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # elon-ko installer — fetches distribution files from GitHub and copies them in.
-# Usage: ./install.sh [target-repo] [--no-proto] [--dry-run] [--version vX.Y.Z]
+# Usage: ./install.sh [target-repo] [--dry-run] [--version vX.Y.Z]
 # Pipeable: curl -fsSL https://raw.githubusercontent.com/rokicool/elon-ko/main/install.sh | bash -s -- <target>
 # Env overrides (mainly for testing): ELON_KO_REPO (default rokicool/elon-ko),
 # ELON_KO_ARCHIVE (full tarball URL, bypasses tag resolution).
@@ -10,7 +10,6 @@ REPO="${ELON_KO_REPO:-rokicool/elon-ko}"
 ARCHIVE_URL="${ELON_KO_ARCHIVE:-}"
 TARGET=""
 DRY_RUN=0
-WITH_PROTO=1
 VERSION=""
 EXPECT_VALUE=0
 
@@ -19,11 +18,10 @@ for arg in "$@"; do
     VERSION="$arg"; EXPECT_VALUE=0; continue
   fi
   case "$arg" in
-    --no-proto) WITH_PROTO=0 ;;
     --dry-run)  DRY_RUN=1 ;;
     --version)  EXPECT_VALUE=1 ;;
     -h|--help)
-      echo "Usage: [curl …install.sh |] bash -s -- [target-repo] [--no-proto] [--dry-run] [--version vX.Y.Z]"
+      echo "Usage: [curl …install.sh |] bash -s -- [target-repo] [--dry-run] [--version vX.Y.Z]"
       echo "  Fetches elon-ko from GitHub ($REPO; latest stable release, or --version to pin)"
       echo "  and copies agents, skills, RULES.md, PROTO.md into <target-repo> (default: cwd)."
       echo "  Env: ELON_KO_REPO, ELON_KO_ARCHIVE (full tarball URL override)."
@@ -116,10 +114,8 @@ done
 # Rules (sticky, auto-loaded)
 copy "$TARGET/.omp" "$SRC/scaffold/RULES.md" "$TARGET/.omp/RULES.md"
 
-# Protocol reference (optional)
-if [ "$WITH_PROTO" -eq 1 ]; then
-  copy "$TARGET/.omp" "$SRC/scaffold/PROTO.md" "$TARGET/.omp/PROTO.md"
-fi
+# Protocol (mandatory, always installed)
+copy "$TARGET/.omp" "$SRC/scaffold/PROTO.md" "$TARGET/.omp/PROTO.md"
 
 if [ "$DRY_RUN" -eq 0 ]; then
   echo ""
