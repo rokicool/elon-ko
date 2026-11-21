@@ -9,6 +9,23 @@ and this project aims to adhere to [Semantic Versioning](https://semver.org/spec
 
 At **v2.0.0** this project was renamed: the umbrella `omp-agent-template` → **`elon-ko`** (repo slug `rokicool/omp-agent-template` → `rokicool/elon-ko`), Plugin A `omp-agent-gate` → **`elon-ko-gate`**, Plugin B `orchestrator-agents` → **`elon-ko-agents`**, and the marketplace catalog id `@omp-agent-template` → **`@elon-ko`**. The installer keeps its filename `elon_ko.sh`. The old names in the v1.0–v1.8.0 entries below are left as a true historical record — GitHub redirects the old URLs, so existing tag/release links keep resolving. See the **Migration** notes in [v2.0.0] to upgrade.
 
+## [v4.4.0] - 2026-11-20
+
+**Engineer:** Roman Kiprin <rokicool@gmail.com>
+**Ticket:** N/A
+
+### Changed
+
+- **`scaffold/PROTO.md` — installation is now mandatory and unconditional; the installer's `--no-proto` opt-out was removed.** `install.sh` always copies `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md` (the conditional block and its `WITH_PROTO` variable are gone), `scaffold/RULES.md` now declares PROTO.md a mandatory companion install and adds hard rule 7 ("PROTO.md is mandatory, always" — its phased workflow protocol is followed absolutely always, no exceptions), and the README install docs drop `--no-proto` and mark the PROTO.md copy mandatory in both the curl-pipe and no-curl flows.
+
+#### Details
+
+Previously the phased workflow protocol shipped as a doc-only reference that consuming repos could skip via `install.sh --no-proto`, so elon-ko sessions could run without `PROTO.md` in-repo. Because the protocol is load-bearing for every session — the phased workflow (REQUEST → GRILL → [RESEARCH] → SPEC → DEVELOP ⇄ VALIDATE → DONE) must be followed always — the opt-out was removed and the requirement hardened into the sticky `RULES.md` so it survives compaction and reaches task subagents. Consumers who previously installed with `--no-proto` should re-run the installer to place `.omp/PROTO.md` in their repo.
+
+#### Affected Files
+
+- Edited: `install.sh` (removed `--no-proto` flag and conditional copy; unconditional `scaffold/PROTO.md` → `<repo>/.omp/PROTO.md`), `scaffold/RULES.md` (mandatory-install note, hard rule 7), `README.md` (install docs: flag removed from usage lines, PROTO.md mandatory in both flows)
+
 ## [v4.3.0] - 2026-11-20
 
 **Engineer:** Roman Kiprin <rokicool@gmail.com>
